@@ -1,26 +1,345 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Apple-inspired light palette */
+  --bg: #f2f2f7;
+  --bg2: #e5e5ea;
+  --bg3: #d1d1d6;
+  --surface: #ffffff;
+  --surface2: rgba(255, 255, 255, 0.85);
+  --surface3: rgba(242, 242, 247, 0.8);
+  --border: rgba(0, 0, 0, 0.08);
+  --border2: rgba(0, 0, 0, 0.13);
+  --glass-bg: rgba(255, 255, 255, 0.8);
+
+  /* Apple Blue system accent */
+  --accent: #007aff;
+  --accent2: #3395ff;
+  --accent3: #66b2ff;
+  --glow: rgba(0, 122, 255, 0.18);
+
+  /* Semantic colors — Apple system palette */
+  --green: #34c759;
+  --green-dim: rgba(52, 199, 89, 0.12);
+  --red: #ff3b30;
+  --red-dim: rgba(255, 59, 48, 0.1);
+  --amber: #ff9500;
+  --amber-dim: rgba(255, 149, 0, 0.12);
+  --blue: #32ade6;
+  --blue-dim: rgba(50, 173, 230, 0.12);
+  --cyan: #5ac8fa;
+  --purple: #af52de;
+  --purple-dim: rgba(175, 82, 222, 0.12);
+  --pink: #ff2d55;
+  --pink-dim: rgba(255, 45, 85, 0.1);
+
+  /* Text hierarchy */
+  --text: #1c1c1e;
+  --text2: #3a3a3c;
+  --text3: #8e8e93;
+  --text4: #aeaeb2;
+
+  /* Radii */
+  --r: 14px;
+  --r2: 10px;
+  --r3: 8px;
+
+  /* Shadows — Apple-style layered */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  --font: 'Outfit', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+.dark {
+  /* Apple-inspired dark palette */
+  --bg: #000000;
+  --bg2: #1c1c1e;
+  --bg3: #2c2c2e;
+  --surface: #1c1c1e;
+  --surface2: rgba(28, 28, 30, 0.85);
+  --surface3: rgba(44, 44, 46, 0.8);
+  --border: rgba(255, 255, 255, 0.12);
+  --border2: rgba(255, 255, 255, 0.18);
+  --glass-bg: rgba(28, 28, 30, 0.8);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --accent: #0a84ff;
+  --accent2: #409cff;
+  --accent3: #64d2ff;
+  --glow: rgba(10, 132, 255, 0.25);
+
+  --green: #32d74b;
+  --green-dim: rgba(50, 215, 75, 0.15);
+  --red: #ff453a;
+  --red-dim: rgba(255, 69, 58, 0.15);
+  --amber: #ff9f0a;
+  --amber-dim: rgba(255, 159, 10, 0.15);
+  --blue: #64d2ff;
+  --blue-dim: rgba(100, 210, 255, 0.15);
+  --cyan: #64d2ff;
+  --purple: #bf5af2;
+  --purple-dim: rgba(191, 90, 242, 0.15);
+  --pink: #ff375f;
+  --pink-dim: rgba(255, 55, 95, 0.15);
+
+  --text: #ffffff;
+  --text2: #ebebf5;
+  --text3: rgba(235, 235, 245, 0.6);
+  --text4: rgba(235, 235, 245, 0.3);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  /* display: flex;  -- handled by layout */
+  height: 100vh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar styles from original CSS */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg3);
+  border-radius: 4px;
+}
+
+/* Custom Scrollbar Utilities */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animations from original CSS */
+@keyframes pulse-dot {
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.3);
+  }
+
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 4px rgba(255, 59, 48, 0);
+  }
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes growBar {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes fadeSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeRow {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawLine {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes growUpBar {
+  from {
+    transform: scaleY(0);
+  }
+
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes drawDonut {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Adjusted for simplicity, JS animation might be needed for precise control */
+@keyframes rippleAnim {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Utility classes based on original CSS for easy usage in Components */
+.glass {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass:hover {
+  border-color: var(--border2);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn {
+  padding: 9px 18px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: var(--font);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.btn-primary:hover {
+  background: #0070eb;
+  box-shadow: 0 4px 14px rgba(0, 122, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: var(--surface);
+  color: var(--text2);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-ghost:hover {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border2);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.badge.active {
+  background: var(--green-dim);
+  color: #1a9140;
+  border-color: rgba(52, 199, 89, 0.25);
+}
+
+.badge.leave {
+  background: var(--amber-dim);
+  color: #b86c00;
+  border-color: rgba(255, 149, 0, 0.25);
+}
+
+.badge.pending {
+  background: var(--amber-dim);
+  color: #b86c00;
+  border-color: rgba(255, 149, 0, 0.25);
+}
+
+.badge.approved {
+  background: var(--green-dim);
+  color: #1a9140;
+  border-color: rgba(52, 199, 89, 0.25);
+}
+
+.badge.rejected {
+  background: var(--red-dim);
+  color: var(--red);
+  border-color: rgba(255, 59, 48, 0.2);
+}
+
+.badge.dept {
+  background: rgba(0, 122, 255, 0.08);
+  color: var(--accent);
+  border-color: rgba(0, 122, 255, 0.18);
+}
+
+/* Animation Utils */
+.count-anim {
+  animation: countUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.fade-row {
+  animation: fadeRow 0.3s both;
 }
