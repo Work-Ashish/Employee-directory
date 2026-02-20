@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
+import Google from "next-auth/providers/google"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
@@ -9,6 +10,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         signIn: "/login",
     },
     providers: [
+        Google({
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        }),
         Credentials({
             name: "credentials",
             credentials: {
@@ -48,10 +53,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }),
     ],
     callbacks: {
-        async jwt({ token, user }) {
+        async signIn({ user, account }) {
+            // Auto-create user on first Google sign-in
+            if (account?.provider === "google" && user.email) {
+                const existing = await prisma.user.findUnique({
+                    where: { email: user.email },
+                })
+                if (!existing) {
+                    await prisma.user.create({
+                        data: {
+                            name: user.name || "Google User",
+                            email: user.email,
+                            hashedPassword: "",
+                            role: "EMPLOYEE",
+                            avatar: user.image || null,
+                        },
+                    })
+                }
+            }
+            return true
+        },
+        async jwt({ token, user, account }) {
             if (user) {
                 token.role = user.role
                 token.avatar = user.avatar
+            }
+            // Fetch role from DB for Google sign-in (since Google provider doesn't return role)
+            if (account?.provider === "google" && token.email) {
+                const dbUser = await prisma.user.findUnique({
+                    where: { email: token.email },
+                })
+                if (dbUser) {
+                    token.sub = dbUser.id
+                    token.role = dbUser.role
+                    token.avatar = dbUser.avatar || token.picture
+                }
             }
             return token
         },
@@ -65,3 +101,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
     },
 })
+

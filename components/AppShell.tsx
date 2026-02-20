@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/Sidebar"
 import { MobileSidebar } from "@/components/MobileSidebar"
 import { Topbar } from "@/components/Topbar"
 import { AuthProvider } from "@/context/AuthContext"
+import { AIChatbot } from "@/components/AIChatbot"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
@@ -25,6 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     {children}
                 </main>
             </div>
+            {!isLoginPage && <AIChatbot />}
         </AuthProvider>
     )
 }
