@@ -94,7 +94,7 @@ export function AdminDashboard() {
                 <p className="text-[13.5px] text-[var(--text3)] mt-[4px]">Monitor your team performance and key metrics in real-time</p>
             </div>
 
-            <div className="grid grid-cols-4 gap-4 mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
                 {loading ? (
                     Array(4).fill(0).map((_, i) => (
                         <div key={i} className="glass p-5 h-[160px] flex flex-col justify-between">

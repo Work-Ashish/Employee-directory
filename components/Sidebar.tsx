@@ -40,10 +40,7 @@ const navItems = [
   { name: 'Settings', href: '/settings', icon: GearIcon },
 ]
 
-export function Sidebar() {
-  const pathname = usePathname()
-  const { user, logout } = useAuth()
-
+export function NavContent({ pathname, user, logout, onItemClick }: { pathname: string, user: any, logout: () => void, onItemClick?: () => void }) {
   // Filter items based on role
   const filteredNavItems = navItems.filter(item => {
     if (!user) return false
@@ -54,10 +51,8 @@ export function Sidebar() {
     return !restrictedItems.includes(item.name)
   })
 
-  if (!user) return null
-
   return (
-    <aside className="w-[220px] min-w-[220px] bg-[var(--glass-bg)] backdrop-blur-xl border-r border-[var(--border)] flex flex-col relative z-50 h-screen transition-colors duration-300">
+    <div className="flex flex-col h-full">
       <div className="p-[22px_18px_18px] border-b border-[var(--border)]">
         <div className="flex items-center gap-[11px]">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center relative overflow-hidden shrink-0">
@@ -80,6 +75,7 @@ export function Sidebar() {
             <Link
               key={item.name}
               href={href}
+              onClick={onItemClick}
               className={cn(
                 "flex items-center gap-[10px] p-[10px_12px] rounded-[10px] cursor-pointer text-[13.5px] font-medium transition-all duration-200 relative overflow-hidden group select-none",
                 isActive
@@ -132,6 +128,19 @@ export function Sidebar() {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+export function Sidebar() {
+  const pathname = usePathname()
+  const { user, logout } = useAuth()
+
+  if (!user) return null
+
+  return (
+    <aside className="hidden md:flex w-[220px] min-w-[220px] bg-[var(--glass-bg)] backdrop-blur-xl border-r border-[var(--border)] flex-col relative z-50 h-screen transition-colors duration-300">
+      <NavContent pathname={pathname} user={user} logout={logout} />
     </aside>
   )
 }

@@ -103,8 +103,8 @@ export function DataTable<TData, TValue>({
                 )}
             </div>
 
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--r)] overflow-hidden shadow-sm">
-                <table className="w-full border-collapse">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[9px] overflow-hidden shadow-sm overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[800px]">
                     <thead>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <tr key={headerGroup.id} className="border-b border-[var(--border)] bg-[var(--surface2)] backdrop-blur-md">
