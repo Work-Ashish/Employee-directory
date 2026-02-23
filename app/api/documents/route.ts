@@ -52,6 +52,7 @@ export async function POST(req: Request) {
                 isPublic: body.isPublic ?? false,
                 employeeId: body.employeeId || null,
             },
+            include: { employee: true },
         })
 
         return NextResponse.json(document, { status: 201 })

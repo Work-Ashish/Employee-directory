@@ -44,6 +44,7 @@ export async function POST(req: Request) {
                 assignedToId: body.assignedToId || null,
                 assignedDate: body.assignedDate ? new Date(body.assignedDate) : null,
             },
+            include: { assignedTo: true },
         })
 
         return NextResponse.json(asset, { status: 201 })

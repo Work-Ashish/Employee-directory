@@ -51,12 +51,26 @@ export async function PUT(
         const { id } = await params
         const body = await req.json()
 
+        const existing = await prisma.employee.findUnique({ where: { id } })
+        if (!existing) {
+            return NextResponse.json({ error: "Employee not found" }, { status: 404 })
+        }
+
         const employee = await prisma.employee.update({
             where: { id },
             data: {
-                ...body,
-                ...(body.dateOfJoining && { dateOfJoining: new Date(body.dateOfJoining) }),
-                ...(body.salary && { salary: parseFloat(body.salary) }),
+                employeeCode: body.employeeCode,
+                firstName: body.firstName,
+                lastName: body.lastName,
+                email: body.email,
+                phone: body.phone ?? null,
+                designation: body.designation,
+                departmentId: body.departmentId,
+                dateOfJoining: body.dateOfJoining ? new Date(body.dateOfJoining) : undefined,
+                salary: body.salary !== undefined ? parseFloat(body.salary) : undefined,
+                status: body.status,
+                address: body.address ?? undefined,
+                managerId: body.managerId ?? undefined,
             },
             include: { department: true },
         })
@@ -68,7 +82,7 @@ export async function PUT(
     }
 }
 
-// DELETE /api/employees/[id] – Delete employee
+// DELETE /api/employees/[id] – Delete employee and related records
 export async function DELETE(
     _req: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -81,11 +95,29 @@ export async function DELETE(
 
         const { id } = await params
 
-        await prisma.employee.delete({ where: { id } })
+        const existing = await prisma.employee.findUnique({ where: { id } })
+        if (!existing) {
+            return NextResponse.json({ error: "Employee not found" }, { status: 404 })
+        }
+
+        await prisma.$transaction([
+            prisma.attendance.deleteMany({ where: { employeeId: id } }),
+            prisma.leave.deleteMany({ where: { employeeId: id } }),
+            prisma.payroll.deleteMany({ where: { employeeId: id } }),
+            prisma.providentFund.deleteMany({ where: { employeeId: id } }),
+            prisma.performanceReview.deleteMany({ where: { employeeId: id } }),
+            prisma.trainingEnrollment.deleteMany({ where: { employeeId: id } }),
+            prisma.ticket.deleteMany({ where: { employeeId: id } }),
+            prisma.resignation.deleteMany({ where: { employeeId: id } }),
+            prisma.document.deleteMany({ where: { employeeId: id } }),
+            prisma.asset.updateMany({ where: { assignedToId: id }, data: { assignedToId: null, assignedDate: null, status: "AVAILABLE" } }),
+            prisma.employee.updateMany({ where: { managerId: id }, data: { managerId: null } }),
+            prisma.employee.delete({ where: { id } }),
+        ])
 
         return NextResponse.json({ message: "Deleted" })
     } catch (error) {
         console.error("[EMPLOYEE_DELETE]", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        return NextResponse.json({ error: "Failed to delete employee. They may have linked records." }, { status: 500 })
     }
 }

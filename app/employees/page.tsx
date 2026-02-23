@@ -30,7 +30,7 @@ const employeeSchema = z.object({
     departmentId: z.string().min(1, "Department is required"),
     dateOfJoining: z.string().min(1, "Date of Joining is required"),
     salary: z.coerce.number().min(0, "Salary must be positive"),
-    status: z.enum(["ACTIVE", "ON_LEAVE", "TERMINATED"]).default("ACTIVE"),
+    status: z.enum(["ACTIVE", "ON_LEAVE", "RESIGNED", "TERMINATED"]).default("ACTIVE"),
 })
 
 type EmployeeFormData = z.infer<typeof employeeSchema>
@@ -85,7 +85,8 @@ const mapApiToTableData = (apiEmployees: EmployeeApiData[]): TableEmployee[] => 
         const statusMap: Record<string, string> = {
             "ACTIVE": "Active",
             "ON_LEAVE": "On Leave",
-            "TERMINATED": "Terminated"
+            "RESIGNED": "Resigned",
+            "TERMINATED": "Terminated",
         }
 
         return {
@@ -401,7 +402,9 @@ export default function EmployeesPage() {
                             ? "bg-[var(--green-dim)] text-[#1a9140] border-[rgba(52,199,89,0.25)]"
                             : status === 'On Leave'
                                 ? "bg-[var(--amber-dim)] text-[#b86c00] border-[rgba(255,149,0,0.25)]"
-                                : "bg-[var(--red-dim)] text-[var(--red)] border-[rgba(255,59,48,0.25)]"
+                                : status === 'Resigned'
+                                    ? "bg-[var(--bg2)] text-[var(--text3)] border-[var(--border)]"
+                                    : "bg-[var(--red-dim)] text-[var(--red)] border-[rgba(255,59,48,0.25)]"
                     )}>
                         ● {status}
                     </span>
@@ -459,7 +462,7 @@ export default function EmployeesPage() {
                     searchKey="name"
                     filterFields={[
                         { id: "dept", label: "Departments", options: departments.map(d => d.name) },
-                        { id: "status", label: "Status", options: ["Active", "On Leave", "Terminated"] }
+                        { id: "status", label: "Status", options: ["Active", "On Leave", "Resigned", "Terminated"] }
                     ]}
                     actions={
                         <>
@@ -612,6 +615,7 @@ export default function EmployeesPage() {
                             >
                                 <option value="ACTIVE">Active</option>
                                 <option value="ON_LEAVE">On Leave</option>
+                                <option value="RESIGNED">Resigned</option>
                                 <option value="TERMINATED">Terminated</option>
                             </select>
                         </div>

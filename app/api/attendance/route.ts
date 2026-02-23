@@ -17,7 +17,17 @@ export async function GET(req: Request) {
         const where: Record<string, unknown> = {}
         if (date) where.date = new Date(date)
         if (employeeId) where.employeeId = employeeId
-        if (session.user?.role !== "ADMIN") where.employeeId = session.user?.id
+
+        if (session.user?.role !== "ADMIN") {
+            const employee = await prisma.employee.findFirst({
+                where: { userId: session.user?.id },
+            })
+            if (employee) {
+                where.employeeId = employee.id
+            } else {
+                return NextResponse.json([])
+            }
+        }
 
         const records = await prisma.attendance.findMany({
             where,
@@ -42,14 +52,27 @@ export async function POST(req: Request) {
 
         const body = await req.json()
 
+        let employeeId = body.employeeId
+        if (!employeeId) {
+            const employee = await prisma.employee.findFirst({
+                where: { userId: session.user?.id },
+            })
+            if (!employee) {
+                return NextResponse.json({ error: "No employee profile linked to your account" }, { status: 400 })
+            }
+            employeeId = employee.id
+        } else if (session.user?.role !== "ADMIN") {
+            return NextResponse.json({ error: "Only admins can create attendance for other employees" }, { status: 403 })
+        }
+
         const record = await prisma.attendance.create({
             data: {
-                date: new Date(body.date),
+                date: new Date(body.date || new Date()),
                 checkIn: body.checkIn ? new Date(body.checkIn) : null,
                 checkOut: body.checkOut ? new Date(body.checkOut) : null,
                 workHours: body.workHours ? parseFloat(body.workHours) : null,
                 status: body.status || "PRESENT",
-                employeeId: body.employeeId,
+                employeeId,
             },
             include: { employee: true },
         })

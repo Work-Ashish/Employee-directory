@@ -17,7 +17,17 @@ export async function GET(req: Request) {
         const where: Record<string, unknown> = {}
         if (status) where.status = status
         if (employeeId) where.employeeId = employeeId
-        if (session.user?.role !== "ADMIN") where.employeeId = session.user?.id
+
+        if (session.user?.role !== "ADMIN") {
+            const employee = await prisma.employee.findFirst({
+                where: { userId: session.user?.id },
+            })
+            if (employee) {
+                where.employeeId = employee.id
+            } else {
+                return NextResponse.json([])
+            }
+        }
 
         const leaves = await prisma.leave.findMany({
             where,
@@ -42,6 +52,19 @@ export async function POST(req: Request) {
 
         const body = await req.json()
 
+        let employeeId = body.employeeId
+        if (!employeeId) {
+            const employee = await prisma.employee.findFirst({
+                where: { userId: session.user?.id },
+            })
+            if (!employee) {
+                return NextResponse.json({ error: "No employee profile linked to your account" }, { status: 400 })
+            }
+            employeeId = employee.id
+        } else if (session.user?.role !== "ADMIN") {
+            return NextResponse.json({ error: "Only admins can create leave for other employees" }, { status: 403 })
+        }
+
         const leave = await prisma.leave.create({
             data: {
                 type: body.type,
@@ -49,7 +72,7 @@ export async function POST(req: Request) {
                 endDate: new Date(body.endDate),
                 reason: body.reason,
                 status: "PENDING",
-                employeeId: body.employeeId,
+                employeeId,
             },
             include: { employee: true },
         })
