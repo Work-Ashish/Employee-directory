@@ -37,7 +37,7 @@ export async function GET() {
                 }
             })
 
-            const totalForSplit = departments.reduce((acc, d) => acc + d._count.employees, 0)
+            const totalForSplit = departments.reduce((acc: number, d: any) => acc + d._count.employees, 0)
             const colors = ["#007aff", "#38bdf8", "#ec4899", "#f59e0b", "#10b981", "#af52de", "#ff2d55"]
             const deptSplit = departments.map((d, i) => ({
                 name: d.name,
@@ -47,7 +47,7 @@ export async function GET() {
             }))
 
             // 4. Hiring Trend (Last 6 months)
-            const hiringTrend = []
+            const hiringTrend: { month: string, hires: number }[] = []
             for (let i = 5; i >= 0; i--) {
                 const monthDate = subMonths(new Date(), i)
                 const start = startOfMonth(monthDate)
@@ -74,7 +74,7 @@ export async function GET() {
                 { range: "80-120k", count: employees.filter(e => e.salary >= 80000 && e.salary < 120000).length },
                 { range: "120k+", count: employees.filter(e => e.salary >= 120000).length },
             ]
-            const avgSalary = employees.length > 0 ? employees.reduce((acc, e) => acc + e.salary, 0) / employees.length : 0
+            const avgSalary = employees.length > 0 ? employees.reduce((acc: number, e: any) => acc + e.salary, 0) / employees.length : 0
 
             // 6. Recent Hires
             const recentHiresRaw = await prisma.employee.findMany({
