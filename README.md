@@ -21,13 +21,14 @@ EMS Pro is a modern, full-stack Employee Management System built with **Next.js 
 ### Operations
 - **Asset Management** — Track hardware/software assignments with status lifecycle
 - **Document Hub** — Role-filtered document repository (policies, contracts, payslips)
-- **Help Desk** — Ticketing system with auto-generated ticket codes and priority levels
-- **Announcements** — Company-wide news with pinning and priority badges
+- **Help Desk** — Ticketing system with auto-generated codes and priority levels
+- **Announcements** — Company-wide news with pinning, priority badges, and Google Calendar integration
 
 ### Platform
 - **Organization Chart** — Interactive hierarchy visualization with drag-and-drop management
 - **Team Calendar** — Full calendar with holidays, leaves, birthdays, and events
 - **Resignation Tracker** — Submit and process resignations with status workflow
+- **User Settings** — Persistent profile management (bio, accent color) and secure password updates
 - **AI Assistant** — Built-in Gemini-powered chatbot for HR queries and navigation
 - **Command Palette** — Global Ctrl+K utility for rapid navigation and actions
 - **Role-Based Access** — Admins manage everything; employees see only their data
@@ -77,14 +78,18 @@ npm install
 cp .env.example .env
 # Edit .env with your DATABASE_URL and AUTH_SECRET
 
-# 4. Generate Prisma client & push schema
+# 4. (Optional) Set up Google Calendar API for event synchronization
+#    - Follow instructions in the documentation to get API credentials.
+#    - Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your .env file.
+
+# 5. Generate Prisma client & push schema
 npm run db:generate
 npx prisma db push
 
-# 5. (Optional) Seed sample data
+# 6. (Optional) Seed sample data
 npm run db:seed
 
-# 6. Start the development server
+# 7. Start the development server
 npm run dev
 ```
 

@@ -12,7 +12,9 @@ export function StatCard({ label, value, sub, badge, badgeType, icon, iconClass,
             <div className="text-[12px] text-[var(--text3)] mb-2 relative z-10">{sub}</div>
             {badge && (
                 <span className={cn("inline-flex items-center gap-[3px] text-[11.5px] font-semibold px-[9px] py-[3px] rounded-[20px] font-mono border relative z-10",
-                    badgeType === 'up' ? "bg-[var(--green-dim)] text-[#1a9140] border-[rgba(52,199,89,0.2)]" : "bg-[var(--red-dim)] text-[var(--red)] border-[rgba(255,59,48,0.15)]"
+                    badgeType === 'up' ? "bg-[var(--green-dim)] text-[#1a9140] border-[rgba(52,199,89,0.2)]" :
+                        badgeType === 'down' ? "bg-[var(--red-dim)] text-[var(--red)] border-[rgba(255,59,48,0.15)]" :
+                            "bg-[var(--bg3)] text-[var(--text3)] border-[var(--border)]"
                 )}>
                     {badge}
                 </span>

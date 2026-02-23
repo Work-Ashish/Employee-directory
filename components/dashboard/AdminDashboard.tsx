@@ -39,25 +39,42 @@ const recentHires = [
 
 export function AdminDashboard() {
     const [loading, setLoading] = React.useState(true)
+    const [data, setData] = React.useState<any>(null)
     const [selectedDept, setSelectedDept] = React.useState<string | null>(null)
     const [selectedMonth, setSelectedMonth] = React.useState<string | null>(null)
 
-    React.useEffect(() => {
-        const timer = setTimeout(() => {
+    const fetchDashboardData = React.useCallback(async () => {
+        try {
+            setLoading(true)
+            const res = await fetch('/api/dashboard')
+            if (res.ok) {
+                setData(await res.json())
+            }
+        } catch (error) {
+            console.error("Dashboard fetch error:", error)
+        } finally {
             setLoading(false)
-        }, 2000)
-        return () => clearTimeout(timer)
+        }
     }, [])
 
+    React.useEffect(() => {
+        fetchDashboardData()
+    }, [fetchDashboardData])
+
+    const deptData = data?.deptSplit || []
+    const hiringData = data?.hiringTrend || []
+    const salaryData = data?.salaryRanges || []
+    const recentHires = data?.recentHires || []
+
     const filteredDepts = selectedDept
-        ? deptData.filter(d => d.name === selectedDept)
+        ? deptData.filter((d: any) => d.name === selectedDept)
         : deptData
 
     const filteredHires = selectedDept
-        ? recentHires.filter(h => h.dept === selectedDept)
+        ? recentHires.filter((h: any) => h.dept === selectedDept)
         : recentHires
 
-    const selectedMonthData = selectedMonth ? hiringData.find(d => d.month === selectedMonth) : null
+    const selectedMonthData = selectedMonth ? hiringData.find((d: any) => d.month === selectedMonth) : null
 
     return (
         <div className="space-y-6">
@@ -110,19 +127,19 @@ export function AdminDashboard() {
                     <>
                         <StatCard
                             label="Total Employees"
-                            value="10"
+                            value={data?.stats?.totalEmployees?.toString() || "0"}
                             sub="All registered employees"
-                            badge="↑ 12% vs last month"
-                            badgeType="up"
+                            badge="Live data"
+                            badgeType="neutral"
                             icon="👥"
                             iconClass="bg-[rgba(0,122,255,0.1)]"
                             glowClass="before:bg-[rgba(0,122,255,0.1)]"
                         />
                         <StatCard
                             label="Active Employees"
-                            value="9"
+                            value={data?.stats?.activeEmployees?.toString() || "0"}
                             sub="Currently working"
-                            badge="↑ 8% vs last month"
+                            badge="Active status"
                             badgeType="up"
                             icon="✅"
                             iconClass="bg-[var(--green-dim)]"
@@ -130,7 +147,7 @@ export function AdminDashboard() {
                         />
                         <StatCard
                             label="On Leave"
-                            value="1"
+                            value={data?.stats?.onLeaveEmployees?.toString() || "0"}
                             sub="Employees on leave"
                             icon="🌴"
                             iconClass="bg-[var(--amber-dim)]"
@@ -138,10 +155,10 @@ export function AdminDashboard() {
                         />
                         <StatCard
                             label="Monthly Payroll"
-                            value="$75,083"
+                            value={data?.stats?.monthlyPayroll?.toLocaleString() || "0"}
                             sub="Total monthly expense"
-                            badge="↓ 3% vs last month"
-                            badgeType="down"
+                            badge="Processed"
+                            badgeType="neutral"
                             isMoney
                             icon="💵"
                             iconClass="bg-[var(--blue-dim)]"
@@ -210,7 +227,7 @@ export function AdminDashboard() {
                                                 cursor="pointer"
                                                 onClick={(data) => setSelectedDept(data.name === selectedDept ? null : data.name)}
                                             >
-                                                {deptData.map((entry, index) => (
+                                                {deptData.map((entry: any, index: number) => (
                                                     <Cell
                                                         key={`cell-${index}`}
                                                         fill={entry.color}
@@ -229,12 +246,12 @@ export function AdminDashboard() {
                                         </PieChart>
                                     </ResponsiveContainer>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                        <div className="text-[22px] font-extrabold tracking-[-0.5px] text-[var(--text)]">10</div>
+                                        <div className="text-[22px] font-extrabold tracking-[-0.5px] text-[var(--text)]">{data?.stats?.totalEmployees || 0}</div>
                                         <div className="text-[10px] text-[var(--text3)] uppercase tracking-[0.5px] mt-[2px]">Total</div>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-x-2 gap-y-1 w-full max-w-[200px] mt-2">
-                                    {deptData.map((d) => (
+                                    {deptData.map((d: any) => (
                                         <div
                                             key={d.name}
                                             onClick={() => setSelectedDept(d.name === selectedDept ? null : d.name)}
@@ -342,7 +359,7 @@ export function AdminDashboard() {
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
-                            <div className="text-center font-mono text-[11px] text-[var(--text3)] mt-4">Avg: $1,00,111</div>
+                            <div className="text-center font-mono text-[11px] text-[var(--text3)] mt-4">Avg: ${data?.avgSalary?.toLocaleString(undefined, { maximumFractionDigits: 0 }) || "0"}</div>
                         </div>
                     </>
                 )}
@@ -365,12 +382,12 @@ export function AdminDashboard() {
                             ))
                         ) : (
                             filteredDepts.length > 0 ? (
-                                filteredDepts.map((d, i) => (
+                                filteredDepts.map((d: any, i: number) => (
                                     <DeptRow
                                         key={d.name}
                                         name={d.name}
                                         count={d.count}
-                                        pct={(d.value / 10) * 100} // Recalculate if needed, simplified here
+                                        pct={d.value}
                                         color={d.color}
                                         delay={`${0.1 * (i + 1)}s`}
                                     />
@@ -401,7 +418,7 @@ export function AdminDashboard() {
                             ))
                         ) : (
                             filteredHires.length > 0 ? (
-                                filteredHires.map((h) => (
+                                filteredHires.map((h: any) => (
                                     <HireRow
                                         key={h.name}
                                         initials={h.initials}

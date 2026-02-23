@@ -179,6 +179,16 @@ Create a training course.
 | `progress` | integer | |
 | `dueDate` | ISO date | |
 | `participants` | integer | |
+| `videoUrl` | string | |
+
+### `POST /api/training/assign`
+Assign training to one or all employees.  
+**Auth**: Admin only.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `trainingId` | string | ✅ |
+| `employeeIds` | array of strings \| "ALL" | ✅ |
 
 ---
 
@@ -301,6 +311,19 @@ Create an announcement.
 | `priority` | `LOW` \| `MEDIUM` \| `HIGH` | |
 | `isPinned` | boolean | |
 
+### `PUT /api/announcements`
+Update an existing announcement.  
+**Auth**: Admin only.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `id` | string | ✅ |
+| `title` | string | |
+| `content` | string | |
+| `category` | enum | |
+| `priority` | enum | |
+| `isPinned` | boolean | |
+
 ### `DELETE /api/announcements?id=<id>`
 Delete an announcement.  
 **Auth**: Admin only.
@@ -406,6 +429,44 @@ Send a message to the Gemini AI assistant.
 | Field | Type | Required |
 |-------|------|----------|
 | `messages` | array of `{ role: string, content: string }` | ✅ |
+
+---
+
+## User Settings
+
+### `GET /api/user/profile`
+Fetch current user's profile details.  
+**Auth**: Any authenticated user.
+
+### `PUT /api/user/profile`
+Update current user's profile settings.  
+**Auth**: Any authenticated user.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `name` | string | |
+| `bio` | string | |
+| `accentColor` | string (hex) | |
+
+### `PUT /api/user/password`
+Update current user's password.  
+**Auth**: Any authenticated user.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `currentPassword` | string | ✅ |
+| `newPassword` | string | ✅ |
+
+---
+
+## Dashboard
+
+### `GET /api/dashboard`
+Unified dashboard metrics route. Returns data tailored to your role.  
+**Auth**: Any authenticated user.
+
+**Admin Response**: Stats (employees, payroll), Dept Split, Hiring Trend, Recent Hires.  
+**Employee Response**: Stats (attendance, leave, training), Today's Schedule, Team Status.
 
 ---
 

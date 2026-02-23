@@ -67,25 +67,30 @@ User clicks profile menu → "Logout"
 
 ```
 Admin lands on /dashboard
-  → Sees overview cards:
-     • Total employees, new hires (this month), active departments, attendance rate
-  → Views hiring trend chart (Recharts line chart — 12-month view)
-  → Views department distribution (pie chart)
-  → Views recent activity feed
-  → Can click any card → Navigates to detailed module page
+  → System fetches /api/dashboard
+  → Sees live overview cards:
+     • Total employees, Active employees, On Leave count
+     • Monthly Payroll (live calculation from employee salaries)
+  → Views Hiring Trend chart (Last 6 months hires)
+  → Views Department Distribution (dynamic pie chart)
+  → Views Recent Hires (interactive list)
+  → Can filter charts by selecting specific departments
 ```
 
 ### 2.2 Employee Dashboard
 
 ```
 Employee lands on /dashboard
-  → Sees personal summary:
-     • Attendance status, remaining leave balance, upcoming events
+  → System fetches /api/dashboard
+  → Sees personal real-time summary:
+     • Attendance Days (current month), Leave Balance (calculated)
+     • Pending Training count, Next Review status
   → Time Tracker widget:
      • Click "Check In" → Timer starts (HH:MM:SS live)
      • Click "Break" → Timer pauses
      • Click "Check Out" → Timer stops → Work hours logged
-  → Views personal announcements and upcoming holidays
+  → Today's Schedule (Live events from calendar)
+  → My Team Status (Real-time online/offline status of teammates)
 ```
 
 ---
@@ -328,12 +333,13 @@ Employee navigates to /performance
 
 ```
 Admin navigates to /training
-  → AdminTrainingView shows:
-     • Active courses count, Completion rate, Top learners
+  → AdminTrainingView shows live metrics:
+     • Active courses, Completion rate, Average Score
+  → Top Performers / Rewards Center populated from real test scores
   → Table: Course name, Type, Status, Progress, Due date, Participants
   → Click "Add Course" → Form:
-     • Name, Type (Technical/Compliance/Security/Soft Skills/Leadership)
-     • Description, Due date
+     • Name, Type, Description, Due date, Video URL (YouTube/Vimeo)
+  → Assign to: Select specific employees or "Assign to All"
   → Submit → POST /api/training
 ```
 
@@ -342,9 +348,10 @@ Admin navigates to /training
 ```
 Employee navigates to /training
   → EmployeeTrainingView loads
-  → Shows enrolled courses with progress bars
-  → For each course: Name, Type, Progress %, Due date, Status badge
-  → Click on course → View course details and materials
+  → Sees assigned courses with real progress bars
+  → Click on "Start Course" → Opens Course Hub
+  → Can watch training videos via embedded player
+  → Progress updates automatically upon completion
 ```
 
 ---
@@ -441,17 +448,16 @@ Employee views documents
 
 ## 13. Announcements
 
-### 13.1 Admin — Create Announcement
+### 13.1 Admin — Create & Update Announcements
 
 ```
 Admin navigates to /announcements
-  → Views existing announcements (pinned first)
-  → Clicks "New Announcement"
-  → Form: Title, Content, Category (Event/Policy/Meeting/System/General)
-  → Priority: Low/Medium/High
-  → Toggle: Pin to top
-  → Submit → POST /api/announcements
-  → Announcement appears at top (if pinned) or in chronological order
+  → Views existing announcements (pinned/recent)
+  → "New Announcement" opens a modal form:
+     • Title, Content, Category, Priority, Pin toggle
+  → "Edit" (pencil icon) allows updating existing announcements
+  → Submit → POST/PUT /api/announcements
+  → Google Calendar widget on sidebar shows live organization events
 ```
 
 ### 13.2 Admin — Delete Announcement
@@ -621,22 +627,25 @@ Admin navigates to /organization
 
 ## 18. Settings
 
-### 18.1 Profile Settings
+### 18.1 Profile & Appearance Settings
 
 ```
 User navigates to /settings
-  → "Profile" tab (default):
-     • View/edit: Name, Email, Phone, Avatar
-     • Click "Save Changes" → Updates profile
+  → "Profile" tab:
+     • Edit: Name, Bio
+     • Click "Save Changes" → PUT /api/user/profile → Persisted
+  → "Appearance" tab:
+     • Select Theme: Light / Dark / System
+     • Select Accent Color: Real-time update and persistence
 ```
 
-### 18.2 Password Change
+### 18.2 Security Settings (Password)
 
 ```
 User switches to "Security" tab
   → Fields: Current password, New password, Confirm new password
-  → Validation: Minimum 8 chars, must match confirmation
-  → Click "Update Password" → Password hashed and saved
+  → Validation: Password must be secure; Current password verified via bcrypt
+  → Click "Update Password" → PUT /api/user/password
 ```
 
 ### 18.3 Theme Preferences

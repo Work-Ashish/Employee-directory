@@ -71,3 +71,35 @@ export async function DELETE(req: Request) {
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
     }
 }
+// PUT /api/announcements – Update an announcement
+export async function PUT(req: Request) {
+    try {
+        const session = await auth()
+        if (!session || session.user?.role !== "ADMIN") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+
+        const body = await req.json()
+        const { id, ...data } = body
+
+        if (!id) {
+            return NextResponse.json({ error: "ID required" }, { status: 400 })
+        }
+
+        const announcement = await prisma.announcement.update({
+            where: { id },
+            data: {
+                title: data.title,
+                content: data.content,
+                category: data.category,
+                priority: data.priority,
+                isPinned: data.isPinned,
+            },
+        })
+
+        return NextResponse.json(announcement)
+    } catch (error) {
+        console.error("[ANNOUNCEMENTS_PUT]", error)
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+    }
+}
