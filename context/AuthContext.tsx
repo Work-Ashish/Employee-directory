@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
+import { useSession, signOut } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
 
-type UserRole = "admin" | "employee"
+type UserRole = "ADMIN" | "EMPLOYEE"
 
 interface User {
     id: string
@@ -16,37 +17,40 @@ interface User {
 interface AuthContextType {
     user: User | null
     isLoading: boolean
-    login: (email: string) => Promise<boolean>
     logout: () => void
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = React.useState<User | null>(null)
-    const [isLoading, setIsLoading] = React.useState(true)
+    const { data: session, status } = useSession()
     const router = useRouter()
     const pathname = usePathname()
 
-    // Simulate session check on mount
-    React.useEffect(() => {
-        const storedUser = localStorage.getItem("ems_user")
-        if (storedUser) {
-            try {
-                setUser(JSON.parse(storedUser))
-            } catch (e) {
-                console.error("Failed to parse stored user", e)
-                localStorage.removeItem("ems_user")
-            }
-        }
-        setIsLoading(false)
-    }, [])
+    const isLoading = status === "loading"
 
-    // Protect routes
+    // Map NextAuth session to our internal user object
+    const user = React.useMemo(() => {
+        if (!session?.user) return null
+
+        return {
+            id: session.user.id || "",
+            name: session.user.name || "",
+            email: session.user.email || "",
+            role: (session.user.role as UserRole) || "EMPLOYEE",
+            avatar: session.user.avatar || session.user.image || undefined
+        }
+    }, [session])
+
+    // Protect routes - although middleware usually handles this, 
+    // we keep it here to match the previous logic and handle loops
     React.useEffect(() => {
         if (isLoading) return
 
         const isLoginPage = pathname === "/login"
+        const isAuthCallback = pathname.startsWith("/api/auth")
+
+        if (isAuthCallback) return
 
         if (!user && !isLoginPage) {
             router.push("/login")
@@ -55,54 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [user, isLoading, pathname, router])
 
-    const login = async (email: string): Promise<boolean> => {
-        setIsLoading(true)
-        // Validate mock credentials
-        // Admin: admin@emspro.com
-        // Employee: user@emspro.com
-        // Password check is skipped for mock, effectively just checking email for role assignment
-
-        await new Promise(resolve => setTimeout(resolve, 1000)) // Mock delay
-
-        let loggedInUser: User | null = null
-
-        if (email === "admin@emspro.com") {
-            loggedInUser = {
-                id: "1",
-                name: "Admin User",
-                email: "admin@emspro.com",
-                role: "admin",
-                avatar: "AD"
-            }
-        } else if (email === "user@emspro.com") {
-            loggedInUser = {
-                id: "2",
-                name: "Sarah Employee",
-                email: "user@emspro.com",
-                role: "employee",
-                avatar: "SE"
-            }
-        }
-
-        if (loggedInUser) {
-            setUser(loggedInUser)
-            localStorage.setItem("ems_user", JSON.stringify(loggedInUser))
-            setIsLoading(false)
-            return true
-        }
-
-        setIsLoading(false)
-        return false
-    }
-
-    const logout = () => {
-        setUser(null)
-        localStorage.removeItem("ems_user")
-        router.push("/login")
+    const logout = async () => {
+        await signOut({ callbackUrl: "/login" })
     }
 
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+        <AuthContext.Provider value={{ user, isLoading, logout }}>
             {children}
         </AuthContext.Provider>
     )

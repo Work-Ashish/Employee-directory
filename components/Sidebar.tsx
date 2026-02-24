@@ -43,7 +43,7 @@ export function NavContent({ pathname, user, logout, onItemClick }: { pathname: 
   // Filter items based on role
   const filteredNavItems = navItems.filter(item => {
     if (!user) return false
-    if (user.role === 'admin') return true
+    if (user.role === 'ADMIN') return true
 
     // Employee restrictions
     const restrictedItems = ['Settings', 'Payroll', 'Resignation', 'Recruitment', 'Employees', 'Organization']
@@ -67,7 +67,7 @@ export function NavContent({ pathname, user, logout, onItemClick }: { pathname: 
       <nav className="flex-1 p-[14px_10px] flex flex-col gap-[2px] overflow-y-auto scrollbar-hide">
         {filteredNavItems.map((item) => {
           // Determine href based on role
-          const href = (user.role === 'employee' && item.hrefEmployee) ? item.hrefEmployee : item.href
+          const href = (user.role === 'EMPLOYEE' && item.hrefEmployee) ? item.hrefEmployee : item.href
           const isActive = pathname === href
 
           return (
@@ -109,7 +109,7 @@ export function NavContent({ pathname, user, logout, onItemClick }: { pathname: 
 
       <div className="p-[14px_16px] border-t border-[#00000014] bg-white/50 dark:bg-white/5 dark:border-[var(--border)]">
         <div className="flex items-center gap-[10px] group">
-          <Link href={user.role === 'admin' ? "/settings" : "#"} className={cn("flex items-center gap-[10px] flex-1 cursor-pointer hover:bg-black/5 p-1 -m-1 rounded-lg transition-colors", user.role !== 'admin' && "cursor-default hover:bg-transparent")}>
+          <Link href={user.role === 'ADMIN' ? "/settings" : "#"} className={cn("flex items-center gap-[10px] flex-1 cursor-pointer hover:bg-black/5 p-1 -m-1 rounded-lg transition-colors", user.role !== 'ADMIN' && "cursor-default hover:bg-transparent")}>
             <div className="w-[34px] h-[34px] rounded-full bg-gradient-to-br from-[var(--accent)] to-[#5856d6] flex items-center justify-center text-white text-[12px] font-bold shrink-0 transition-shadow duration-200 group-hover:shadow-[0_2px_10px_var(--glow)]">
               {user.avatar || 'US'}
             </div>

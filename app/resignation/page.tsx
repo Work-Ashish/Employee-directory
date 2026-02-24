@@ -18,7 +18,7 @@ export default function ResignationPage() {
 
     return (
         <div className="p-6">
-            {user.role === "admin" ? (
+            {user.role === "ADMIN" ? (
                 <AdminResignationView />
             ) : (
                 <EmployeeResignationView employeeId={user.id} />

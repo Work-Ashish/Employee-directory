@@ -23,7 +23,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) return null
 
-                const login = credentials.email as string
+                const login = (credentials.email as string).trim()
 
                 // Support login by email OR by employeeCode
                 let user = await prisma.user.findUnique({ where: { email: login } })
@@ -46,10 +46,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (!isPasswordValid) return null
 
                 // Update lastLoginAt
-                await prisma.user.update({
-                    where: { id: user.id },
-                    data: { lastLoginAt: new Date() },
-                })
+                try {
+                    await prisma.user.update({
+                        where: { id: user.id },
+                        data: { lastLoginAt: new Date() },
+                    })
+                } catch (error) {
+                    console.error("Failed to update lastLoginAt:", error)
+                }
 
                 return {
                     id: user.id,
@@ -81,12 +85,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
             return true
         },
-        async jwt({ token, user, account }) {
+        async jwt({ token, user, account, trigger, session }) {
             if (user) {
                 token.role = user.role
                 token.avatar = user.avatar
                 token.mustChangePassword = (user as any).mustChangePassword ?? false
             }
+
+            // Handle session updates (e.g. after password change)
+            if (trigger === "update" && session) {
+                if (session.mustChangePassword !== undefined) {
+                    token.mustChangePassword = session.mustChangePassword
+                }
+                if (session.name) token.name = session.name
+                if (session.avatar) token.avatar = session.avatar
+            }
+
             // Fetch role from DB for Google sign-in
             if (account?.provider === "google" && token.email) {
                 const dbUser = await prisma.user.findUnique({ where: { email: token.email } })

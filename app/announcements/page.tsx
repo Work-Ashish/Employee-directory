@@ -7,7 +7,7 @@ import { EmployeeAnnouncementsView } from "@/components/announcements/EmployeeAn
 export default function Announcements() {
     const { user } = useAuth()
 
-    if (user?.role === 'employee') {
+    if (user?.role === 'EMPLOYEE') {
         return <EmployeeAnnouncementsView />
     }
 

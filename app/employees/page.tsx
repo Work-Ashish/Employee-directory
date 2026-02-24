@@ -221,7 +221,7 @@ export default function EmployeesPage() {
 
     // Auth protection
     React.useEffect(() => {
-        if (!authLoading && user?.role === 'employee') {
+        if (!authLoading && user?.role === 'EMPLOYEE') {
             router.push('/')
         }
     }, [user, authLoading, router])
@@ -563,7 +563,7 @@ export default function EmployeesPage() {
         },
     ], [departments, isResettingCreds]) // Re-memoize if needed but dependencies are handled natively here mostly
 
-    if (authLoading || user?.role === 'employee') return null
+    if (authLoading || user?.role === 'EMPLOYEE') return null
 
     return (
         <div className="space-y-6 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)]">

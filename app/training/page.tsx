@@ -15,7 +15,7 @@ export default function Training() {
         return <div className="p-10 text-center">Please sign in to view training.</div>
     }
 
-    if (user.role === 'employee') {
+    if (user.role === 'EMPLOYEE') {
         return <EmployeeTrainingView employeeId={user.id} />
     }
 

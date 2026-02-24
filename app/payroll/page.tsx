@@ -7,7 +7,7 @@ import { EmployeePayrollView } from "@/components/payroll/EmployeePayrollView"
 export default function Payroll() {
     const { user } = useAuth()
 
-    if (user?.role === 'employee') {
+    if (user?.role === 'EMPLOYEE') {
         return <EmployeePayrollView />
     }
 

@@ -318,7 +318,7 @@ export default function Organization() {
     }, [setNodes, setEdges]);
 
     useEffect(() => {
-        if (!authLoading && user?.role === 'employee') {
+        if (!authLoading && user?.role === 'EMPLOYEE') {
             router.push('/')
         } else if (!authLoading) {
             fetchData();
@@ -342,7 +342,7 @@ export default function Organization() {
         }
     }, [setEdges, fetchData]);
 
-    if (authLoading || isLoading || user?.role === 'employee') {
+    if (authLoading || isLoading || user?.role === 'EMPLOYEE') {
         return <div className="p-8 text-center text-[var(--text3)]">Loading Chart...</div>
     }
 

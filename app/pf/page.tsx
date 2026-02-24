@@ -7,7 +7,7 @@ import { EmployeePFView } from "@/components/pf/EmployeePFView"
 export default function ProvidentFund() {
     const { user } = useAuth()
 
-    if (user?.role === 'employee') {
+    if (user?.role === 'EMPLOYEE') {
         return <EmployeePFView />
     }
 

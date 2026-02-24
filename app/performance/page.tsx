@@ -7,7 +7,7 @@ import { EmployeePerformanceView } from "@/components/performance/EmployeePerfor
 export default function Performance() {
     const { user } = useAuth()
 
-    if (user?.role === 'employee') {
+    if (user?.role === 'EMPLOYEE') {
         return <EmployeePerformanceView />
     }
 

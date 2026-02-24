@@ -7,7 +7,7 @@ import { EmployeeLeaveView } from "@/components/leave/EmployeeLeaveView"
 export default function Leave() {
     const { user } = useAuth()
 
-    if (user?.role === 'employee') {
+    if (user?.role === 'EMPLOYEE') {
         return <EmployeeLeaveView />
     }
 

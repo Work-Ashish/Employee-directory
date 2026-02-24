@@ -21,7 +21,7 @@ export default function Dashboard() {
 
   if (isLoading) return null
 
-  if (user?.role === 'employee') {
+  if (user?.role === 'EMPLOYEE') {
     return <EmployeeDashboard />
   }
 

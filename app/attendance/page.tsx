@@ -7,7 +7,7 @@ import { EmployeeAttendanceView } from "@/components/attendance/EmployeeAttendan
 export default function Attendance() {
     const { user } = useAuth()
 
-    if (user?.role === 'employee') {
+    if (user?.role === 'EMPLOYEE') {
         return <EmployeeAttendanceView />
     }
 
