@@ -486,6 +486,87 @@ Update manager-employee relationships (drag-and-drop).
 
 ---
 
+## Time Tracker & Activity Monitoring
+
+### `POST /api/time-tracker/check-in`
+Check in for the day and start a new `TimeSession`. Automatically creates an ongoing `Attendance` record.
+**Auth**: Any authenticated user.
+
+### `POST /api/time-tracker/check-out`
+Check out and close the active `TimeSession`. Calculates total active, idle, and break times and synchronizes total `workHours` into the daily `Attendance` record.
+**Auth**: Any authenticated user.
+
+### `POST /api/time-tracker/break`
+Start or end a break within the active time session.
+**Auth**: Any authenticated user.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `reason` | `Lunch` \| `Tea / Coffee` \| `Personal` \| `Meeting` \| `Other` | |
+
+### `POST /api/time-tracker/heartbeat`
+Send periodic activity snapshots (mouse clicks, keystrokes) every 60s to determine if the user is `ACTIVE` or `IDLE`.
+**Auth**: Any authenticated user.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `mouseClicks` | integer | ✅ |
+| `keystrokes` | integer | ✅ |
+
+### `POST /api/time-tracker/activity`
+Log application and website usage (URLs) from the browser extension or desktop tracker.
+**Auth**: Any authenticated user.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `appName` | string | ✅ |
+| `windowTitle` | string | |
+| `url` | string | |
+
+### `GET /api/time-tracker/status`
+Get the current active session status and elapsed time to restore the timer on page reloads.
+**Auth**: Any authenticated user.
+
+### `GET /api/time-tracker/history`
+Get historical time sessions aggregated by day, week, or month.
+**Auth**: Employees see only their own history.
+
+### `GET /api/admin/time-tracker/dashboard`
+Live real-time admin view returning all employees' active status (🟢/🟡/🔴/⚫) and their currently focused application.
+**Auth**: Admin only.
+
+---
+
+## File Uploads & KYC Documents
+
+### `POST /api/upload`
+Generic file upload to a specific Supabase storage bucket.
+**Auth**: Any authenticated user.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `file` | File (FormData) | ✅ |
+| `bucket` | `avatars` \| `documents` \| `assets` \| `training` | ✅ |
+
+### `GET /api/employee/documents`
+List the current employee's uploaded KYC documents (Aadhaar, PAN, Bank Proof).
+**Auth**: Any authenticated user (fetches own docs).
+
+### `POST /api/employee/documents`
+Upload and save a KYC document to the database. Overwrites previous versions of the same document type.
+**Auth**: Any authenticated user.
+
+| Field | Type | Required |
+|-------|------|----------|
+| `file` | File (FormData) | ✅ |
+| `docType` | `aadhaar` \| `pan` \| `bank_proof` | ✅ |
+
+### `DELETE /api/employee/documents?id=<id>`
+Delete a currently uploaded KYC document.
+**Auth**: Any authenticated user (deletes own docs).
+
+---
+
 ## Error Responses
 
 All endpoints return consistent error responses:

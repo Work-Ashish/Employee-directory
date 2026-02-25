@@ -55,6 +55,29 @@ export async function POST() {
             }
         })
 
+        // Synchronize with Attendance record
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const attendance = await prisma.attendance.findFirst({
+            where: {
+                employeeId: employee.id,
+                date: {
+                    gte: startOfDay,
+                    lt: new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000)
+                }
+            }
+        })
+
+        if (attendance) {
+            const addedHours = totalWorkSec / 3600
+            await prisma.attendance.update({
+                where: { id: attendance.id },
+                data: {
+                    checkOut: now,
+                    workHours: (attendance.workHours || 0) + addedHours
+                }
+            })
+        }
+
         return NextResponse.json(updated)
     } catch (error: any) {
         console.error("[TIME_TRACKER_CHECKOUT]", error?.message)

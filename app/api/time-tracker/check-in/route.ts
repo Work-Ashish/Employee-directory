@@ -17,13 +17,39 @@ export async function POST() {
         }
 
         const headersList = await headers()
+        const now = new Date()
+
         const session = await prisma.timeSession.create({
             data: {
                 employeeId: employee.id,
+                checkIn: now,
                 ipAddress: headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown",
                 userAgent: headersList.get("user-agent") || "unknown",
             }
         })
+
+        // Synchronize with Attendance record for the day
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        let attendance = await prisma.attendance.findFirst({
+            where: {
+                employeeId: employee.id,
+                date: {
+                    gte: startOfDay,
+                    lt: new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000)
+                }
+            }
+        })
+
+        if (!attendance) {
+            await prisma.attendance.create({
+                data: {
+                    employeeId: employee.id,
+                    date: startOfDay,
+                    checkIn: now,
+                    status: "PRESENT"
+                }
+            })
+        }
 
         return NextResponse.json(session, { status: 201 })
     } catch (error: any) {

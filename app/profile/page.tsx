@@ -348,7 +348,136 @@ function TabPersonal({ profile, formData, editing, onChange }: { profile: Profil
 /* ══════════════════════════════════════════════════════════════
    TAB 2: ACCOUNTS & STATUTORY
    ══════════════════════════════════════════════════════════════ */
+
+/* ─── Doc Upload Field ─── */
+function DocUploadField({ label, docType, doc, onUpload, onDelete, mandatory }: {
+    label: string; docType: string; doc: any; onUpload: (docType: string, file: File) => void
+    onDelete: (docId: string) => void; mandatory?: boolean
+}) {
+    const inputRef = React.useRef<HTMLInputElement>(null)
+    const [uploading, setUploading] = React.useState(false)
+
+    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setUploading(true)
+        await onUpload(docType, file)
+        setUploading(false)
+        if (inputRef.current) inputRef.current.value = ""
+    }
+
+    return (
+        <div className="flex flex-col gap-2">
+            <span className="text-[11px] font-semibold text-[var(--text3)] uppercase tracking-[0.08em] flex items-center gap-1">
+                {label}
+                {mandatory && <span className="text-[var(--red)] text-[13px]">*</span>}
+            </span>
+
+            {doc ? (
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--bg2)]">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-[18px]" style={{
+                        background: doc.url?.endsWith('.pdf') ? 'rgba(255,59,48,0.1)' : 'rgba(52,199,89,0.1)'
+                    }}>
+                        {doc.url?.endsWith('.pdf') ? '📄' : '🖼️'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-medium text-[var(--text)] truncate">{doc.title}</div>
+                        <div className="text-[11px] text-[var(--text4)]">{doc.size} · Uploaded {new Date(doc.uploadDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                            className="p-1.5 rounded-md hover:bg-[var(--bg)] transition-colors text-[var(--accent)]" title="View">
+                            <EyeOpenIcon className="w-4 h-4" />
+                        </a>
+                        <button onClick={() => onDelete(doc.id)}
+                            className="p-1.5 rounded-md hover:bg-[rgba(255,59,48,0.1)] transition-colors text-[var(--red)]" title="Remove">
+                            <TrashIcon className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <button
+                    onClick={() => inputRef.current?.click()}
+                    disabled={uploading}
+                    className={cn(
+                        "flex items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed transition-colors text-[13px] font-medium",
+                        uploading
+                            ? "border-[var(--accent)] bg-[var(--accent)]/5 text-[var(--accent)] cursor-wait"
+                            : "border-[var(--border)] hover:border-[var(--accent)] text-[var(--text3)] hover:text-[var(--accent)] cursor-pointer"
+                    )}
+                >
+                    {uploading ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                            Uploading...
+                        </>
+                    ) : (
+                        <>
+                            <PlusIcon className="w-4 h-4" />
+                            Upload {label}
+                        </>
+                    )}
+                </button>
+            )}
+
+            <input
+                ref={inputRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={handleFile}
+                className="hidden"
+            />
+            {!doc && <span className="text-[10px] text-[var(--text4)]">PDF, JPG, or PNG · Max 5MB</span>}
+        </div>
+    )
+}
+
 function TabAccounts({ profile, formData, editing, onChange }: { profile: Profile; formData: any; editing: boolean; onChange: (n: string, v: any) => void }) {
+    const [docs, setDocs] = React.useState<Record<string, any>>({})
+
+    React.useEffect(() => {
+        fetch("/api/employee/documents")
+            .then(r => r.ok ? r.json() : {})
+            .then(setDocs)
+            .catch(() => { })
+    }, [])
+
+    const handleUpload = async (docType: string, file: File) => {
+        const fd = new FormData()
+        fd.append("file", file)
+        fd.append("docType", docType)
+        try {
+            const res = await fetch("/api/employee/documents", { method: "POST", body: fd })
+            if (!res.ok) {
+                const err = await res.json()
+                toast.error(err.error || "Upload failed")
+                return
+            }
+            const doc = await res.json()
+            setDocs(prev => ({ ...prev, [docType]: doc }))
+            toast.success(`${doc.title} uploaded successfully`)
+        } catch {
+            toast.error("Upload failed")
+        }
+    }
+
+    const handleDelete = async (docId: string) => {
+        try {
+            const res = await fetch(`/api/employee/documents?id=${docId}`, { method: "DELETE" })
+            if (!res.ok) throw new Error()
+            setDocs(prev => {
+                const next = { ...prev }
+                for (const key of Object.keys(next)) {
+                    if (next[key]?.id === docId) delete next[key]
+                }
+                return next
+            })
+            toast.success("Document removed")
+        } catch {
+            toast.error("Failed to remove document")
+        }
+    }
+
     return (
         <>
             <FormSection title="Bank Account">
@@ -358,13 +487,22 @@ function TabAccounts({ profile, formData, editing, onChange }: { profile: Profil
                 <FormField label="IFSC Code" name="ifscCode" value={editing ? formData.ifscCode : profile.ifscCode} editing={editing} onChange={onChange} placeholder="e.g. SBIN0001234" />
             </FormSection>
 
+            <FormSection title="Bank Proof Document" columns={1}>
+                <DocUploadField label="Bank Proof" docType="bank_proof" doc={docs.bank_proof} onUpload={handleUpload} onDelete={handleDelete} mandatory />
+            </FormSection>
+
             <FormSection title="PF Account">
                 <FormField label="PF Account Number" name="pfAccountNumber" value={editing ? formData.pfAccountNumber : profile.pfAccountNumber} editing={editing} onChange={onChange} masked={!editing} placeholder="PF/UAN number" />
             </FormSection>
 
-            <FormSection title="Government IDs">
+            <FormSection title="Government IDs" columns={2}>
                 <FormField label="Aadhaar Number" name="aadhaarNumber" value={editing ? formData.aadhaarNumber : profile.aadhaarNumber} editing={editing} onChange={onChange} masked={!editing} placeholder="12-digit Aadhaar" />
                 <FormField label="PAN Number" name="panNumber" value={editing ? formData.panNumber : profile.panNumber} editing={editing} onChange={onChange} masked={!editing} placeholder="e.g. ABCDE1234F" />
+            </FormSection>
+
+            <FormSection title="KYC Documents" columns={2}>
+                <DocUploadField label="Aadhaar Card" docType="aadhaar" doc={docs.aadhaar} onUpload={handleUpload} onDelete={handleDelete} mandatory />
+                <DocUploadField label="PAN Card" docType="pan" doc={docs.pan} onUpload={handleUpload} onDelete={handleDelete} mandatory />
             </FormSection>
         </>
     )
