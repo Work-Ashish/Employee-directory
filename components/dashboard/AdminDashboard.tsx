@@ -98,17 +98,17 @@ export function AdminDashboard() {
                     </div>
                     <div className="space-y-2">
                         {selectedMonthData?.details.map((hire: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-[#eef0f8] bg-[#f8f9fe]">
+                            <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-[var(--surface3)]">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6366f1] to-[#818cf8] flex items-center justify-center text-[10px] font-bold text-white">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--accent2)] flex items-center justify-center text-[10px] font-bold text-white">
                                         {hire.name.charAt(0)}
                                     </div>
                                     <div>
-                                        <div className="text-[13px] font-semibold text-[#1a1d2e]">{hire.name}</div>
-                                        <div className="text-[11px] text-[#8a8fa8]">{hire.role}</div>
+                                        <div className="text-[13px] font-semibold text-[var(--text)]">{hire.name}</div>
+                                        <div className="text-[11px] text-[var(--text3)]">{hire.role}</div>
                                     </div>
                                 </div>
-                                <span className="text-[10px] font-mono bg-[#e8f8ef] text-[#1a9140] px-2 py-0.5 rounded-full">New</span>
+                                <span className="text-[10px] font-mono bg-[var(--green-dim)] text-[var(--green)] px-2 py-0.5 rounded-full">New</span>
                             </div>
                         ))}
                     </div>
@@ -118,30 +118,30 @@ export function AdminDashboard() {
             {/* Page Header */}
             <div className="flex items-center justify-between pb-1">
                 <div>
-                    <h1 className="text-[22px] font-extrabold tracking-[-0.5px] text-[#1a1d2e]">
-                        Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, <span className="text-[#6366f1]">Admin</span> 👋
+                    <h1 className="text-[22px] font-extrabold tracking-[-0.5px] text-[var(--text)]">
+                        Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, <span className="text-[var(--accent)]">Admin</span> 👋
                     </h1>
-                    <p className="text-[13px] text-[#8a8fa8] mt-0.5">Here's what's happening with your team today.</p>
+                    <p className="text-[13px] text-[var(--text3)] mt-0.5">Here's what's happening with your team today.</p>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#e8eaf0] shadow-sm">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border)] shadow-sm">
                     <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--green)] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--green)]"></span>
                     </span>
-                    <span className="text-[11px] font-bold text-[#8a8fa8] uppercase tracking-wider">Live</span>
+                    <span className="text-[11px] font-bold text-[var(--text3)] uppercase tracking-wider">Live</span>
                 </div>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-1">
                 {loading ? (
                     Array(5).fill(0).map((_, i) => (
-                        <div key={i} className="bg-white rounded-[16px] border border-[#e8eaf0] p-5 h-[130px] flex flex-col gap-3">
+                        <div key={i} className="bg-[var(--surface)] rounded-[16px] border border-[var(--border)] p-5 h-[130px] flex flex-col gap-3">
                             <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-lg bg-[#f2f3f8]" />
-                                <div className="h-3 w-20 bg-[#eef0f8] rounded" />
+                                <div className="w-8 h-8 rounded-lg bg-[var(--bg2)]" />
+                                <div className="h-3 w-20 bg-[var(--bg)] rounded" />
                             </div>
-                            <div className="h-7 w-16 bg-[#eef0f8] rounded" />
-                            <div className="h-3 w-24 bg-[#eef0f8] rounded" />
+                            <div className="h-7 w-16 bg-[var(--bg)] rounded" />
+                            <div className="h-3 w-24 bg-[var(--bg)] rounded" />
                         </div>
                     ))
                 ) : (
@@ -153,7 +153,7 @@ export function AdminDashboard() {
                             badge="7%"
                             badgeType="up"
                             icon="👥"
-                            iconClass="bg-[#eff3ff]"
+                            iconClass="bg-[var(--accent3)]/10"
                         />
                         <StatCard
                             label="Active Employees"
@@ -162,7 +162,7 @@ export function AdminDashboard() {
                             badge="5%"
                             badgeType="up"
                             icon="✅"
-                            iconClass="bg-[#edfdf3]"
+                            iconClass="bg-[var(--green-dim)]"
                         />
                         <StatCard
                             label="On Leave"
@@ -171,7 +171,7 @@ export function AdminDashboard() {
                             badge="4%"
                             badgeType="up"
                             icon="🌴"
-                            iconClass="bg-[#fff8ec]"
+                            iconClass="bg-[var(--amber-dim)]"
                         />
                         <StatCard
                             label="Monthly Payroll"
@@ -181,7 +181,7 @@ export function AdminDashboard() {
                             badgeType="neutral"
                             isMoney
                             icon="💵"
-                            iconClass="bg-[#eef6ff]"
+                            iconClass="bg-[var(--blue-dim)]"
                         />
                         <StatCard
                             label="Active Today"
@@ -190,7 +190,7 @@ export function AdminDashboard() {
                             badge="Live"
                             badgeType="up"
                             icon="🔐"
-                            iconClass="bg-[#f3f0ff]"
+                            iconClass="bg-[var(--purple-dim)]"
                         />
                     </>
                 )}
@@ -198,36 +198,36 @@ export function AdminDashboard() {
 
             {/* Recent Employee Logins */}
             {!loading && loginData?.recentLogins?.length > 0 && (
-                <div className="bg-white rounded-[16px] border border-[#e8eaf0] p-5">
+                <div className="bg-[var(--surface)] rounded-[16px] border border-[var(--border)] p-5">
                     <div className="flex items-center justify-between mb-4">
                         <div>
-                            <h3 className="text-[14px] font-bold text-[#1a1d2e]">Recent Employee Logins</h3>
-                            <p className="text-[11.5px] text-[#8a8fa8] mt-0.5">Last 7 days of login activity</p>
+                            <h3 className="text-[14px] font-bold text-[var(--text)]">Recent Employee Logins</h3>
+                            <p className="text-[11.5px] text-[var(--text3)] mt-0.5">Last 7 days of login activity</p>
                         </div>
-                        <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#f3f0ff] text-[#6366f1] border border-[#e0dcff]">
+                        <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[var(--purple-dim)] text-[var(--purple)] border border-[var(--border)]">
                             {loginData.recentLogins.length} logins
                         </span>
                     </div>
                     <div className="space-y-1 max-h-[180px] overflow-y-auto pr-1">
                         {loginData.recentLogins.map((login: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[#f8f9fe] transition-colors">
+                            <div key={i} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[var(--bg2)] transition-colors">
                                 <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6366f1] to-[#818cf8] flex items-center justify-center text-[11px] font-bold text-white shrink-0">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--accent2)] flex items-center justify-center text-[11px] font-bold text-white shrink-0">
                                         {login.name?.charAt(0) || '?'}
                                     </div>
                                     <div>
-                                        <p className="text-[12.5px] font-semibold text-[#1a1d2e] leading-tight">{login.name}</p>
-                                        <p className="text-[11px] text-[#8a8fa8]">
+                                        <p className="text-[12.5px] font-semibold text-[var(--text)] leading-tight">{login.name}</p>
+                                        <p className="text-[11px] text-[var(--text3)]">
                                             {login.employee?.designation || 'Employee'}
                                             {login.employee?.department?.name ? ` · ${login.employee.department.name}` : ''}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[11px] font-mono text-[#6366f1]">
+                                    <p className="text-[11px] font-mono text-[var(--accent)]">
                                         {new Date(login.lastLoginAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
                                     </p>
-                                    <p className="text-[10px] text-[#b0b4c8]">
+                                    <p className="text-[10px] text-[var(--text4)]">
                                         {new Date(login.lastLoginAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                                     </p>
                                 </div>
@@ -267,8 +267,8 @@ export function AdminDashboard() {
                 ) : (
                     <>
                         {/* Interactive Pie Chart */}
-                        <div className="bg-white rounded-[16px] border border-[#e8eaf0] p-5 flex flex-col h-full">
-                            <div className="text-[13px] font-bold text-[#1a1d2e] flex items-center justify-between mb-2">
+                        <div className="bg-[var(--surface)] rounded-[16px] border border-[var(--border)] p-5 flex flex-col h-full">
+                            <div className="text-[13px] font-bold text-[var(--text)] flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2"><span className="text-[15px]">🏢</span> Department Split</div>
                                 {selectedDept && (
                                     <button
@@ -337,8 +337,8 @@ export function AdminDashboard() {
                         </div>
 
                         {/* Area Chart */}
-                        <div className="bg-white rounded-[16px] border border-[#e8eaf0] p-5 flex flex-col h-full">
-                            <div className="text-[13px] font-bold text-[#1a1d2e] flex items-center gap-2 mb-4">
+                        <div className="bg-[var(--surface)] rounded-[16px] border border-[var(--border)] p-5 flex flex-col h-full">
+                            <div className="text-[13px] font-bold text-[var(--text)] flex items-center gap-2 mb-4">
                                 <span className="text-[15px]">📈</span> Hiring Trend
                             </div>
                             <div className="flex-1 min-h-0 w-full">
@@ -355,8 +355,8 @@ export function AdminDashboard() {
                                     >
                                         <defs>
                                             <linearGradient id="colorHires" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
-                                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                                <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.25} />
+                                                <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
                                         <XAxis
@@ -381,24 +381,24 @@ export function AdminDashboard() {
                                         <Area
                                             type="monotone"
                                             dataKey="hires"
-                                            stroke="#6366f1"
+                                            stroke="var(--accent)"
                                             strokeWidth={2.5}
                                             fillOpacity={1}
                                             fill="url(#colorHires)"
-                                            activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1', onClick: (_: any, e: any) => setSelectedMonth(e.payload.month) }}
+                                            activeDot={{ r: 6, strokeWidth: 0, fill: 'var(--accent)', onClick: (_: any, e: any) => setSelectedMonth(e.payload.month) }}
                                         />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
-                            <div className="flex justify-between items-center mt-3 text-[12px] text-[#8a8fa8]">
+                            <div className="flex justify-between items-center mt-3 text-[12px] text-[var(--text3)]">
                                 <span>Last 6 months</span>
-                                <span className="text-[#1a9140] bg-[#e8f8ef] px-[9px] py-[3px] rounded-[20px] font-bold font-mono">↑ 23% growth</span>
+                                <span className="text-[var(--green)] bg-[var(--green-dim)] px-[9px] py-[3px] rounded-[20px] font-bold font-mono">↑ 23% growth</span>
                             </div>
                         </div>
 
                         {/* Bar Chart */}
-                        <div className="bg-white rounded-[16px] border border-[#e8eaf0] p-5 flex flex-col h-full">
-                            <div className="text-[13px] font-bold text-[#1a1d2e] flex items-center gap-2 mb-4">
+                        <div className="bg-[var(--surface)] rounded-[16px] border border-[var(--border)] p-5 flex flex-col h-full">
+                            <div className="text-[13px] font-bold text-[var(--text)] flex items-center gap-2 mb-4">
                                 <span className="text-[15px]">💰</span> Salary Range
                             </div>
                             <div className="flex-1 min-h-0 w-full">
@@ -420,24 +420,24 @@ export function AdminDashboard() {
                                         />
                                         <Bar
                                             dataKey="count"
-                                            fill="#818cf8"
+                                            fill="var(--accent2)"
                                             radius={[6, 6, 0, 0]}
                                             barSize={20}
                                         />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
-                            <div className="text-center font-mono text-[11px] text-[#8a8fa8] mt-4">Avg: ${data?.avgSalary?.toLocaleString(undefined, { maximumFractionDigits: 0 }) || "0"}</div>
+                            <div className="text-center font-mono text-[11px] text-[var(--text3)] mt-4">Avg: ${data?.avgSalary?.toLocaleString(undefined, { maximumFractionDigits: 0 }) || "0"}</div>
                         </div>
                     </>
                 )}
             </div>
 
             <div className="grid grid-cols-[1.3fr_1fr] gap-4">
-                <div className="bg-white rounded-[16px] border border-[#e8eaf0] p-5">
-                    <div className="text-[13px] font-bold text-[#1a1d2e] flex items-center justify-between mb-4">
+                <div className="bg-[var(--surface)] rounded-[16px] border border-[var(--border)] p-5">
+                    <div className="text-[13px] font-bold text-[var(--text)] flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2"><span>🏢</span> Department Overview</div>
-                        {selectedDept && <span className="text-[11px] text-[#6366f1] font-medium bg-[#f3f0ff] px-2 py-0.5 rounded-md">Filtered: {selectedDept}</span>}
+                        {selectedDept && <span className="text-[11px] text-[var(--accent)] font-medium bg-[var(--accent3)]/10 px-2 py-0.5 rounded-md">Filtered: {selectedDept}</span>}
                     </div>
                     <div className="space-y-3">
                         {loading ? (
@@ -467,10 +467,10 @@ export function AdminDashboard() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-[16px] border border-[#e8eaf0] p-5">
-                    <div className="text-[13px] font-bold text-[#1a1d2e] flex items-center justify-between mb-4">
+                <div className="bg-[var(--surface)] rounded-[16px] border border-[var(--border)] p-5">
+                    <div className="text-[13px] font-bold text-[var(--text)] flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2"><span>✨</span> Recent Hires</div>
-                        {selectedDept && <span className="text-[11px] text-[#6366f1] font-medium bg-[#f3f0ff] px-2 py-0.5 rounded-md">Filtered: {selectedDept}</span>}
+                        {selectedDept && <span className="text-[11px] text-[var(--accent)] font-medium bg-[var(--accent3)]/10 px-2 py-0.5 rounded-md">Filtered: {selectedDept}</span>}
                     </div>
                     <div className="flex flex-col gap-0 max-h-[300px] overflow-y-auto pr-1">
                         {loading ? (

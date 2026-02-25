@@ -22,16 +22,24 @@ import {
   FileTextIcon
 } from '@radix-ui/react-icons'
 
-const navItems = [
+interface NavItem {
+  name: string
+  href: string
+  icon: any
+  hrefEmployee?: string
+  badge?: string | number
+  badgeColor?: string
+}
+
+const navItems: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: DashboardIcon },
   { name: 'Employees', href: '/employees', icon: PersonIcon },
-  { name: 'Organization', href: '/organization', icon: MixIcon }, // New Link
-  { name: 'Assets', href: '/admin/assets', hrefEmployee: '/employee/assets', icon: LaptopIcon }, // New Module
-  { name: 'Documents', href: '/admin/documents', hrefEmployee: '/employee/documents', icon: FileTextIcon }, // New Module
+  { name: 'Organization', href: '/organization', icon: MixIcon },
+  { name: 'Assets', href: '/admin/assets', hrefEmployee: '/employee/assets', icon: LaptopIcon },
+  { name: 'Documents', href: '/admin/documents', hrefEmployee: '/employee/documents', icon: FileTextIcon },
   { name: 'Leave', href: '/leave', icon: CalendarIcon },
   { name: 'Attendance', href: '/attendance', icon: ClockIcon },
   { name: 'Payroll', href: '/payroll', icon: ReaderIcon },
-  { name: 'Provident Fund', href: '/pf', icon: ArchiveIcon },
   { name: 'Performance', href: '/performance', icon: BarChartIcon },
   { name: 'Resignation', href: '/resignation', icon: ExitIcon },
   { name: 'Training', href: '/training', icon: BackpackIcon },
@@ -46,7 +54,7 @@ export function NavContent({ pathname, user, logout, onItemClick }: { pathname: 
     if (user.role === 'ADMIN') return true
 
     // Employee restrictions
-    const restrictedItems = ['Settings', 'Payroll', 'Resignation', 'Recruitment', 'Employees', 'Organization']
+    const restrictedItems = ['Settings', 'Recruitment', 'Employees', 'Organization']
     return !restrictedItems.includes(item.name)
   })
 

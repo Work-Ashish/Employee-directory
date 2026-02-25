@@ -49,9 +49,76 @@ model Employee {
   updatedAt          DateTime             @updatedAt
   userId             String?              @unique
   managerId          String?
+
+  // Personal
+  dateOfBirth           DateTime?
+  gender                String?
+  bloodGroup            String?
+  nationality           String?
+  maritalStatus         String?
+  marriageDate          DateTime?
+  spouse                String?
+  placeOfBirth          String?
+  residentialStatus     String?
+  fatherName            String?
+  religion              String?
+  physicallyChallenged  Boolean?           @default(false)
+  internationalEmployee Boolean?           @default(false)
+  hobby                 String?
+  caste                 String?
+  height                String?
+  weight                String?
+  identificationMark    String?
+
+  // Address
+  contactAddress        String?
+  contactCity           String?
+  contactState          String?
+  contactPincode        String?
+  permanentAddress      String?
+  permanentCity         String?
+  permanentState        String?
+  permanentPincode      String?
+
+  // Bank & Statutory
+  bankName              String?
+  bankAccountNumber     String?
+  bankBranch            String?
+  ifscCode              String?
+  pfAccountNumber       String?
+  aadhaarNumber         String?
+  panNumber             String?
+
+  // Family – Father
+  fatherDob             DateTime?
+  fatherBloodGroup      String?
+  fatherGender          String?
+  fatherNationality     String?
+
+  // Emergency Contact
+  emergencyContactName     String?
+  emergencyContactPhone    String?
+  emergencyContactRelation String?
+
+  // Employment extras
+  category              String?
+  costCenter            String?
+  division              String?
+  grade                 String?
+  location              String?
+  previousEmployment    String?
+
+  // Passport & Visa
+  passportNumber        String?
+  passportExpiry        DateTime?
+  visaNumber            String?
+  visaExpiry            DateTime?
+
+  // Relations
   assets             Asset[]
   attendanceRecords  Attendance[]
   documents          Document[]
+  educations         Education[]
   department         Department           @relation(fields: [departmentId], references: [id])
   manager            Employee?            @relation("EmployeeToManager", fields: [managerId], references: [id])
   reports            Employee[]           @relation("EmployeeToManager")
@@ -63,6 +130,17 @@ model Employee {
   resignations       Resignation[]
   tickets            Ticket[]
   trainings          TrainingEnrollment[]
+  timeSessions       TimeSession[]
+}
+
+model Education {
+  id         String   @id @default(cuid())
+  degree     String
+  institute  String
+  duration   String?
+  grade      String?
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
 }
 
 model Asset {
@@ -403,4 +481,79 @@ enum CandidateStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+// ─── Time Tracking ───
+
+model TimeSession {
+  id          String        @id @default(cuid())
+  employeeId  String
+  checkIn     DateTime      @default(now())
+  checkOut    DateTime?
+  totalWork   Int           @default(0)
+  totalBreak  Int           @default(0)
+  totalIdle   Int           @default(0)
+  status      SessionStatus @default(ACTIVE)
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime      @default(now())
+  employee    Employee      @relation(fields: [employeeId], references: [id])
+  breaks      BreakEntry[]
+  activities  ActivityLog[]
+  snapshots   ActivitySnapshot[]
+}
+
+model BreakEntry {
+  id        String      @id @default(cuid())
+  sessionId String
+  startedAt DateTime    @default(now())
+  endedAt   DateTime?
+  reason    String?
+  session   TimeSession @relation(fields: [sessionId], references: [id])
+}
+
+model ActivityLog {
+  id          String           @id @default(cuid())
+  sessionId   String
+  appName     String
+  windowTitle String?
+  url         String?
+  domain      String?
+  category    ActivityCategory @default(OTHER)
+  startedAt   DateTime         @default(now())
+  endedAt     DateTime?
+  durationSec Int              @default(0)
+  session     TimeSession      @relation(fields: [sessionId], references: [id])
+}
+
+model ActivitySnapshot {
+  id          String         @id @default(cuid())
+  sessionId   String
+  status      ActivityStatus @default(ACTIVE)
+  timestamp   DateTime       @default(now())
+  mouseClicks Int            @default(0)
+  keystrokes  Int            @default(0)
+  session     TimeSession    @relation(fields: [sessionId], references: [id])
+}
+
+enum SessionStatus {
+  ACTIVE
+  BREAK
+  COMPLETED
+}
+
+enum ActivityCategory {
+  PRODUCTIVITY
+  COMMUNICATION
+  DESIGN
+  RESEARCH
+  ENTERTAINMENT
+  SOCIAL_MEDIA
+  OTHER
+}
+
+enum ActivityStatus {
+  ACTIVE
+  IDLE
+  BREAK
 }

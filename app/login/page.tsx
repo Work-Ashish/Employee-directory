@@ -3,6 +3,7 @@
 import * as React from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 import { EnvelopeClosedIcon, LockClosedIcon, CheckIcon } from "@radix-ui/react-icons"
 import { motion } from "framer-motion"
 
@@ -192,6 +193,7 @@ export default function LoginPage() {
                                 className="w-full bg-transparent border-b border-[#364259] py-[10px] pl-9 text-[14px] text-[#e2e8f0] focus:border-[#44ceb3] focus:outline-none transition-all placeholder:text-[#64748b]"
                                 placeholder="Password"
                                 required
+                                autoComplete="current-password"
                             />
                         </div>
 
@@ -199,9 +201,15 @@ export default function LoginPage() {
 
                         {/* Options */}
                         <div className="flex items-center justify-between text-[12px] pt-1">
-                            <label className="flex items-center gap-2 cursor-pointer text-[#64748b] group">
-                                <div className={`w-3.5 h-3.5 rounded-[2px] flex items-center justify-center border transition-all ${rememberMe ? 'bg-transparent border-[#475569]' : 'border-[#475569]'}`}>
-                                    {rememberMe && <CheckIcon className="w-2.5 h-2.5 text-[#94a3b8]" />}
+                            <label
+                                onClick={() => setRememberMe(!rememberMe)}
+                                className="flex items-center gap-2 cursor-pointer text-[#64748b] group select-none"
+                            >
+                                <div className={cn(
+                                    "w-3.5 h-3.5 rounded-[2px] flex items-center justify-center border transition-all",
+                                    rememberMe ? 'bg-[#44ceb3] border-[#44ceb3]' : 'bg-transparent border-[#475569]'
+                                )}>
+                                    {rememberMe && <CheckIcon className="w-2.5 h-2.5 text-[#18362f]" />}
                                 </div>
                                 <span className="group-hover:text-[#cbd5e1] transition-colors">Remember me</span>
                             </label>
