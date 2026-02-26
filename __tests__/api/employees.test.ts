@@ -25,6 +25,18 @@ describe('Employee API Routes', () => {
             expect(json.data.length).toBe(2)
             expect(prismaMock.employee.findMany).toHaveBeenCalledTimes(1)
         })
+
+        test('handles GET internal server error gracefully', async () => {
+            prismaMock.organization.findFirst.mockResolvedValue({ id: 'org-1' })
+            prismaMock.employee.findMany.mockRejectedValue(new Error('Simulated DB Error'))
+
+            const req = new Request('http://localhost:3000/api/employees')
+            const res = await GET(req)
+            const json = await res.json()
+
+            expect(res.status).toBe(500)
+            expect(json.error.message).toBe('Internal Server Error')
+        })
     })
 
     describe('POST /api/employees', () => {
@@ -55,6 +67,9 @@ describe('Employee API Routes', () => {
             })
             prismaMock.user.findUnique.mockResolvedValue(null)
 
+            // Note: the transaction is mocked in setup.ts to execute the cb directly, 
+            // so we don't strictly need to mock $transaction here unless it's not setup correctly
+
             const payload = {
                 employeeCode: 'EMP-001',
                 firstName: 'Alice',
@@ -80,6 +95,106 @@ describe('Employee API Routes', () => {
             expect(json.data.employeeCode).toBe('EMP-001')
             // Assert that the credentials generation trigger fired (if applicable)
             expect(prismaMock.employee.create).toHaveBeenCalled()
+        })
+
+        test('handles POST conflict error (P2002)', async () => {
+            prismaMock.organization.findFirst.mockResolvedValue({ id: 'org-1' })
+
+            const conflictError = new Error() as any
+            conflictError.code = 'P2002'
+            conflictError.meta = { target: ['email'] }
+
+            // We simulate that creating the User hits the unique constraint
+            prismaMock.user.create.mockRejectedValue(conflictError)
+
+            const payload = {
+                employeeCode: 'EMP-002',
+                firstName: 'Bob',
+                lastName: 'Builder',
+                email: 'bob@example.com',
+                designation: 'Worker',
+                departmentId: 'dept-1',
+                dateOfJoining: '2024-01-01',
+                salary: 40000,
+                status: 'ACTIVE'
+            }
+
+            const req = new Request('http://localhost:3000/api/employees', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+
+            const res = await POST(req)
+            const json = await res.json()
+
+            expect(res.status).toBe(409)
+            expect(json.error.message).toContain('email already exists')
+        })
+
+        test('handles POST constraint error (P2003)', async () => {
+            prismaMock.organization.findFirst.mockResolvedValue({ id: 'org-1' })
+            const constraintError = new Error() as any
+            constraintError.code = 'P2003'
+
+            prismaMock.user.create.mockRejectedValue(constraintError)
+
+            const req = new Request('http://localhost:3000/api/employees', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employeeCode: 'EMP-003', firstName: 'C', lastName: 'D',
+                    email: 'c@d.com', designation: 'D', departmentId: 'invalid',
+                    dateOfJoining: '2024-01-01', salary: 1, status: 'ACTIVE'
+                })
+            })
+
+            const res = await POST(req)
+            expect(res.status).toBe(400)
+        })
+
+        test('handles POST employeeCode conflict error (P2002)', async () => {
+            prismaMock.organization.findFirst.mockResolvedValue({ id: 'org-1' })
+
+            const conflictError = new Error() as any
+            conflictError.code = 'P2002'
+            conflictError.meta = { target: ['employeeCode'] }
+
+            prismaMock.user.create.mockRejectedValue(conflictError)
+
+            const req = new Request('http://localhost:3000/api/employees', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employeeCode: 'EMP-003', firstName: 'C', lastName: 'D',
+                    email: 'c@d.com', designation: 'D', departmentId: 'valid',
+                    dateOfJoining: '2024-01-01', salary: 1, status: 'ACTIVE'
+                })
+            })
+
+            const res = await POST(req)
+            const json = await res.json()
+            expect(res.status).toBe(409)
+            expect(json.error.message).toContain('code already exists')
+        })
+
+        test('handles generic POST internal server error', async () => {
+            prismaMock.organization.findFirst.mockResolvedValue({ id: 'org-1' })
+            prismaMock.user.create.mockRejectedValue(new Error('Random Error'))
+
+            const req = new Request('http://localhost:3000/api/employees', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employeeCode: 'EMP-004', firstName: 'E', lastName: 'F',
+                    email: 'e@f.com', designation: 'D', departmentId: 'valid',
+                    dateOfJoining: '2024-01-01', salary: 1, status: 'ACTIVE'
+                })
+            })
+
+            const res = await POST(req)
+            const json = await res.json()
+            expect(res.status).toBe(500)
         })
     })
 })

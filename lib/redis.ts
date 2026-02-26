@@ -32,7 +32,7 @@ export const redis = {
         }
 
         let expiresAt = Infinity
-        if (config?.ex) {
+        if (config?.ex !== undefined) {
             expiresAt = Date.now() + config.ex * 1000
         }
         inMemoryStore.set(key, { value: value as number, expiresAt })
