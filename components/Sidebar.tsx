@@ -44,6 +44,7 @@ const navItems: NavItem[] = [
   { name: 'Resignation', href: '/resignation', icon: ExitIcon },
   { name: 'Training', href: '/training', icon: BackpackIcon },
   { name: 'Announcements', href: '/announcements', icon: SpeakerLoudIcon },
+  { name: 'Workflows', href: '/admin/workflows', icon: MixIcon },
   { name: 'Settings', href: '/settings', icon: GearIcon },
 ]
 

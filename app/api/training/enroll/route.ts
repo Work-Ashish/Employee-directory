@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth"
 export async function POST(req: Request) {
     try {
         const session = await auth()
-        if (!session) {
+        if (!session?.user?.organizationId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
@@ -28,6 +28,7 @@ export async function POST(req: Request) {
             create: {
                 trainingId,
                 employeeId,
+                organizationId: session.user.organizationId,
                 completed: completed ?? false,
                 score: score ?? null
             }

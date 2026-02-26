@@ -35,7 +35,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const session = await auth()
-        if (!session || session.user?.role !== "ADMIN") {
+        if (!session?.user?.organizationId || session.user.role !== "ADMIN") {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 })
         }
 
@@ -56,6 +56,7 @@ export async function POST(req: Request) {
                 reviewDate: parsed.data.reviewDate || new Date(),
                 status: parsed.data.status,
                 employeeId: parsed.data.employeeId,
+                organizationId: session.user.organizationId,
             },
             include: { employee: { include: { department: true } } },
         })

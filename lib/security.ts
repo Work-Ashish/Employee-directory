@@ -9,6 +9,7 @@ export interface AuthContext {
     userId: string
     organizationId: string
     role: Role
+    name?: string | null
 }
 
 type AuthHandler = (req: Request, context: AuthContext) => Promise<NextResponse>
@@ -34,7 +35,7 @@ export function withAuth(requiredRole: Role | Role[], handler: AuthHandler) {
                 return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
             }
 
-            const { id: userId, organizationId, role } = session.user
+            const { id: userId, organizationId, role, name } = session.user
             if (!organizationId) {
                 return apiError("Organization account required", ApiErrorCode.FORBIDDEN, 403)
             }
@@ -50,7 +51,7 @@ export function withAuth(requiredRole: Role | Role[], handler: AuthHandler) {
             return await logContext.run({ requestId, organizationId, userId }, async () => {
                 logger.info("API Request Started", { path, method: req.method, userId, organizationId })
 
-                const response = await handler(req, { requestId, userId, organizationId, role: role as Role })
+                const response = await handler(req, { requestId, userId, organizationId, role: role as Role, name })
 
                 const duration = Date.now() - startTime
 

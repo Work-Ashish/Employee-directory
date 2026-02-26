@@ -51,11 +51,14 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
             data: {
                 month: parsed.data.month,
                 basicSalary: parsed.data.basicSalary,
-                allowances: parsed.data.allowances,
-                pfDeduction: parsed.data.pfDeduction,
-                tax: parsed.data.tax,
-                otherDed: parsed.data.otherDed,
-                netSalary: parsed.data.netSalary,
+                allowances: parsed.data.allowances ?? 0,
+                arrears: parsed.data.arrears ?? 0,
+                reimbursements: parsed.data.reimbursements ?? 0,
+                loansAdvances: parsed.data.loansAdvances ?? 0,
+                pfDeduction: parsed.data.pfDeduction ?? 0,
+                tax: parsed.data.tax ?? 0,
+                otherDed: parsed.data.otherDed ?? 0,
+                netSalary: parsed.data.netSalary ?? 0,
                 status: parsed.data.status || "PENDING",
                 employeeId: parsed.data.employeeId,
                 organizationId: ctx.organizationId,
@@ -63,9 +66,9 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
             include: { employee: true },
         })
 
-        return apiSuccess(record, null, 201)
+        return apiSuccess(record, undefined, 201)
     } catch (error) {
         console.error("[PAYROLL_POST]", error)
-        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
+        return apiError("Internal Server Error", "INTERNAL_ERROR", 500)
     }
 })

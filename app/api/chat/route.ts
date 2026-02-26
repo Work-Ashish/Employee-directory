@@ -81,11 +81,10 @@ If the user asks something outside HR/EMS scope, politely redirect them. Never m
                 model: google("gemini-1.5-pro"),
                 system: systemInstruction,
                 messages,
-                maxSteps: 5,
                 tools: {
-                    checkLeaveBalance: tool({
+                    checkLeaveBalance: {
                         description: "Check how many approved, pending, and rejected leaves the user has.",
-                        parameters: z.object({}),
+                        inputSchema: z.object({}),
                         execute: async () => {
                             const employee = await prisma.employee.findFirst({
                                 where: { userId: ctx.userId, organizationId: ctx.organizationId },
@@ -101,10 +100,10 @@ If the user asks something outside HR/EMS scope, politely redirect them. Never m
                             const rejected = leaves.filter(l => l.status === "REJECTED").length
                             return `You have ${approved} approved, ${pending} pending, and ${rejected} rejected leaves.`
                         }
-                    }),
-                    submitLeaveRequest: tool({
+                    },
+                    submitLeaveRequest: {
                         description: "Submit a new leave request.",
-                        parameters: z.object({
+                        inputSchema: z.object({
                             type: z.enum(["CASUAL", "SICK", "EARNED", "MATERNITY", "PATERNITY", "UNPAID"]),
                             startDate: z.string(),
                             endDate: z.string(),
@@ -134,10 +133,10 @@ If the user asks something outside HR/EMS scope, politely redirect them. Never m
                                 return `Failed to submit leave request: ${e.message}`
                             }
                         }
-                    }),
-                    createSupportTicket: tool({
+                    },
+                    createSupportTicket: {
                         description: "Create an IT or HR support ticket.",
-                        parameters: z.object({
+                        inputSchema: z.object({
                             subject: z.string(),
                             description: z.string(),
                             category: z.enum(["IT", "HR", "FINANCE", "FACILITIES", "OTHER"]),
@@ -171,7 +170,7 @@ If the user asks something outside HR/EMS scope, politely redirect them. Never m
                                 return `Failed to create ticket: ${e.message}`
                             }
                         }
-                    })
+                    }
                 },
                 abortSignal: controller.signal,
             })

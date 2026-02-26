@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import crypto from "crypto"
 import { ticketSchema, updateTicketSchema } from "@/lib/schemas"
+import { WorkflowEngine } from "@/lib/workflow-engine"
 
 // GET /api/tickets – List help desk tickets (scoped)
 export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
@@ -77,7 +78,14 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
             include: { employee: true },
         })
 
-        return apiSuccess(ticket, null, 201)
+        const template = await prisma.workflowTemplate.findFirst({
+            where: { organizationId: ctx.organizationId, entityType: 'TICKET', status: 'PUBLISHED' }
+        })
+        if (template) {
+            await WorkflowEngine.initiateWorkflow(template.id, ticket.id, employeeId, ctx.organizationId)
+        }
+
+        return apiSuccess(ticket, undefined, 201)
     } catch (error) {
         console.error("[TICKETS_POST]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)

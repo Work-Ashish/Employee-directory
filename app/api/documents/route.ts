@@ -73,7 +73,7 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
                     })
                 )
             )
-            return apiSuccess(docs, null, 201)
+            return apiSuccess(docs, undefined, 201)
         }
 
         const singleParse = documentSchema.safeParse(body)
@@ -107,7 +107,7 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
             include: { employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } } },
         })
 
-        return apiSuccess(document, null, 201)
+        return apiSuccess(document, undefined, 201)
     } catch (error) {
         console.error("[DOCUMENTS_POST]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)

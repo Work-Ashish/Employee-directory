@@ -17,7 +17,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Queue is empty", processed: 0 })
         }
 
-        const { type, data: rows } = job
+        const { type, data: rawRows } = job
+        const rows = (rawRows as any[]) || []
 
         let inserted = 0
         let skipped = 0
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
                     await prisma.attendance.create({
                         data: {
                             employeeId: employee.id,
+                            organizationId: employee.organizationId,
                             date,
                             checkIn: checkIn && !isNaN(checkIn.getTime()) ? checkIn : null,
                             checkOut: checkOut && !isNaN(checkOut.getTime()) ? checkOut : null,
@@ -89,7 +91,7 @@ export async function POST(req: Request) {
                         })
                     } else {
                         await prisma.providentFund.create({
-                            data: { employeeId: employee.id, month, accountNumber, basicSalary, employeeContribution, employerContribution, totalContribution, status }
+                            data: { employeeId: employee.id, organizationId: employee.organizationId, month, accountNumber, basicSalary, employeeContribution, employerContribution, totalContribution, status }
                         })
                     }
                     inserted++

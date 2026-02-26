@@ -6,13 +6,19 @@ dotenv.config()
 async function main() {
     console.log("Seeding database...")
 
+    // 0. Org context
+    let org = await prisma.organization.findFirst()
+    if (!org) {
+        org = await prisma.organization.create({ data: { name: "Seed Org", domain: "seed.com" } })
+    }
+
     // 1. Create a Department
-    const existingIt = await prisma.department.findFirst({ where: { name: "Engineering" } })
-    const itDept = existingIt ?? await prisma.department.create({ data: { name: "Engineering", color: "#3b82f6" } })
+    const itDept = await prisma.department.findFirst({ where: { name: "Engineering", organizationId: org.id } })
+        ?? await prisma.department.create({ data: { name: "Engineering", color: "#3b82f6", organizationId: org.id } })
 
     // 2. Create another Department
-    const existingHr = await prisma.department.findFirst({ where: { name: "HR" } })
-    const hrDept = existingHr ?? await prisma.department.create({ data: { name: "HR", color: "#ec4899" } })
+    const hrDept = await prisma.department.findFirst({ where: { name: "HR", organizationId: org.id } })
+        ?? await prisma.department.create({ data: { name: "HR", color: "#ec4899", organizationId: org.id } })
 
     // 3. Create Employees
     const emp1 = await prisma.employee.upsert({
@@ -28,6 +34,7 @@ async function main() {
             dateOfJoining: new Date("2021-01-15"),
             salary: 120000,
             status: "ACTIVE",
+            organizationId: org.id
         },
     })
 
@@ -44,6 +51,7 @@ async function main() {
             dateOfJoining: new Date("2020-05-10"),
             salary: 95000,
             status: "ACTIVE",
+            organizationId: org.id
         },
     })
 

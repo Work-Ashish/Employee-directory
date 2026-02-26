@@ -41,7 +41,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
             },
         })
 
-        return apiSuccess(event, null, 201)
+        return apiSuccess(event, undefined, 201)
     } catch (error) {
         console.error("[EVENTS_POST]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)

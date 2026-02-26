@@ -46,6 +46,7 @@ export async function POST() {
                 await tx.attendance.create({
                     data: {
                         employeeId: employee.id,
+                        organizationId: employee.organizationId,
                         date: startOfDay,
                         checkIn: now,
                         status: "PRESENT"

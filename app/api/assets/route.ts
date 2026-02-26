@@ -43,7 +43,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
             include: { assignedTo: true },
         })
 
-        return apiSuccess(asset, null, 201)
+        return apiSuccess(asset, undefined, 201)
     } catch (error) {
         console.error("[ASSETS_POST]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { leaveSchema, updateLeaveSchema } from "@/lib/schemas"
+import { WorkflowEngine } from "@/lib/workflow-engine"
 
 // Safe employee select — no salary, bank, Aadhaar, PAN etc.
 const SAFE_EMPLOYEE_SELECT = {
@@ -107,7 +108,14 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
             include: { employee: { select: SAFE_EMPLOYEE_SELECT } },
         })
 
-        return apiSuccess(leave, null, 201)
+        const template = await prisma.workflowTemplate.findFirst({
+            where: { organizationId: ctx.organizationId, entityType: 'LEAVE', status: 'PUBLISHED' }
+        })
+        if (template) {
+            await WorkflowEngine.initiateWorkflow(template.id, leave.id, employeeId, ctx.organizationId)
+        }
+
+        return apiSuccess(leave, undefined, 201)
     } catch (error) {
         console.error("[LEAVES_POST]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)

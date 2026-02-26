@@ -42,7 +42,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
             },
         })
 
-        return apiSuccess(announcement, null, 201)
+        return apiSuccess(announcement, undefined, 201)
     } catch (error) {
         console.error("[ANNOUNCEMENTS_POST]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)

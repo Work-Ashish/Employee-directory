@@ -63,7 +63,7 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
             include: { employee: true },
         })
 
-        return apiSuccess(record, null, 201)
+        return apiSuccess(record, undefined, 201)
     } catch (error) {
         console.error("[ATTENDANCE_POST]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)

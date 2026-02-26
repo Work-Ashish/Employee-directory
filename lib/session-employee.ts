@@ -16,7 +16,7 @@ export async function getSessionEmployee() {
                 ...(session.user.email ? [{ email: session.user.email }] : []),
             ],
         },
-        select: { id: true },
+        select: { id: true, organizationId: true },
     })
 
     return employee

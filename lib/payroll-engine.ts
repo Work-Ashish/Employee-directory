@@ -1,14 +1,15 @@
-/**
- * HRMS Payroll Engine
- * Centralized logic for salary, tax, and PF calculations.
- */
+import { prisma } from '@/lib/prisma'
+import { PayrollComplianceConfig, TaxSlab } from '@prisma/client'
 
 export interface SalaryComponents {
     basicSalary: number
     allowances: number
+    arrears: number
+    reimbursements: number
     pfDeduction: number
     tax: number
     otherDed: number
+    loansAdvances: number
 }
 
 export interface PFContributions {
@@ -23,20 +24,22 @@ export interface TaxCalculation {
 }
 
 /**
- * Calculates net salary based on basic components.
+ * Calculates net salary factoring in additions (arrears, reimbursements) 
+ * and deductions (loansAdvances, etc)
  */
 export function calculateNetSalary(components: SalaryComponents): number {
-    const gross = (components.basicSalary || 0) + (components.allowances || 0)
-    const totalDeductions = (components.pfDeduction || 0) + (components.tax || 0) + (components.otherDed || 0)
-    return Number((gross - totalDeductions).toFixed(2))
+    const grossAdditions = (components.basicSalary || 0) + (components.allowances || 0) + (components.arrears || 0) + (components.reimbursements || 0)
+    const totalDeductions = (components.pfDeduction || 0) + (components.tax || 0) + (components.otherDed || 0) + (components.loansAdvances || 0)
+    return Number((grossAdditions - totalDeductions).toFixed(2))
 }
 
 /**
- * Calculates PF contributions (standard 12% rules).
+ * Calculates PF contributions using dynamic config.
  */
-export function calculatePFContributions(basicSalary: number): PFContributions {
-    const employeeContribution = Math.round(basicSalary * 0.12)
-    const employerContribution = Math.round(basicSalary * 0.12)
+export function calculatePFContributions(basicSalary: number, pfPercentage: number): PFContributions {
+    const rate = pfPercentage / 100
+    const employeeContribution = Math.round(basicSalary * rate)
+    const employerContribution = Math.round(basicSalary * rate)
     return {
         employeeContribution,
         employerContribution,
@@ -45,27 +48,32 @@ export function calculatePFContributions(basicSalary: number): PFContributions {
 }
 
 /**
- * Baseline Tax Calculation logic (Slab based - Simplified for MVP)
+ * Advanced Tax Calculation logic utilizing the dynamic database configuration.
+ * Config must provide the standard deduction and tax slabs.
  */
-export function calculateMonthlyTax(annualSalary: number): TaxCalculation {
-    // Simplified India Income Tax New Regime slab (monthly estimate)
-    const monthlyIncome = annualSalary / 12
-    let tax = 0
+export function calculateDynamicTax(annualSalary: number, config: PayrollComplianceConfig & { taxSlabs: TaxSlab[] }): TaxCalculation {
+    let taxableIncome = annualSalary - config.standardDeduction
+    if (taxableIncome <= 0) return { taxAmount: 0, effectiveRate: 0 }
 
-    if (monthlyIncome > 125000) { // > 15L
-        tax = (monthlyIncome - 125000) * 0.3 + 15000
-    } else if (monthlyIncome > 100000) { // 12-15L
-        tax = (monthlyIncome - 100000) * 0.2 + 10000
-    } else if (monthlyIncome > 75000) { // 9-12L
-        tax = (monthlyIncome - 75000) * 0.15 + 6250
-    } else if (monthlyIncome > 50000) { // 6-9L
-        tax = (monthlyIncome - 50000) * 0.1 + 3750
-    } else if (monthlyIncome > 25000) { // 3-6L
-        tax = (monthlyIncome - 25000) * 0.05
+    let tax = 0
+    let applicableSlabs = config.taxSlabs.sort((a: any, b: any) => a.minIncome - b.minIncome)
+
+    for (let i = applicableSlabs.length - 1; i >= 0; i--) {
+        const slab = applicableSlabs[i]
+        if (taxableIncome > slab.minIncome) {
+            const difference = taxableIncome - slab.minIncome
+            tax = slab.baseTax + (difference * slab.taxRate)
+            break
+        }
     }
 
+    // Apply Health & Education Cess
+    const cess = tax * (config.healthCess / 100)
+    tax += cess
+
+    const monthlyTax = Math.round(tax / 12)
     return {
-        taxAmount: Math.round(tax),
-        effectiveRate: annualSalary > 0 ? (tax * 12 / annualSalary) : 0
+        taxAmount: monthlyTax,
+        effectiveRate: annualSalary > 0 ? (tax / annualSalary) : 0
     }
 }

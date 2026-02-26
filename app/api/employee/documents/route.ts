@@ -62,6 +62,7 @@ export async function POST(req: Request) {
         const existing = await prisma.document.findFirst({
             where: {
                 employeeId: employee.id,
+                organizationId: employee.organizationId,
                 title: titleMap[docType],
             }
         })
@@ -77,6 +78,7 @@ export async function POST(req: Request) {
                 url: publicUrl,
                 size: `${(file.size / 1024).toFixed(0)} KB`,
                 employeeId: employee.id,
+                organizationId: employee.organizationId,
             }
         })
 
@@ -95,6 +97,7 @@ export async function GET(req: Request) {
         const docs = await prisma.document.findMany({
             where: {
                 employeeId: employee.id,
+                organizationId: employee.organizationId,
                 title: { in: ["Aadhaar Card", "PAN Card", "Bank Proof"] },
             },
             orderBy: { uploadDate: "desc" },
@@ -124,7 +127,7 @@ export async function DELETE(req: Request) {
         if (!docId) return NextResponse.json({ error: "Document ID required" }, { status: 400 })
 
         const doc = await prisma.document.findFirst({
-            where: { id: docId, employeeId: employee.id }
+            where: { id: docId, employeeId: employee.id, organizationId: employee.organizationId }
         })
         if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 })
 

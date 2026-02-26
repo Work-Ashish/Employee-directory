@@ -76,6 +76,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
                 data: targetEmployeeIds.map(empId => ({
                     trainingId: training.id,
                     employeeId: empId,
+                    organizationId: ctx.organizationId,
                     completed: false,
                 })),
                 skipDuplicates: true
@@ -88,7 +89,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
             })
         }
 
-        return apiSuccess(training, null, 201)
+        return apiSuccess(training, undefined, 201)
     } catch (error: any) {
         console.error("[TRAINING_POST] Error:", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
@@ -132,6 +133,7 @@ export const PUT = withAuth("ADMIN", async (req, ctx) => {
                 data: targetEmployeeIds.map(empId => ({
                     trainingId: id,
                     employeeId: empId,
+                    organizationId: ctx.organizationId,
                     completed: false,
                 })),
                 skipDuplicates: true

@@ -38,7 +38,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
             },
         })
 
-        return apiSuccess(department, null, 201)
+        return apiSuccess(department, undefined, 201)
     } catch (error: any) {
         console.error("[DEPARTMENTS_POST]", error)
 

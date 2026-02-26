@@ -51,7 +51,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
             include: { department: true },
         })
 
-        return apiSuccess(candidate, null, 201)
+        return apiSuccess(candidate, undefined, 201)
     } catch (error) {
         console.error("[RECRUITMENT_POST]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)

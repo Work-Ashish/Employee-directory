@@ -36,6 +36,14 @@ model Organization {
   events             CalendarEvent[]
   trainingEnrollments TrainingEnrollment[]
   documentEmbeddings DocumentEmbedding[]
+
+  // Workflows
+  workflowTemplates  WorkflowTemplate[]
+  workflowInstances  WorkflowInstance[]
+
+  // Payroll Configs
+  payrollConfigs     PayrollComplianceConfig[]
+  payrollAudits      PayrollAudit[]
 }
 
 model User {
@@ -117,6 +125,10 @@ model Employee {
   weeklyScores       WeeklyScores[]
   notifications      Notifications[]
   adminAlerts        AdminAlerts[]
+
+  // Workflows
+  requestedWorkflows WorkflowInstance[] @relation("WorkflowRequester")
+  workflowActions    WorkflowAction[]   @relation("WorkflowActor")
 
   @@index([departmentId])
   @@index([userId])
@@ -324,14 +336,25 @@ model Payroll {
   pfDeduction    Float        @default(0)
   tax            Float        @default(0)
   otherDed       Float        @default(0)
+
+  // Advanced Components (New)
+  arrears        Float        @default(0)
+  reimbursements Float        @default(0)
+  loansAdvances  Float        @default(0)
+
   netSalary      Float
   status         PayrollStatus @default(PENDING)
+  isFinalized    Boolean      @default(false)
+  pdfUrl         String?
+  
   employeeId     String
   organizationId String
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  
   employee       Employee      @relation(fields: [employeeId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  audits         PayrollAudit[]
 
   @@index([employeeId])
   @@index([organizationId])
@@ -838,4 +861,159 @@ enum AdminAlertSeverity {
   MEDIUM
   HIGH
   CRITICAL
+}
+
+// ─── Phase 2: Workflow Engine ───
+
+model WorkflowTemplate {
+  id             String         @id @default(cuid())
+  name           String
+  description    String?
+  entityType     String         // e.g., "LEAVE", "ASSET", "EXPENSE"
+  status         WorkflowStatus @default(DRAFT)
+  organizationId String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  steps          WorkflowStep[]
+  instances      WorkflowInstance[]
+
+  @@index([organizationId])
+  @@index([entityType])
+}
+
+model WorkflowStep {
+  id             String       @id @default(cuid())
+  templateId     String
+  stepOrder      Int          // 1, 2, 3...
+  approverType   ApproverType
+  role           String?      // If approverType is ROLE
+  userId         String?      // If approverType is SPECIFIC_USER
+  slaHours       Int?         // SLA in hours
+  autoAction     String?      // e.g. "APPROVE", "ESCALATE" on SLA breach
+  
+  template       WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  actions        WorkflowAction[]
+
+  @@index([templateId])
+}
+
+model WorkflowInstance {
+  id             String         @id @default(cuid())
+  templateId     String
+  entityId       String         // ID of Leave, Asset Request, etc.
+  status         InstanceStatus @default(PENDING)
+  currentStep    Int            @default(1)
+  organizationId String
+  requesterId    String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  template       WorkflowTemplate @relation(fields: [templateId], references: [id])
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  requester      Employee         @relation("WorkflowRequester", fields: [requesterId], references: [id])
+  actions        WorkflowAction[]
+
+  @@index([templateId])
+  @@index([entityId])
+  @@index([organizationId])
+}
+
+model WorkflowAction {
+  id             String         @id @default(cuid())
+  instanceId     String
+  stepId         String
+  actorId        String
+  action         ApprovalAction
+  comments       String?
+  createdAt      DateTime       @default(now())
+
+  instance       WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  step           WorkflowStep     @relation(fields: [stepId], references: [id])
+  actor          Employee         @relation("WorkflowActor", fields: [actorId], references: [id])
+
+  @@index([instanceId])
+  @@index([stepId])
+}
+
+enum WorkflowStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum InstanceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ApprovalAction {
+  APPROVE
+  REJECT
+  REQUEST_INFO
+}
+
+enum ApproverType {
+  MANAGER
+  ROLE
+  SPECIFIC_USER
+}
+
+// ─── Phase 2: Core HRMS Phase 2 - Payroll Compliance ───
+
+model PayrollComplianceConfig {
+  id                  String       @id @default(cuid())
+  regimeName          String       @default("DEFAULT")
+  pfPercentage        Float        @default(12.0)
+  standardDeduction   Float        @default(50000.0)
+  healthCess          Float        @default(4.0)
+  isActive            Boolean      @default(true)
+  organizationId      String
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  
+  organization        Organization @relation(fields: [organizationId], references: [id])
+  taxSlabs            TaxSlab[]
+
+  @@index([organizationId])
+}
+
+model TaxSlab {
+  id          String   @id @default(cuid())
+  configId    String
+  minIncome   Float
+  maxIncome   Float?
+  taxRate     Float    // e.g. 0.05 for 5%
+  baseTax     Float    @default(0) // Precomputed tax for previous slabs
+  
+  config      PayrollComplianceConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@index([configId])
+}
+
+model PayrollAudit {
+  id             String             @id @default(cuid())
+  payrollId      String
+  action         PayrollAuditAction
+  actorId        String             // ID of user who performed the action
+  details        String?            // JSON string of changes
+  organizationId String
+  createdAt      DateTime           @default(now())
+  
+  payroll        Payroll            @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+
+  @@index([payrollId])
+  @@index([organizationId])
+  @@index([actorId])
+}
+
+enum PayrollAuditAction {
+  RUN_CALCULATION
+  MANUAL_OVERRIDE
+  FINALIZED
+  LOCKED
 }

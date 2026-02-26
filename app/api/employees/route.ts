@@ -127,7 +127,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
 
         console.log(`[NEW_EMPLOYEE] ${employeeCode} created in org ${ctx.organizationId}.`)
 
-        return apiSuccess(result, null, 201)
+        return apiSuccess(result, undefined, 201)
     } catch (error: any) {
         console.error("[EMPLOYEES_POST] FULL ERROR:", error)
         if (error.code === 'P2002') {

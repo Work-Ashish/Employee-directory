@@ -60,7 +60,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
             include: { employee: true },
         })
 
-        return apiSuccess(record, null, 201)
+        return apiSuccess(record, undefined, 201)
     } catch (error) {
         console.error("[PF_POST]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)

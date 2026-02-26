@@ -8,6 +8,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast, Toaster } from "react-hot-toast"
 import { format } from "date-fns"
+import { PayrollConfigView } from "@/components/payroll/PayrollConfigView"
+import { GearIcon } from "@radix-ui/react-icons"
 
 // ----------------------------------------------------------------------------
 // Zod Schema for Validation
@@ -16,11 +18,14 @@ const payrollSchema = z.object({
     employeeId: z.string().min(1, "Employee is required"),
     month: z.string().min(1, "Month is required"),
     basicSalary: z.number().min(0, "Salary must be positive"),
-    allowances: z.number().min(0, "Allowances must be positive"),
-    pfDeduction: z.number().min(0, "PF must be positive"),
-    tax: z.number().min(0, "Tax must be positive"),
-    otherDed: z.number().min(0, "Deductions must be positive"),
-    netSalary: z.number(),
+    allowances: z.number().min(0),
+    arrears: z.number().min(0),
+    reimbursements: z.number().min(0),
+    loansAdvances: z.number().min(0),
+    otherDed: z.number().min(0),
+    pfDeduction: z.number().optional(),
+    tax: z.number().optional(),
+    netSalary: z.number().optional(),
     status: z.enum(["PENDING", "PROCESSED", "PAID"]),
 })
 
@@ -67,11 +72,15 @@ type PayrollRecord = {
     month: string
     basicSalary: number
     allowances: number
+    arrears: number
+    reimbursements: number
     pfDeduction: number
     tax: number
     otherDed: number
+    loansAdvances: number
     netSalary: number
     status: string
+    isFinalized: boolean
     employeeId: string
     employee: {
         firstName: string
@@ -81,7 +90,7 @@ type PayrollRecord = {
 }
 
 export function AdminPayrollView() {
-    const [activeTab, setActiveTab] = React.useState<"payroll" | "pf">("payroll")
+    const [activeTab, setActiveTab] = React.useState<"payroll" | "pf" | "config">("payroll")
     const [records, setRecords] = React.useState<PayrollRecord[]>([])
     const [pfRecords, setPfRecords] = React.useState<PFRecord[]>([])
     const [employees, setEmployees] = React.useState<Employee[]>([])
@@ -98,10 +107,10 @@ export function AdminPayrollView() {
             month: format(new Date(), "MMM yyyy"),
             basicSalary: 0,
             allowances: 0,
-            pfDeduction: 0,
-            tax: 0,
+            arrears: 0,
+            reimbursements: 0,
+            loansAdvances: 0,
             otherDed: 0,
-            netSalary: 0,
             status: "PENDING",
         }
     })
@@ -145,17 +154,19 @@ export function AdminPayrollView() {
         fetchAll()
     }, [fetchAll])
 
-    // Watch values to auto-calculate net salary
+    // Watch values to auto-calculate gross net salary estimation
     const basic = form.watch("basicSalary")
     const allow = form.watch("allowances")
-    const pf = form.watch("pfDeduction")
-    const tax = form.watch("tax")
+    const arrears = form.watch("arrears")
+    const reimb = form.watch("reimbursements")
+    const loans = form.watch("loansAdvances")
     const other = form.watch("otherDed")
 
     React.useEffect(() => {
-        const net = (Number(basic) || 0) + (Number(allow) || 0) - (Number(pf) || 0) - (Number(tax) || 0) - (Number(other) || 0)
+        const net = (Number(basic) || 0) + (Number(allow) || 0) + (Number(arrears) || 0) + (Number(reimb) || 0) - (Number(loans) || 0) - (Number(other) || 0)
+        // Set an estimated raw net. Actual Tax/PF is reduced server-side on submit!
         form.setValue("netSalary", Number(net.toFixed(2)))
-    }, [basic, allow, pf, tax, other, form])
+    }, [basic, allow, arrears, reimb, loans, other, form])
 
     // PF Contribution Auto-calc
     const pfBasic = pfForm.watch("basicSalary")
@@ -169,22 +180,45 @@ export function AdminPayrollView() {
 
     const onSubmit: SubmitHandler<PayrollFormData> = async (data) => {
         try {
-            const res = await fetch('/api/payroll', {
+            const res = await fetch('/api/payroll/run', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })
             if (res.ok) {
-                toast.success("Payroll record created")
+                toast.success("Payroll record calculated and created")
                 setIsModalOpen(false)
                 fetchAll()
                 form.reset()
             } else {
-                toast.error("Failed to create record")
+                toast.error("Failed to execute payroll run (Check active compliance config)")
             }
         } catch (error) {
             toast.error("An error occurred")
         }
+    }
+
+    const handleFinalize = async (id: string) => {
+        if (!confirm("Are you sure? This will lock the payslip forever.")) return;
+        try {
+            const res = await fetch(`/api/payroll/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'FINALIZE' })
+            })
+            if (res.ok) {
+                toast.success("Payroll finalized")
+                fetchAll()
+            } else {
+                toast.error("Failed to finalize")
+            }
+        } catch (e) {
+            toast.error("Network error")
+        }
+    }
+
+    const handleDownloadPDF = (id: string) => {
+        window.open(`/api/payroll/${id}/payslip`, '_blank')
     }
 
     const onPFSubmit: SubmitHandler<PFFormData> = async (data) => {
@@ -257,385 +291,427 @@ export function AdminPayrollView() {
                         >
                             <ArchiveIcon className="w-4 h-4" /> PF
                         </button>
-                    </div>
-                    <button
-                        onClick={() => activeTab === "payroll" ? setIsImportOpen(true) : setIsPFImportOpen(true)}
-                        className="flex items-center gap-2 bg-[var(--surface)] text-[var(--text2)] border border-[var(--border)] px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-[var(--bg2)] transition-colors"
-                    >
-                        <UploadIcon className="w-4 h-4" /> Import CSV
-                    </button>
-                    <button
-                        onClick={() => activeTab === "payroll" ? setIsModalOpen(true) : setIsPFModalOpen(true)}
-                        className="flex items-center gap-2 bg-[var(--accent)] text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity"
-                    >
-                        <PlusIcon className="w-4 h-4" /> {activeTab === "payroll" ? "New Record" : "New PF Entry"}
-                    </button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-4 gap-4 mb-5">
-                <div className="glass p-5 flex items-center justify-between bg-[var(--surface)] border-[var(--border)] shadow-sm relative overflow-hidden group hover:-translate-y-[2px] hover:shadow-md transition-all duration-200">
-                    <div>
-                        <div className="text-[12px] font-semibold text-[var(--text3)] uppercase tracking-[0.5px] mb-[8px]">{totals.label1}</div>
-                        <div className="text-[28px] font-extrabold tracking-[-0.5px] text-[#1a9140] mb-[4px]">₹{totals.net.toLocaleString()}</div>
-                        <div className="text-[12px] text-[#1a9140]">Total Volume</div>
-                    </div>
-                    <div className="w-[46px] h-[46px] rounded-[12px] flex items-center justify-center text-[20px] bg-[var(--green-dim)] shrink-0">💵</div>
-                </div>
-                <div className="glass p-5 flex items-center justify-between bg-[var(--surface)] border-[var(--border)] shadow-sm relative overflow-hidden group hover:-translate-y-[2px] hover:shadow-md transition-all duration-200">
-                    <div>
-                        <div className="text-[12px] font-semibold text-[var(--text3)] uppercase tracking-[0.5px] mb-[8px]">{totals.label2}</div>
-                        <div className="text-[28px] font-extrabold tracking-[-0.5px] text-[#0a7ea4] mb-[4px]">₹{totals.allow.toLocaleString()}</div>
-                        <div className="text-[12px] text-[#0a7ea4]">↑ Components</div>
-                    </div>
-                    <div className="w-[46px] h-[46px] rounded-[12px] flex items-center justify-center text-[20px] bg-[var(--blue-dim)] shrink-0">📈</div>
-                </div>
-                <div className="glass p-5 flex items-center justify-between bg-[var(--surface)] border-[var(--border)] shadow-sm relative overflow-hidden group hover:-translate-y-[2px] hover:shadow-md transition-all duration-200">
-                    <div>
-                        <div className="text-[12px] font-semibold text-[var(--text3)] uppercase tracking-[0.5px] mb-[8px]">{totals.label3}</div>
-                        <div className="text-[28px] font-extrabold tracking-[-0.5px] text-[var(--red)] mb-[4px]">₹{totals.ded.toLocaleString()}</div>
-                        <div className="text-[12px] text-[var(--red)]">↘ Outflow</div>
-                    </div>
-                    <div className="w-[46px] h-[46px] rounded-[12px] flex items-center justify-center text-[20px] bg-[rgba(255,59,48,0.1)] shrink-0">📉</div>
-                </div>
-                <div className="glass p-5 flex items-center justify-between bg-[var(--surface)] border-[var(--border)] shadow-sm relative overflow-hidden group hover:-translate-y-[2px] hover:shadow-md transition-all duration-200">
-                    <div>
-                        <div className="text-[12px] font-semibold text-[var(--text3)] uppercase tracking-[0.5px] mb-[8px]">Active Records</div>
-                        <div className="text-[28px] font-extrabold tracking-[-0.5px] text-[var(--text)] mb-[4px]">{totals.count}</div>
-                        <div className="text-[12px] text-[var(--text2)]">Total Entries</div>
-                    </div>
-                    <div className="w-[46px] h-[46px] rounded-[12px] flex items-center justify-center text-[20px] bg-[var(--bg2)] shrink-0">📁</div>
-                </div>
-            </div>
-
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--r)] overflow-hidden shadow-sm">
-                <div className="p-[16px_20px] flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface2)] backdrop-blur-md">
-                    <div className="text-[14px] font-bold flex items-center gap-[8px] text-[var(--text)]">
-                        {activeTab === "payroll" ? "📋 Payroll Records" : "📁 PF Ledger"}
-                    </div>
-                    {activeTab === "payroll" && (
-                        <button className="text-[12.5px] font-semibold text-[var(--text2)] bg-[var(--surface)] border border-[var(--border)] px-[14px] py-[6px] rounded-[8px] shadow-sm hover:bg-[var(--bg)] hover:text-[var(--text)] hover:border-[var(--border2)] transition-all">
-                            ⬇ Download Payslips
+                        <button
+                            onClick={() => setActiveTab("config")}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all outline-none",
+                                activeTab === "config" ? "bg-[var(--surface)] text-[var(--text)] shadow-sm" : "text-[var(--text3)] hover:text-[var(--text2)]"
+                            )}
+                        >
+                            <GearIcon className="w-4 h-4" /> Setup
                         </button>
+                    </div>
+                    {activeTab !== "config" && (
+                        <>
+                            <button
+                                onClick={() => activeTab === "payroll" ? setIsImportOpen(true) : setIsPFImportOpen(true)}
+                                className="flex items-center gap-2 bg-[var(--surface)] text-[var(--text2)] border border-[var(--border)] px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-[var(--bg2)] transition-colors"
+                            >
+                                <UploadIcon className="w-4 h-4" /> Import CSV
+                            </button>
+                            <button
+                                onClick={() => activeTab === "payroll" ? setIsModalOpen(true) : setIsPFModalOpen(true)}
+                                className="flex items-center gap-2 bg-[var(--accent)] text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity"
+                            >
+                                <PlusIcon className="w-4 h-4" /> {activeTab === "payroll" ? "New Record" : "New PF Entry"}
+                            </button>
+                        </>
                     )}
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                        <thead>
-                            <tr className="border-b border-[var(--border)] bg-[var(--surface2)] backdrop-blur-md">
-                                {activeTab === "payroll" ? (
-                                    ['Employee', 'Month', 'Basic', 'Allowances', 'PF', 'Tax', 'Other', 'Net Payout', 'Status'].map((h) => (
-                                        <th key={h} className="p-[11px_18px] text-[11.5px] font-bold text-[var(--text3)] text-left uppercase tracking-[0.5px]">
-                                            {h}
-                                        </th>
-                                    ))
-                                ) : (
-                                    ['Employee', 'Month', 'A/C Number', 'Basic', 'Employee (12%)', 'Employer (12%)', 'Total', 'Status'].map((h) => (
-                                        <th key={h} className="p-[11px_18px] text-[11.5px] font-bold text-[var(--text3)] text-left uppercase tracking-[0.5px]">
-                                            {h}
-                                        </th>
-                                    ))
-                                )}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {isLoading ? (
-                                <tr>
-                                    <td colSpan={9} className="p-8 text-center text-[var(--text3)] animate-pulse">Loading records...</td>
-                                </tr>
-                            ) : activeTab === "payroll" ? (
-                                records.length > 0 ? records.map((rec) => (
-                                    <tr key={rec.id} className="group hover:bg-[rgba(0,122,255,0.03)] transition-colors duration-200 border-b border-[#0000000a] last:border-0 grow-in">
-                                        <td className="p-[13px_18px] text-[13.5px] text-[var(--text)]">
-                                            <div className="flex items-center gap-[11px]">
-                                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 bg-gradient-to-br from-[#3395ff] to-[#007aff]">
-                                                    {rec.employee.firstName[0]}{rec.employee.lastName[0]}
-                                                </div>
-                                                <span className="font-semibold tracking-[-0.2px] truncate max-w-[120px]">{rec.employee.firstName} {rec.employee.lastName}</span>
-                                            </div>
-                                        </td>
-                                        <td className="p-[13px_18px] text-[13.5px] text-[var(--text2)] font-mono">{rec.month}</td>
-                                        <td className="p-[13px_18px] text-[13.5px] text-[var(--text2)] font-mono">₹{rec.basicSalary.toLocaleString()}</td>
-                                        <td className="p-[13px_18px] text-[13px] font-bold text-[#1a9140]">₹{rec.allowances.toLocaleString()}</td>
-                                        <td className="p-[13px_18px] text-[13px] font-bold text-[var(--red)]">₹{rec.pfDeduction.toLocaleString()}</td>
-                                        <td className="p-[13px_18px] text-[13px] font-bold text-[var(--red)]">₹{rec.tax.toLocaleString()}</td>
-                                        <td className="p-[13px_18px] text-[13px] font-bold text-[var(--red)]">₹{rec.otherDed.toLocaleString()}</td>
-                                        <td className="p-[13px_18px] text-[14px] font-extrabold text-[var(--accent)]">₹{rec.netSalary.toLocaleString()}</td>
-                                        <td className="p-[13px_18px]">
-                                            <span className={cn("inline-flex items-center gap-[4px] px-[11px] py-[4px] rounded-[20px] text-[11px] font-semibold border",
-                                                rec.status === 'PAID' ? "bg-[var(--green-dim)] text-[#1a9140] border-[rgba(52,199,89,0.25)]" :
-                                                    rec.status === 'PROCESSED' ? "bg-[var(--blue-dim)] text-[#007aff] border-[rgba(0,122,255,0.25)]" :
-                                                        "bg-[var(--bg2)] text-[var(--text3)] border-[var(--border)]")
-                                            }>
-                                                {rec.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={9} className="p-10 text-center text-[var(--text3)]">No payroll records found</td>
-                                    </tr>
-                                )
-                            ) : (
-                                pfRecords.length > 0 ? pfRecords.map((rec) => (
-                                    <tr key={rec.id} className="group hover:bg-[rgba(0,122,255,0.03)] transition-colors duration-200 border-b border-[#0000000a] last:border-0 grow-in">
-                                        <td className="p-[13px_18px] text-[13.5px] text-[var(--text)]">
-                                            <div className="flex items-center gap-[11px]">
-                                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 bg-gradient-to-br from-[#3395ff] to-[#007aff]">
-                                                    {rec.employee.firstName[0]}{rec.employee.lastName[0]}
-                                                </div>
-                                                <span className="font-semibold tracking-[-0.2px] truncate max-w-[120px]">{rec.employee.firstName} {rec.employee.lastName}</span>
-                                            </div>
-                                        </td>
-                                        <td className="p-[13px_18px] text-[13.5px] text-[var(--text2)] font-medium">{rec.month}</td>
-                                        <td className="p-[13px_18px] text-[13.5px] text-[var(--text2)] font-mono">{rec.accountNumber}</td>
-                                        <td className="p-[13px_18px] text-[13.5px] text-[var(--text)] font-bold">₹{rec.basicSalary.toLocaleString()}</td>
-                                        <td className="p-[13px_18px] text-[13.5px] text-[#1a9140] font-bold">₹{rec.employeeContribution.toLocaleString()}</td>
-                                        <td className="p-[13px_18px] text-[13.5px] text-[#1a9140] font-bold">₹{rec.employerContribution.toLocaleString()}</td>
-                                        <td className="p-[13px_18px] text-[13.5px] text-[#007aff] font-bold">₹{rec.totalContribution.toLocaleString()}</td>
-                                        <td className="p-[13px_18px]">
-                                            <span className={cn(
-                                                "px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.3px]",
-                                                rec.status === "Credited" ? "bg-[#1a914015] text-[#1a9140]" :
-                                                    rec.status === "Pending" ? "bg-[#f59e0b15] text-[#f59e0b]" :
-                                                        "bg-[#ef444415] text-[#ef4444]"
-                                            )}>
-                                                {rec.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={8} className="p-12 text-center text-[var(--text3)] italic">No PF records found</td>
-                                    </tr>
-                                )
-                            )}
-                        </tbody>
-                    </table>
-                </div>
             </div>
 
-            {/* Payroll Modal */}
-            <Modal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                title="Create Payroll Record"
-            >
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">Employee *</label>
-                            <select
-                                {...form.register("employeeId")}
-                                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                            >
-                                <option value="">Select Employee</option>
-                                {employees.map((emp) => (
-                                    <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
-                                ))}
-                            </select>
+            {activeTab === "config" ? (
+                <PayrollConfigView />
+            ) : (
+                <>
+                    <div className="grid grid-cols-4 gap-4 mb-5">
+                        <div className="glass p-5 flex items-center justify-between bg-[var(--surface)] border-[var(--border)] shadow-sm relative overflow-hidden group hover:-translate-y-[2px] hover:shadow-md transition-all duration-200">
+                            <div>
+                                <div className="text-[12px] font-semibold text-[var(--text3)] uppercase tracking-[0.5px] mb-[8px]">{totals.label1}</div>
+                                <div className="text-[28px] font-extrabold tracking-[-0.5px] text-[#1a9140] mb-[4px]">₹{totals.net.toLocaleString()}</div>
+                                <div className="text-[12px] text-[#1a9140]">Total Volume</div>
+                            </div>
+                            <div className="w-[46px] h-[46px] rounded-[12px] flex items-center justify-center text-[20px] bg-[var(--green-dim)] shrink-0">💵</div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">Month *</label>
-                            <input
-                                {...form.register("month")}
-                                placeholder="e.g. Feb 2026"
-                                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                            />
+                        <div className="glass p-5 flex items-center justify-between bg-[var(--surface)] border-[var(--border)] shadow-sm relative overflow-hidden group hover:-translate-y-[2px] hover:shadow-md transition-all duration-200">
+                            <div>
+                                <div className="text-[12px] font-semibold text-[var(--text3)] uppercase tracking-[0.5px] mb-[8px]">{totals.label2}</div>
+                                <div className="text-[28px] font-extrabold tracking-[-0.5px] text-[#0a7ea4] mb-[4px]">₹{totals.allow.toLocaleString()}</div>
+                                <div className="text-[12px] text-[#0a7ea4]">↑ Components</div>
+                            </div>
+                            <div className="w-[46px] h-[46px] rounded-[12px] flex items-center justify-center text-[20px] bg-[var(--blue-dim)] shrink-0">📈</div>
                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">Basic Salary *</label>
-                            <input
-                                type="number"
-                                {...form.register("basicSalary", { valueAsNumber: true })}
-                                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                            />
+                        <div className="glass p-5 flex items-center justify-between bg-[var(--surface)] border-[var(--border)] shadow-sm relative overflow-hidden group hover:-translate-y-[2px] hover:shadow-md transition-all duration-200">
+                            <div>
+                                <div className="text-[12px] font-semibold text-[var(--text3)] uppercase tracking-[0.5px] mb-[8px]">{totals.label3}</div>
+                                <div className="text-[28px] font-extrabold tracking-[-0.5px] text-[var(--red)] mb-[4px]">₹{totals.ded.toLocaleString()}</div>
+                                <div className="text-[12px] text-[var(--red)]">↘ Outflow</div>
+                            </div>
+                            <div className="w-[46px] h-[46px] rounded-[12px] flex items-center justify-center text-[20px] bg-[rgba(255,59,48,0.1)] shrink-0">📉</div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">Allowances</label>
-                            <input
-                                type="number"
-                                {...form.register("allowances", { valueAsNumber: true })}
-                                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                            />
+                        <div className="glass p-5 flex items-center justify-between bg-[var(--surface)] border-[var(--border)] shadow-sm relative overflow-hidden group hover:-translate-y-[2px] hover:shadow-md transition-all duration-200">
+                            <div>
+                                <div className="text-[12px] font-semibold text-[var(--text3)] uppercase tracking-[0.5px] mb-[8px]">Active Records</div>
+                                <div className="text-[28px] font-extrabold tracking-[-0.5px] text-[var(--text)] mb-[4px]">{totals.count}</div>
+                                <div className="text-[12px] text-[var(--text2)]">Total Entries</div>
+                            </div>
+                            <div className="w-[46px] h-[46px] rounded-[12px] flex items-center justify-center text-[20px] bg-[var(--bg2)] shrink-0">📁</div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">PF Deduction</label>
-                            <input
-                                type="number"
-                                {...form.register("pfDeduction", { valueAsNumber: true })}
-                                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                            />
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--r)] overflow-hidden shadow-sm">
+                        <div className="p-[16px_20px] flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface2)] backdrop-blur-md">
+                            <div className="text-[14px] font-bold flex items-center gap-[8px] text-[var(--text)]">
+                                {activeTab === "payroll" ? "📋 Payroll Records" : "📁 PF Ledger"}
+                            </div>
+                            {activeTab === "payroll" && (
+                                <button className="text-[12.5px] font-semibold text-[var(--text2)] bg-[var(--surface)] border border-[var(--border)] px-[14px] py-[6px] rounded-[8px] shadow-sm hover:bg-[var(--bg)] hover:text-[var(--text)] hover:border-[var(--border2)] transition-all">
+                                    ⬇ Download Payslips
+                                </button>
+                            )}
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">Tax</label>
-                            <input
-                                type="number"
-                                {...form.register("tax", { valueAsNumber: true })}
-                                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">Other Ded.</label>
-                            <input
-                                type="number"
-                                {...form.register("otherDed", { valueAsNumber: true })}
-                                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="p-4 bg-[var(--bg2)] rounded-lg flex items-center justify-between">
-                        <span className="text-sm font-bold opacity-70 uppercase tracking-wider">Estimated Net Payout</span>
-                        <span className="text-xl font-black text-[var(--brand)]">₹{form.watch("netSalary").toLocaleString()}</span>
-                    </div>
-
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button
-                            type="button"
-                            onClick={() => setIsModalOpen(false)}
-                            className="px-4 py-2 text-sm font-medium text-[var(--text2)] hover:bg-[var(--bg2)] rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-6 py-2 bg-[var(--brand)] text-white rounded-lg text-sm font-bold shadow-md hover:opacity-90 transition-all font-inter"
-                        >
-                            Save Record
-                        </button>
-                    </div>
-                </form>
-            </Modal>
-
-            {/* PF Modal */}
-            <Modal
-                isOpen={isPFModalOpen}
-                onClose={() => setIsPFModalOpen(false)}
-                title="New Provident Fund Entry"
-            >
-                <form onSubmit={pfForm.handleSubmit(onPFSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">Employee *</label>
-                            <select
-                                {...pfForm.register("employeeId")}
-                                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                            >
-                                <option value="">Select Employee</option>
-                                {employees.map((emp) => (
-                                    <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">Month *</label>
-                            <input
-                                {...pfForm.register("month")}
-                                placeholder="e.g. Feb 2026"
-                                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-[var(--text2)]">Account Number *</label>
-                        <input
-                            {...pfForm.register("accountNumber")}
-                            placeholder="PF-XXXX-XXXX"
-                            className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">Basic Salary *</label>
-                            <input
-                                type="number"
-                                {...pfForm.register("basicSalary", { valueAsNumber: true })}
-                                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">Status</label>
-                            <select
-                                {...pfForm.register("status")}
-                                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                            >
-                                <option value="Credited">Credited</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Failed">Failed</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 opacity-70">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">Employee Contrib. (12%)</label>
-                            <input
-                                type="number"
-                                disabled
-                                {...pfForm.register("employeeContribution")}
-                                className="w-full bg-[var(--bg2)] border border-[var(--border)] rounded-lg p-2 text-sm"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--text2)]">Employer Contrib. (12%)</label>
-                            <input
-                                type="number"
-                                disabled
-                                {...pfForm.register("employerContribution")}
-                                className="w-full bg-[var(--bg2)] border border-[var(--border)] rounded-lg p-2 text-sm"
-                            />
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                                <thead>
+                                    <tr className="border-b border-[var(--border)] bg-[var(--surface2)] backdrop-blur-md">
+                                        {activeTab === "payroll" ? (
+                                            ['Employee', 'Month', 'Basic', '+ Additions', '- Deductions', 'Net Payout', 'Status', 'Actions'].map((h) => (
+                                                <th key={h} className="p-[11px_18px] text-[11.5px] font-bold text-[var(--text3)] text-left uppercase tracking-[0.5px]">
+                                                    {h}
+                                                </th>
+                                            ))
+                                        ) : (
+                                            ['Employee', 'Month', 'A/C Number', 'Basic', 'Employee (12%)', 'Employer (12%)', 'Total', 'Status'].map((h) => (
+                                                <th key={h} className="p-[11px_18px] text-[11.5px] font-bold text-[var(--text3)] text-left uppercase tracking-[0.5px]">
+                                                    {h}
+                                                </th>
+                                            ))
+                                        )}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {isLoading ? (
+                                        <tr>
+                                            <td colSpan={9} className="p-8 text-center text-[var(--text3)] animate-pulse">Loading records...</td>
+                                        </tr>
+                                    ) : activeTab === "payroll" ? (
+                                        records.length > 0 ? records.map((rec) => (
+                                            <tr key={rec.id} className="group hover:bg-[rgba(0,122,255,0.03)] transition-colors duration-200 border-b border-[#0000000a] last:border-0 grow-in">
+                                                <td className="p-[13px_18px] text-[13.5px] text-[var(--text)]">
+                                                    <div className="flex items-center gap-[11px]">
+                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 bg-gradient-to-br from-[#3395ff] to-[#007aff]">
+                                                            {rec.employee.firstName[0]}{rec.employee.lastName[0]}
+                                                        </div>
+                                                        <span className="font-semibold tracking-[-0.2px] truncate max-w-[120px]">{rec.employee.firstName} {rec.employee.lastName}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-[13px_18px] text-[13.5px] text-[var(--text2)] font-mono">{rec.month}</td>
+                                                <td className="p-[13px_18px] text-[13.5px] text-[var(--text2)] font-mono">₹{rec.basicSalary.toLocaleString()}</td>
+                                                <td className="p-[13px_18px] text-[13px] font-bold text-[#1a9140]">₹{(rec.allowances + (rec.arrears || 0) + (rec.reimbursements || 0)).toLocaleString()}</td>
+                                                <td className="p-[13px_18px] text-[13px] font-bold text-[var(--red)]">₹{(rec.pfDeduction + rec.tax + rec.otherDed + (rec.loansAdvances || 0)).toLocaleString()}</td>
+                                                <td className="p-[13px_18px] text-[14px] font-extrabold text-[var(--accent)]">₹{rec.netSalary.toLocaleString()}</td>
+                                                <td className="p-[13px_18px]">
+                                                    <span className={cn("inline-flex items-center gap-[4px] px-[11px] py-[4px] rounded-[20px] text-[11px] font-semibold border",
+                                                        rec.isFinalized ? "bg-[var(--green-dim)] text-[#1a9140] border-[rgba(52,199,89,0.25)]" :
+                                                            rec.status === 'PAID' ? "bg-[var(--blue-dim)] text-[#007aff] border-[rgba(0,122,255,0.25)]" :
+                                                                "bg-[var(--bg2)] text-[var(--text3)] border-[var(--border)]")
+                                                    }>
+                                                        {rec.isFinalized ? "LOCKED" : rec.status}
+                                                    </span>
+                                                </td>
+                                                <td className="p-[13px_18px] flex items-center gap-2">
+                                                    {rec.isFinalized ? (
+                                                        <button onClick={() => handleDownloadPDF(rec.id)} className="text-[12px] text-white bg-[var(--accent)] px-3 py-1.5 rounded-md hover:bg-opacity-90 transition-all shadow-sm">
+                                                            PDF
+                                                        </button>
+                                                    ) : (
+                                                        <button onClick={() => handleFinalize(rec.id)} className="text-[12px] text-[#1a9140] bg-[var(--green-dim)] border border-[rgba(52,199,89,0.25)] px-3 py-1 rounded-md hover:bg-[#1a9140] hover:text-white transition-all">
+                                                            Lock & Finalize
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr>
+                                                <td colSpan={9} className="p-10 text-center text-[var(--text3)]">No payroll records found</td>
+                                            </tr>
+                                        )
+                                    ) : (
+                                        pfRecords.length > 0 ? pfRecords.map((rec) => (
+                                            <tr key={rec.id} className="group hover:bg-[rgba(0,122,255,0.03)] transition-colors duration-200 border-b border-[#0000000a] last:border-0 grow-in">
+                                                <td className="p-[13px_18px] text-[13.5px] text-[var(--text)]">
+                                                    <div className="flex items-center gap-[11px]">
+                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 bg-gradient-to-br from-[#3395ff] to-[#007aff]">
+                                                            {rec.employee.firstName[0]}{rec.employee.lastName[0]}
+                                                        </div>
+                                                        <span className="font-semibold tracking-[-0.2px] truncate max-w-[120px]">{rec.employee.firstName} {rec.employee.lastName}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-[13px_18px] text-[13.5px] text-[var(--text2)] font-medium">{rec.month}</td>
+                                                <td className="p-[13px_18px] text-[13.5px] text-[var(--text2)] font-mono">{rec.accountNumber}</td>
+                                                <td className="p-[13px_18px] text-[13.5px] text-[var(--text)] font-bold">₹{rec.basicSalary.toLocaleString()}</td>
+                                                <td className="p-[13px_18px] text-[13.5px] text-[#1a9140] font-bold">₹{rec.employeeContribution.toLocaleString()}</td>
+                                                <td className="p-[13px_18px] text-[13.5px] text-[#1a9140] font-bold">₹{rec.employerContribution.toLocaleString()}</td>
+                                                <td className="p-[13px_18px] text-[13.5px] text-[#007aff] font-bold">₹{rec.totalContribution.toLocaleString()}</td>
+                                                <td className="p-[13px_18px]">
+                                                    <span className={cn(
+                                                        "px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.3px]",
+                                                        rec.status === "Credited" ? "bg-[#1a914015] text-[#1a9140]" :
+                                                            rec.status === "Pending" ? "bg-[#f59e0b15] text-[#f59e0b]" :
+                                                                "bg-[#ef444415] text-[#ef4444]"
+                                                    )}>
+                                                        {rec.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr>
+                                                <td colSpan={8} className="p-12 text-center text-[var(--text3)] italic">No PF records found</td>
+                                            </tr>
+                                        )
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
-                    <div className="p-4 bg-[var(--bg2)] rounded-lg flex items-center justify-between mt-2">
-                        <span className="text-sm font-bold opacity-70 uppercase tracking-wider">Total Monthly Contribution</span>
-                        <span className="text-xl font-black text-[#1a9140]">₹{pfForm.watch("totalContribution").toLocaleString()}</span>
-                    </div>
+                    {/* Payroll Modal */}
+                    <Modal
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        title="Create Payroll Record"
+                    >
+                        <form onSubmit={form.handleSubmit((data) => onSubmit(data as any))} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Employee *</label>
+                                    <select
+                                        {...form.register("employeeId")}
+                                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                    >
+                                        <option value="">Select Employee</option>
+                                        {employees.map((emp) => (
+                                            <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Month *</label>
+                                    <input
+                                        {...form.register("month")}
+                                        placeholder="e.g. Feb 2026"
+                                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                    />
+                                </div>
+                            </div>
 
-                    <div className="flex justify-end gap-3 mt-4">
-                        <button
-                            type="button"
-                            onClick={() => setIsPFModalOpen(false)}
-                            className="px-4 py-2 text-sm font-medium text-[var(--text2)] hover:bg-[var(--bg2)] rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-6 py-2 bg-[var(--brand)] text-white rounded-lg text-sm font-bold shadow-md hover:opacity-90 transition-all"
-                        >
-                            Save Entry
-                        </button>
-                    </div>
-                </form>
-            </Modal>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Basic Salary *</label>
+                                    <input
+                                        type="number"
+                                        {...form.register("basicSalary", { valueAsNumber: true })}
+                                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Allowances</label>
+                                    <input
+                                        type="number"
+                                        {...form.register("allowances", { valueAsNumber: true })}
+                                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                    />
+                                </div>
+                            </div>
 
-            <CsvImportModal
-                isOpen={isImportOpen}
-                onClose={() => setIsImportOpen(false)}
-                onSuccess={fetchAll}
-                apiEndpoint="/api/payroll/import"
-                title="Import Payroll CSV"
-                templateHeaders={["employeeId", "month", "basicSalary", "allowances", "pfDeduction", "tax", "otherDed", "netSalary", "status"]}
-            />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Arrears/Overtime</label>
+                                    <input
+                                        type="number"
+                                        {...form.register("arrears", { valueAsNumber: true })}
+                                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Reimbursements</label>
+                                    <input
+                                        type="number"
+                                        {...form.register("reimbursements", { valueAsNumber: true })}
+                                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                    />
+                                </div>
+                            </div>
 
-            <CsvImportModal
-                isOpen={isPFImportOpen}
-                onClose={() => setIsPFImportOpen(false)}
-                onSuccess={fetchAll}
-                apiEndpoint="/api/pf/import"
-                title="Import PF CSV"
-                templateHeaders={["employeeId", "month", "accountNumber", "basicSalary", "employeeContribution", "employerContribution", "totalContribution", "status"]}
-            />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Loans/Advances Rec.</label>
+                                    <input
+                                        type="number"
+                                        {...form.register("loansAdvances", { valueAsNumber: true })}
+                                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Other Ded.</label>
+                                    <input
+                                        type="number"
+                                        {...form.register("otherDed", { valueAsNumber: true })}
+                                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-[var(--bg2)] rounded-lg border border-[var(--border)]">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold opacity-70 uppercase tracking-wider">Gross Pre-Tax Estimate</span>
+                                    <span className="text-xl font-black text-[var(--brand)]">₹{form.watch("netSalary")?.toLocaleString() || "0"}</span>
+                                </div>
+                                <p className="text-xs text-[var(--text3)] mt-2">Note: Statutory components like Income Tax and PF will be dynamically automatically deducted by the Payroll Compliance Engine upon record creation.</p>
+                            </div>
+
+                            <div className="flex justify-end gap-3 mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-4 py-2 text-sm font-medium text-[var(--text2)] hover:bg-[var(--bg2)] rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-6 py-2 bg-[var(--brand)] text-white rounded-lg text-sm font-bold shadow-md hover:opacity-90 transition-all font-inter"
+                                >
+                                    Save Record
+                                </button>
+                            </div>
+                        </form>
+                    </Modal>
+
+                    {/* PF Modal */}
+                    <Modal
+                        isOpen={isPFModalOpen}
+                        onClose={() => setIsPFModalOpen(false)}
+                        title="New Provident Fund Entry"
+                    >
+                        <form onSubmit={pfForm.handleSubmit(onPFSubmit)} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Employee *</label>
+                                    <select
+                                        {...pfForm.register("employeeId")}
+                                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                    >
+                                        <option value="">Select Employee</option>
+                                        {employees.map((emp) => (
+                                            <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Month *</label>
+                                    <input
+                                        {...pfForm.register("month")}
+                                        placeholder="e.g. Feb 2026"
+                                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-[var(--text2)]">Account Number *</label>
+                                <input
+                                    {...pfForm.register("accountNumber")}
+                                    placeholder="PF-XXXX-XXXX"
+                                    className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Basic Salary *</label>
+                                    <input
+                                        type="number"
+                                        {...pfForm.register("basicSalary", { valueAsNumber: true })}
+                                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Status</label>
+                                    <select
+                                        {...pfForm.register("status")}
+                                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                                    >
+                                        <option value="Credited">Credited</option>
+                                        <option value="Pending">Pending</option>
+                                        <option value="Failed">Failed</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 opacity-70">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Employee Contrib. (12%)</label>
+                                    <input
+                                        type="number"
+                                        disabled
+                                        {...pfForm.register("employeeContribution")}
+                                        className="w-full bg-[var(--bg2)] border border-[var(--border)] rounded-lg p-2 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--text2)]">Employer Contrib. (12%)</label>
+                                    <input
+                                        type="number"
+                                        disabled
+                                        {...pfForm.register("employerContribution")}
+                                        className="w-full bg-[var(--bg2)] border border-[var(--border)] rounded-lg p-2 text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-[var(--bg2)] rounded-lg flex items-center justify-between mt-2">
+                                <span className="text-sm font-bold opacity-70 uppercase tracking-wider">Total Monthly Contribution</span>
+                                <span className="text-xl font-black text-[#1a9140]">₹{pfForm.watch("totalContribution").toLocaleString()}</span>
+                            </div>
+
+                            <div className="flex justify-end gap-3 mt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPFModalOpen(false)}
+                                    className="px-4 py-2 text-sm font-medium text-[var(--text2)] hover:bg-[var(--bg2)] rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-6 py-2 bg-[var(--brand)] text-white rounded-lg text-sm font-bold shadow-md hover:opacity-90 transition-all"
+                                >
+                                    Save Entry
+                                </button>
+                            </div>
+                        </form>
+                    </Modal>
+
+                    <CsvImportModal
+                        isOpen={isImportOpen}
+                        onClose={() => setIsImportOpen(false)}
+                        onSuccess={fetchAll}
+                        apiEndpoint="/api/payroll/import"
+                        title="Import Payroll CSV"
+                        templateHeaders={["employeeId", "month", "basicSalary", "allowances", "pfDeduction", "tax", "otherDed", "netSalary", "status"]}
+                    />
+
+                    <CsvImportModal
+                        isOpen={isPFImportOpen}
+                        onClose={() => setIsPFImportOpen(false)}
+                        onSuccess={fetchAll}
+                        apiEndpoint="/api/pf/import"
+                        title="Import PF CSV"
+                        templateHeaders={["employeeId", "month", "accountNumber", "basicSalary", "employeeContribution", "employerContribution", "totalContribution", "status"]}
+                    />
+                </>
+            )}
         </div>
     )
 }

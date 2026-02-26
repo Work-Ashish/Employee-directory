@@ -8,13 +8,11 @@ async function main() {
 
     // ── Organization ─────────────────────────────────────────
     const org = await prisma.organization.upsert({
-        where: { slug: "ems-pro-default" },
+        where: { domain: "emspro.com" },
         update: {},
         create: {
             name: "EMS Pro Default",
-            slug: "ems-pro-default",
             domain: "emspro.com",
-            subscription: "BASIC",
         }
     })
     const organizationId = org.id

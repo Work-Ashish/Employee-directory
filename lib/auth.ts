@@ -77,12 +77,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     const randomPassword = globalThis.crypto.randomUUID() + globalThis.crypto.randomUUID()
                     const hashedRandom = await bcrypt.hash(randomPassword, 10)
 
+                    let org = await prisma.organization.findFirst()
+                    if (!org) {
+                        org = await prisma.organization.create({ data: { name: "Default Org", domain: "default.com" } })
+                    }
+
                     await prisma.user.create({
                         data: {
                             name: user.name || "Google User",
                             email: user.email,
                             hashedPassword: hashedRandom,
                             role: "EMPLOYEE",
+                            organizationId: org.id,
                             avatar: user.image || null,
                         },
                     })
@@ -102,7 +108,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
             if (user) {
                 const u = user as ExtendedUser
-                token.role = u.role
+                token.role = u.role as "ADMIN" | "EMPLOYEE" | undefined
                 token.organizationId = u.organizationId
                 token.avatar = u.avatar
                 token.mustChangePassword = u.mustChangePassword ?? false
@@ -169,7 +175,6 @@ declare module "next-auth" {
     }
 
     interface User {
-        role?: string
         organizationId?: string | null
         avatar?: string | null
         mustChangePassword?: boolean

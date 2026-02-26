@@ -32,7 +32,7 @@ export async function POST(req: Request) {
                 const status = validStatuses.includes(statusRaw) ? statusRaw as any : "UNDER_REVIEW"
 
                 await prisma.resignation.create({
-                    data: { employeeId: employee.id, reason, lastDay, status }
+                    data: { employeeId: employee.id, organizationId: employee.organizationId, reason, lastDay, status }
                 })
                 inserted++
             } catch { skipped++ }

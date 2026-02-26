@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { resignationSchema } from "@/lib/schemas"
+import { WorkflowEngine } from "@/lib/workflow-engine"
 
 // GET /api/resignations – List resignations (scoped)
 export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
@@ -68,7 +69,14 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
             include: { employee: true },
         })
 
-        return apiSuccess(resignation, null, 201)
+        const template = await prisma.workflowTemplate.findFirst({
+            where: { organizationId: ctx.organizationId, entityType: 'RESIGNATION', status: 'PUBLISHED' }
+        })
+        if (template) {
+            await WorkflowEngine.initiateWorkflow(template.id, resignation.id, employeeId, ctx.organizationId)
+        }
+
+        return apiSuccess(resignation, undefined, 201)
     } catch (error) {
         console.error("[RESIGNATIONS_POST]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)

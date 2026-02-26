@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 
 // POST /api/payroll/import
-// Body: { rows: Array<{ employeeCode|employeeName, month, basicSalary, allowances, pfDeduction, tax, otherDed, netSalary, status }> }
+// Body: { rows: Array<{ employeeCode|employeeName, month, basicSalary, allowances, arrears, reimbursements, loansAdvances, pfDeduction, tax, otherDed, netSalary, status }> }
 export async function POST(req: Request) {
     try {
+        const session = await auth()
+        if (!session?.user?.id || !session.user.organizationId || session.user.role !== "ADMIN") {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
         const { rows } = await req.json()
         if (!Array.isArray(rows) || rows.length === 0) {
             return NextResponse.json({ error: "No rows provided" }, { status: 400 })
         }
 
+        const orgId = session.user.organizationId
         let inserted = 0
         let skipped = 0
 
@@ -18,36 +25,50 @@ export async function POST(req: Request) {
                 // Find employee by code or name
                 const employeeCode = String(row["employeeCode"] || row["Employee Code"] || "").trim()
                 const employee = await prisma.employee.findFirst({
-                    where: employeeCode
-                        ? { employeeCode }
-                        : { firstName: { contains: String(row["firstName"] || row["First Name"] || ""), mode: "insensitive" } }
+                    where: {
+                        organizationId: orgId,
+                        ...(employeeCode
+                            ? { employeeCode }
+                            : { firstName: { contains: String(row["firstName"] || row["First Name"] || ""), mode: "insensitive" } })
+                    }
                 })
                 if (!employee) { skipped++; continue }
 
                 const basicSalary = parseFloat(String(row["basicSalary"] || row["Basic Salary"] || 0))
                 const allowances = parseFloat(String(row["allowances"] || row["Allowances"] || 0))
+                const arrears = parseFloat(String(row["arrears"] || row["Arrears"] || 0))
+                const reimbursements = parseFloat(String(row["reimbursements"] || row["Reimbursements"] || 0))
+                const loansAdvances = parseFloat(String(row["loansAdvances"] || row["Loans/Advances"] || 0))
+
                 const pfDeduction = parseFloat(String(row["pfDeduction"] || row["PF Deduction"] || 0))
                 const tax = parseFloat(String(row["tax"] || row["Tax"] || 0))
                 const otherDed = parseFloat(String(row["otherDed"] || row["Other Deductions"] || 0))
+
                 const netSalary = parseFloat(String(row["netSalary"] || row["Net Salary"] || 0)) ||
-                    basicSalary + allowances - pfDeduction - tax - otherDed
+                    basicSalary + allowances + arrears + reimbursements - pfDeduction - tax - otherDed - loansAdvances
+
                 const month = String(row["month"] || row["Month"] || "").trim()
                 const statusRaw = String(row["status"] || row["Status"] || "PENDING").trim().toUpperCase()
                 const status = ["PENDING", "PROCESSED", "PAID"].includes(statusRaw) ? statusRaw as "PENDING" | "PROCESSED" | "PAID" : "PENDING"
 
                 // K10: Upsert — prevent duplicate records on re-import
                 const existing = await prisma.payroll.findFirst({
-                    where: { employeeId: employee.id, month }
+                    where: { employeeId: employee.id, month, organizationId: orgId }
                 })
+
+                const data = {
+                    basicSalary, allowances, arrears, reimbursements, loansAdvances,
+                    pfDeduction, tax, otherDed, netSalary, status
+                }
 
                 if (existing) {
                     await prisma.payroll.update({
                         where: { id: existing.id },
-                        data: { basicSalary, allowances, pfDeduction, tax, otherDed, netSalary, status }
+                        data
                     })
                 } else {
                     await prisma.payroll.create({
-                        data: { employeeId: employee.id, month, basicSalary, allowances, pfDeduction, tax, otherDed, netSalary, status }
+                        data: { ...data, employeeId: employee.id, month, organizationId: orgId }
                     })
                 }
                 inserted++
