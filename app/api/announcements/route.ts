@@ -5,7 +5,11 @@ import { auth } from "@/lib/auth"
 // GET /api/announcements – List announcements
 export async function GET() {
     try {
-        // Auth check disabled for dev
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
         const announcements = await prisma.announcement.findMany({
             orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
         })

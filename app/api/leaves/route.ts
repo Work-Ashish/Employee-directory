@@ -5,7 +5,11 @@ import { auth } from "@/lib/auth"
 // GET /api/leaves – List leave requests
 export async function GET(req: Request) {
     try {
-        // Auth check disabled for dev – returns all records
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
         const { searchParams } = new URL(req.url)
         const status = searchParams.get("status")
         const employeeId = searchParams.get("employeeId")

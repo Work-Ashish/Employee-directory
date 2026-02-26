@@ -1,20 +1,17 @@
+// @ts-nocheck
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
+import { google } from "@ai-sdk/google"
+import { generateText, tool } from "ai"
+import { z } from "zod"
+import { prisma } from "@/lib/prisma"
+import { getSessionEmployee } from "@/lib/session-employee"
+import crypto from "crypto"
 
-interface ChatMessage {
-    role: "user" | "model"
-    parts: { text: string }[]
-}
-
-// POST /api/chat – Send message to Gemini AI
 export async function POST(req: Request) {
     try {
         const session = await auth()
-        // Disabled Auth check for Dashboard UI mock:
-        // if (!session) {
-        //     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        // }
-
+        const employee = await getSessionEmployee()
         const { messages } = await req.json()
 
         const apiKey = process.env.GEMINI_API_KEY
@@ -31,75 +28,112 @@ export async function POST(req: Request) {
         const systemInstruction = `You are **EMS Pro Assistant**, the built-in AI helper for an Employee Management System.
 
 Your personality:
-- Friendly, professional, and concise
-- You use emoji sparingly to keep things warm 👋
-- Keep responses short (2-4 sentences) unless the user asks for detail
-
-You know about these EMS Pro modules:
-- Employee Directory, Attendance, Leave Management, Payroll, PF (Provident Fund)
-- Performance Reviews, Training, Recruitment, Assets, Documents
-- Announcements, Help Desk (Tickets), Calendar, Resignation, Organization Chart, Settings
-
-You can help with:
-- Navigating the app ("Where can I apply for leave?" → /leave page)
-- Explaining HR policies and processes
-- Answering general HR questions (leave types, PF calculations, payroll breakdowns)
-- Guiding admins on how to manage employees, process payroll, or handle tickets
-- Providing tips on using features
+- Friendly, professional, and concise. Use emoji sparingly 👋
+- Keep responses short (2-4 sentences) unless the user asks for detail.
+- If you use tools to fetch or act on data, summarize exactly what happened.
 
 Current user info:
 - Name: ${userName}
 - Role: ${userRole}
+- Employee ID: ${employee?.id || "N/A"}
 
-If the user asks something outside HR/EMS scope, politely redirect them. Never make up specific employee data.`
+If the user asks something outside HR/EMS scope, politely redirect them. Never make up specific employee data. Always use the provided tools to serve real data.`
 
-        // Build Gemini API request
-        const geminiMessages: ChatMessage[] = messages.map(
-            (msg: { role: string; content: string }) => ({
-                role: msg.role === "user" ? "user" : "model",
-                parts: [{ text: msg.content }],
-            })
-        )
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 20000) // 20s max
 
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    system_instruction: {
-                        parts: [{ text: systemInstruction }],
-                    },
-                    contents: geminiMessages,
-                    generationConfig: {
-                        temperature: 0.7,
-                        topP: 0.95,
-                        maxOutputTokens: 512,
-                    },
-                }),
-            }
-        )
+        try {
+            const { text } = await generateText({
+                model: google("gemini-2.0-flash"),
+                system: systemInstruction,
+                messages,
+                maxSteps: 5,
+                tools: {
+                    checkLeaveBalance: tool({
+                        description: "Check exactly how many approved, pending, and rejected leaves the user has.",
+                        parameters: z.object({}),
+                        execute: async () => {
+                            if (!employee) return "User is not logged in as an employee."
+                            const leaves = await prisma.leave.findMany({ where: { employeeId: employee.id } })
+                            const approved = leaves.filter(l => l.status === "APPROVED").length
+                            const pending = leaves.filter(l => l.status === "PENDING").length
+                            const rejected = leaves.filter(l => l.status === "REJECTED").length
+                            return `The user has ${approved} approved leaves, ${pending} pending leaves, and ${rejected} rejected leaves on record.`
+                        }
+                    }),
+                    submitLeaveRequest: tool({
+                        description: "Autonomously submit a new leave request for the user.",
+                        parameters: z.object({
+                            type: z.enum(["CASUAL", "SICK", "EARNED", "MATERNITY", "PATERNITY", "UNPAID"]).describe("The type of leave."),
+                            startDate: z.string().describe("ISO date string for the start date"),
+                            endDate: z.string().describe("ISO date string for the end date"),
+                            reason: z.string().describe("The reason for taking leave")
+                        }),
+                        execute: async ({ type, startDate, endDate, reason }: any) => {
+                            if (!employee) return "User is not logged in as an employee."
+                            try {
+                                const leave = await prisma.leave.create({
+                                    data: {
+                                        employeeId: employee.id,
+                                        type,
+                                        startDate: new Date(startDate),
+                                        endDate: new Date(endDate),
+                                        reason,
+                                        status: "PENDING"
+                                    }
+                                })
+                                return `Successfully submitted a ${type} leave request from ${startDate} to ${endDate}. The request is PENDING approval.`
+                            } catch (e: any) {
+                                return `Failed to submit leave request: ${e.message}`
+                            }
+                        }
+                    }),
+                    createSupportTicket: tool({
+                        description: "Create an IT or HR support ticket on behalf of the user.",
+                        parameters: z.object({
+                            subject: z.string().describe("Short subject of the issue"),
+                            description: z.string().describe("Detailed description"),
+                            category: z.enum(["IT", "HR", "FINANCE", "FACILITIES", "OTHER"]).describe("The category to route the ticket to"),
+                            priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).describe("Priority of the issue")
+                        }),
+                        execute: async ({ subject, description, category, priority }: any) => {
+                            if (!employee) return "User is not logged in as an employee."
+                            try {
+                                // Generate collision-resistant ticket code using UUID
+                                const shortId = crypto.randomUUID().slice(0, 8).toUpperCase()
+                                const ticketCode = `TKT-${new Date().getFullYear()}-${shortId}`
 
-        if (!response.ok) {
-            const errorData = await response.text()
-            console.error("[CHAT_GEMINI_ERROR]", errorData)
-            return NextResponse.json(
-                { reply: "Sorry, I'm having trouble connecting to my AI brain right now. Please try again in a moment." },
-                { status: 200 }
-            )
+                                const ticket = await prisma.ticket.create({
+                                    data: {
+                                        ticketCode,
+                                        employeeId: employee.id,
+                                        subject,
+                                        description,
+                                        category,
+                                        priority,
+                                        status: "OPEN"
+                                    }
+                                })
+                                return `Ticket created successfully! Ticket ID is ${ticket.ticketCode}. It has been marked as OPEN.`
+                            } catch (e: any) {
+                                return `Failed to create ticket: ${e.message}`
+                            }
+                        }
+                    })
+                },
+                abortSignal: controller.signal,
+            } as any)
+
+            return NextResponse.json({ reply: text })
+        } finally {
+            clearTimeout(timeout)
         }
-
-        const data = await response.json()
-        const reply =
-            data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-            "I couldn't generate a response. Please try again."
-
-        return NextResponse.json({ reply })
     } catch (error) {
         console.error("[CHAT_POST]", error)
         return NextResponse.json(
             { reply: "Something went wrong. Please try again." },
-            { status: 200 }
+            { status: 500 }
         )
     }
 }

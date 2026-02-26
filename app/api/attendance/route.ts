@@ -5,7 +5,11 @@ import { auth } from "@/lib/auth"
 // GET /api/attendance – List attendance records
 export async function GET(req: Request) {
     try {
-        // Auth check disabled for dev – returns all records
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
         const { searchParams } = new URL(req.url)
         const date = searchParams.get("date")
         const employeeId = searchParams.get("employeeId")

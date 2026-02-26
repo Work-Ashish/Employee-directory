@@ -67,11 +67,12 @@ export function AdminPerformanceView() {
             setIsLoading(true)
             const [revRes, empRes] = await Promise.all([
                 fetch('/api/performance'),
-                fetch('/api/employees')
+                fetch('/api/employees?limit=100')
             ])
             if (revRes.ok && empRes.ok) {
                 setReviews(await revRes.json())
-                setEmployees(await empRes.json())
+                const empJson = await empRes.json()
+                setEmployees(Array.isArray(empJson) ? empJson : empJson.data || [])
             }
         } catch (_error) {
             toast.error("Failed to load data")

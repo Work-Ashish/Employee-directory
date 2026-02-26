@@ -8,10 +8,10 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        // const session = await auth()
-        // if (!session) {
-        //     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        // }
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
 
         const { id } = await params
 
@@ -43,10 +43,10 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        // const session = await auth()
-        // if (!session || session.user?.role !== "ADMIN") {
-        //     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        // }
+        const session = await auth()
+        if (!session || session.user?.role !== "ADMIN") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
 
         const { id } = await params
         const body = await req.json()
@@ -88,10 +88,10 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        // const session = await auth()
-        // if (!session || session.user?.role !== "ADMIN") {
-        //     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        // }
+        const session = await auth()
+        if (!session || session.user?.role !== "ADMIN") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
 
         const { id } = await params
 

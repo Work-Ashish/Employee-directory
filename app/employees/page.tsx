@@ -231,12 +231,13 @@ export default function EmployeesPage() {
         try {
             setIsLoading(true)
             const [empRes, deptRes] = await Promise.all([
-                fetch('/api/employees'),
+                fetch('/api/employees?limit=100'),
                 fetch('/api/departments')
             ])
 
             if (empRes.ok && deptRes.ok) {
-                const empData: EmployeeApiData[] = await empRes.json()
+                const empJson = await empRes.json()
+                const empData: EmployeeApiData[] = Array.isArray(empJson) ? empJson : empJson.data || []
                 const deptData: Department[] = await deptRes.json()
                 setDepartments(deptData)
                 setEmployees(mapApiToTableData(empData))

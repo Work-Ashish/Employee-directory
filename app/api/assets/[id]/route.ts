@@ -9,10 +9,10 @@ interface RouteParams {
 // GET /api/assets/:id
 export async function GET(_req: Request, { params }: RouteParams) {
     try {
-        // const session = await auth()
-        // if (!session) {
-        //     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        // }
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
 
         const { id } = await params
 
@@ -35,10 +35,10 @@ export async function GET(_req: Request, { params }: RouteParams) {
 // PUT /api/assets/:id
 export async function PUT(req: Request, { params }: RouteParams) {
     try {
-        // const session = await auth()
-        // if (!session || session.user?.role !== "ADMIN") {
-        //     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        // }
+        const session = await auth()
+        if (!session || session.user?.role !== "ADMIN") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
 
         const { id } = await params
         const body = await req.json()
@@ -74,10 +74,10 @@ export async function PUT(req: Request, { params }: RouteParams) {
 // DELETE /api/assets/:id
 export async function DELETE(_req: Request, { params }: RouteParams) {
     try {
-        // const session = await auth()
-        // if (!session || session.user?.role !== "ADMIN") {
-        //     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        // }
+        const session = await auth()
+        if (!session || session.user?.role !== "ADMIN") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
 
         const { id } = await params
 

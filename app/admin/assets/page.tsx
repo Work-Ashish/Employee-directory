@@ -112,10 +112,10 @@ export default function AssetManagement() {
 
     const fetchEmployees = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/employees")
+            const res = await fetch("/api/employees?limit=100")
             if (res.ok) {
-                const data = await res.json()
-                setEmployees(data)
+                const json = await res.json()
+                setEmployees(Array.isArray(json) ? json : json.data || [])
             }
         } catch {
             console.error("Failed to fetch employees")

@@ -126,12 +126,13 @@ export function AdminPayrollView() {
             const [payRes, pfRes, empRes] = await Promise.all([
                 fetch('/api/payroll'),
                 fetch('/api/pf'),
-                fetch('/api/employees')
+                fetch('/api/employees?limit=100')
             ])
             if (payRes.ok && pfRes.ok && empRes.ok) {
                 setRecords(await payRes.json())
                 setPfRecords(await pfRes.json())
-                setEmployees(await empRes.json())
+                const empJson = await empRes.json()
+                setEmployees(Array.isArray(empJson) ? empJson : empJson.data || [])
             }
         } catch (error) {
             toast.error("Failed to load data")

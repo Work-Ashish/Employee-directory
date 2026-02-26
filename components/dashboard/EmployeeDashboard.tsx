@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { CalendarIcon, ClockIcon, BackpackIcon } from "@radix-ui/react-icons"
 import { KudosWidget } from "./KudosWidget"
 import { TimeTracker } from "./TimeTracker"
+import { OnboardingCompanion } from "./OnboardingCompanion"
 import Link from "next/link"
 
 export function EmployeeDashboard() {
@@ -33,10 +34,33 @@ export function EmployeeDashboard() {
 
     React.useEffect(() => {
         fetchDashboardData()
-        const interval = setInterval(() => {
-            fetchDashboardData()
-        }, 10000)
-        return () => clearInterval(interval)
+
+        let interval: NodeJS.Timeout | null = null
+
+        const startPolling = () => {
+            if (interval) clearInterval(interval)
+            interval = setInterval(() => {
+                fetchDashboardData()
+            }, 30000) // 30s polling (prevents connection storm at scale)
+        }
+
+        const handleVisibility = () => {
+            if (document.hidden) {
+                if (interval) clearInterval(interval)
+                interval = null
+            } else {
+                fetchDashboardData()
+                startPolling()
+            }
+        }
+
+        startPolling()
+        document.addEventListener("visibilitychange", handleVisibility)
+
+        return () => {
+            if (interval) clearInterval(interval)
+            document.removeEventListener("visibilitychange", handleVisibility)
+        }
     }, [fetchDashboardData])
 
     return (
@@ -98,27 +122,30 @@ export function EmployeeDashboard() {
             </div>
 
             <div className="grid grid-cols-[1.5fr_1fr] gap-6">
-                <div className="glass p-6">
-                    <h3 className="text-[16px] font-bold text-[var(--text)] mb-4 flex items-center gap-2">
-                        <CalendarIcon className="w-5 h-5 text-[var(--accent)]" />
-                        Today's Schedule
-                    </h3>
-                    <div className="space-y-4">
-                        {loading ? (
-                            Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)
-                        ) : data?.schedule?.length > 0 ? (
-                            data.schedule.map((event: any, i: number) => (
-                                <div key={i} className={`p-3 bg-[var(--bg2)] rounded-r-lg ${event.color} flex justify-between items-center`}>
-                                    <div>
-                                        <div className="text-[13px] font-semibold text-[var(--text)]">{event.title}</div>
-                                        <div className="text-[11px] text-[var(--text3)]">{event.type}</div>
+                <div>
+                    <OnboardingCompanion />
+                    <div className="glass p-6">
+                        <h3 className="text-[16px] font-bold text-[var(--text)] mb-4 flex items-center gap-2">
+                            <CalendarIcon className="w-5 h-5 text-[var(--accent)]" />
+                            Today's Schedule
+                        </h3>
+                        <div className="space-y-4">
+                            {loading ? (
+                                Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)
+                            ) : data?.schedule?.length > 0 ? (
+                                data.schedule.map((event: any, i: number) => (
+                                    <div key={i} className={`p-3 bg-[var(--bg2)] rounded-r-lg ${event.color} flex justify-between items-center`}>
+                                        <div>
+                                            <div className="text-[13px] font-semibold text-[var(--text)]">{event.title}</div>
+                                            <div className="text-[11px] text-[var(--text3)]">{event.type}</div>
+                                        </div>
+                                        <div className="text-[12px] font-mono text-[var(--text2)]">{event.time}</div>
                                     </div>
-                                    <div className="text-[12px] font-mono text-[var(--text2)]">{event.time}</div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="text-[13px] text-[var(--text3)] py-8 text-center bg-[var(--bg2)] rounded-lg">No events scheduled for today</div>
-                        )}
+                                ))
+                            ) : (
+                                <div className="text-[13px] text-[var(--text3)] py-8 text-center bg-[var(--bg2)] rounded-lg">No events scheduled for today</div>
+                            )}
+                        </div>
                     </div>
                 </div>
 

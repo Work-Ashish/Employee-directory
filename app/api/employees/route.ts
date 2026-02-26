@@ -1,18 +1,48 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 import bcrypt from "bcryptjs"
 
-// GET /api/employees – List all employees
-export async function GET() {
+// GET /api/employees – List all employees (paginated)
+export async function GET(req: Request) {
     try {
-        const employees = await prisma.employee.findMany({
-            include: {
-                department: true,
-                user: { select: { lastLoginAt: true, mustChangePassword: true } },
-            },
-            orderBy: { createdAt: "desc" },
-        })
-        return NextResponse.json(employees)
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const { searchParams } = new URL(req.url)
+        const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
+        const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") || "50")), 100)
+        const search = searchParams.get("search") || ""
+        const skip = (page - 1) * limit
+
+        const where = search
+            ? {
+                OR: [
+                    { firstName: { contains: search, mode: "insensitive" as const } },
+                    { lastName: { contains: search, mode: "insensitive" as const } },
+                    { email: { contains: search, mode: "insensitive" as const } },
+                    { employeeCode: { contains: search, mode: "insensitive" as const } },
+                ],
+            }
+            : {}
+
+        const [employees, total] = await prisma.$transaction([
+            prisma.employee.findMany({
+                where,
+                include: {
+                    department: true,
+                    user: { select: { lastLoginAt: true, mustChangePassword: true } },
+                },
+                orderBy: { createdAt: "desc" },
+                skip,
+                take: limit,
+            }),
+            prisma.employee.count({ where }),
+        ])
+
+        return NextResponse.json({ data: employees, total, page, limit })
     } catch (error) {
         console.error("[EMPLOYEES_GET]", error)
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
@@ -41,7 +71,7 @@ export async function POST(req: Request) {
         // Generate temp password: EmployeeCode@Year (e.g. EMP001@2026)
         const year = new Date().getFullYear()
         const tempPassword = `${employeeCode}@${year}`
-        const hashedPassword = await bcrypt.hash(tempPassword, 12)
+        const hashedPassword = await bcrypt.hash(tempPassword, 10)
 
         // Use a transaction to ensure both User and Employee are created or none
         const result = await prisma.$transaction(async (tx) => {
@@ -78,10 +108,13 @@ export async function POST(req: Request) {
                 include: { department: true },
             })
 
-            return { ...employee, tempPassword, username: employeeCode }
+            return { ...employee, username: employeeCode }
         })
 
-        // Return employee + temp credentials (one-time only)
+        // Log creation event (no credentials in logs)
+        console.log(`[NEW_EMPLOYEE] ${result.username} created. Must change password on first login.`)
+
+        // Return employee WITHOUT the temp password
         return NextResponse.json(result, { status: 201 })
     } catch (error: any) {
         console.error("[EMPLOYEES_POST] FULL ERROR:", error)
@@ -112,7 +145,7 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json(
-            { error: "Internal Server Error", details: error.message },
+            { error: "Internal Server Error" },
             { status: 500 }
         )
     }

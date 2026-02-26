@@ -5,7 +5,11 @@ import { auth } from "@/lib/auth"
 // GET /api/events – List calendar events
 export async function GET() {
     try {
-        // Auth check disabled for dev
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
         const events = await prisma.calendarEvent.findMany({
             orderBy: { start: "asc" },
         })

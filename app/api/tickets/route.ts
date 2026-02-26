@@ -1,18 +1,31 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { getSessionEmployee } from "@/lib/session-employee"
+import crypto from "crypto"
 
 // GET /api/tickets – List help desk tickets
 export async function GET(req: Request) {
     try {
-        // Auth check disabled for dev – returns all records
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
         const { searchParams } = new URL(req.url)
         const status = searchParams.get("status")
         const employeeId = searchParams.get("employeeId")
 
         const where: Record<string, unknown> = {}
         if (status) where.status = status
-        if (employeeId) where.employeeId = employeeId
+
+        // Non-admins can only see their own tickets
+        if (session.user?.role !== "ADMIN") {
+            const employee = await getSessionEmployee()
+            if (employee) where.employeeId = employee.id
+        } else if (employeeId) {
+            where.employeeId = employeeId
+        }
 
         const tickets = await prisma.ticket.findMany({
             where,
@@ -37,9 +50,9 @@ export async function POST(req: Request) {
 
         const body = await req.json()
 
-        // Auto-generate ticket code
-        const count = await prisma.ticket.count()
-        const ticketCode = `TKT-${new Date().getFullYear()}-${String(count + 1).padStart(3, "0")}`
+        // Generate collision-resistant ticket code using UUID
+        const shortId = crypto.randomUUID().slice(0, 8).toUpperCase()
+        const ticketCode = `TKT-${new Date().getFullYear()}-${shortId}`
 
         const ticket = await prisma.ticket.create({
             data: {

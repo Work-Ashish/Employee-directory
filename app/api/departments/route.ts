@@ -5,10 +5,10 @@ import { auth } from "@/lib/auth"
 // GET /api/departments – List all departments
 export async function GET() {
     try {
-        // const session = await auth()
-        // if (!session) {
-        //     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        // }
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
 
         const departments = await prisma.department.findMany({
             include: {
@@ -27,10 +27,10 @@ export async function GET() {
 // POST /api/departments – Create a department
 export async function POST(req: Request) {
     try {
-        // const session = await auth()
-        // if (!session || session.user?.role !== "ADMIN") {
-        //     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        // }
+        const session = await auth()
+        if (!session || session.user?.role !== "ADMIN") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
 
         const body = await req.json()
 
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json(
-            { error: "Internal Server Error", details: error.message },
+            { error: "Internal Server Error" },
             { status: 500 }
         )
     }

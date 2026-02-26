@@ -2,6 +2,20 @@ import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 import { auth } from "@/lib/auth"
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
+const ALLOWED_MIME_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/csv",
+]
+
 export async function POST(req: Request) {
     try {
         const session = await auth()
@@ -23,9 +37,25 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Invalid bucket name" }, { status: 400 })
         }
 
-        // Create a unique filename
-        const fileExt = file.name.split(".").pop()
-        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`
+        // F13 FIX: Validate file size
+        if (file.size > MAX_FILE_SIZE) {
+            return NextResponse.json(
+                { error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.` },
+                { status: 413 }
+            )
+        }
+
+        // F13 FIX: Validate MIME type
+        if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+            return NextResponse.json(
+                { error: `File type '${file.type}' is not allowed.` },
+                { status: 415 }
+            )
+        }
+
+        // Create a unique filename using crypto-safe random
+        const fileExt = file.name.split(".").pop()?.toLowerCase() || "bin"
+        const fileName = `${crypto.randomUUID()}.${fileExt}`
         const filePath = `${fileName}`
 
         // Upload to Supabase Storage
@@ -39,7 +69,7 @@ export async function POST(req: Request) {
 
         if (error) {
             console.error("[UPLOAD_ERROR]", error)
-            return NextResponse.json({ error: error.message }, { status: 500 })
+            return NextResponse.json({ error: "Upload failed" }, { status: 500 })
         }
 
         // Get public URL

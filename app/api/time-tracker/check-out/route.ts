@@ -19,64 +19,66 @@ export async function POST() {
         const now = new Date()
         const elapsedSec = Math.floor((now.getTime() - new Date(session.checkIn).getTime()) / 1000)
 
-        // Close any open break
-        if (session.breaks.length > 0) {
-            for (const b of session.breaks) {
-                await prisma.breakEntry.update({
-                    where: { id: b.id },
-                    data: { endedAt: now }
-                })
-            }
-        }
+        // Wrap ALL mutations in a single transaction to prevent partial writes
+        const updated = await prisma.$transaction(async (tx) => {
+            // Close any open breaks with a single updateMany (not a loop)
+            await tx.breakEntry.updateMany({
+                where: { sessionId: session.id, endedAt: null },
+                data: { endedAt: now }
+            })
 
-        // Calculate total break time
-        const allBreaks = await prisma.breakEntry.findMany({ where: { sessionId: session.id } })
-        const totalBreakSec = allBreaks.reduce((acc, b) => {
-            const end = b.endedAt || now
-            return acc + Math.floor((end.getTime() - new Date(b.startedAt).getTime()) / 1000)
-        }, 0)
+            // Calculate total break time within the transaction
+            const allBreaks = await tx.breakEntry.findMany({ where: { sessionId: session.id } })
+            const totalBreakSec = allBreaks.reduce((acc, b) => {
+                const end = b.endedAt || now
+                return acc + Math.floor((end.getTime() - new Date(b.startedAt).getTime()) / 1000)
+            }, 0)
 
-        // Calculate total idle from snapshots
-        const idleSnapshots = await prisma.activitySnapshot.count({
-            where: { sessionId: session.id, status: "IDLE" }
-        })
-        const totalIdleSec = idleSnapshots * 60 // each snapshot = 60 seconds
+            // Calculate total idle from snapshots
+            const idleSnapshots = await tx.activitySnapshot.count({
+                where: { sessionId: session.id, status: "IDLE" }
+            })
+            const totalIdleSec = idleSnapshots * 60
 
-        const totalWorkSec = Math.max(0, elapsedSec - totalBreakSec - totalIdleSec)
+            const totalWorkSec = Math.max(0, elapsedSec - totalBreakSec - totalIdleSec)
 
-        const updated = await prisma.timeSession.update({
-            where: { id: session.id },
-            data: {
-                checkOut: now,
-                status: "COMPLETED",
-                totalWork: totalWorkSec,
-                totalBreak: totalBreakSec,
-                totalIdle: totalIdleSec,
-            }
-        })
-
-        // Synchronize with Attendance record
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        const attendance = await prisma.attendance.findFirst({
-            where: {
-                employeeId: employee.id,
-                date: {
-                    gte: startOfDay,
-                    lt: new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000)
-                }
-            }
-        })
-
-        if (attendance) {
-            const addedHours = totalWorkSec / 3600
-            await prisma.attendance.update({
-                where: { id: attendance.id },
+            // Update the session
+            const result = await tx.timeSession.update({
+                where: { id: session.id },
                 data: {
                     checkOut: now,
-                    workHours: (attendance.workHours || 0) + addedHours
+                    status: "COMPLETED",
+                    totalWork: totalWorkSec,
+                    totalBreak: totalBreakSec,
+                    totalIdle: totalIdleSec,
                 }
             })
-        }
+
+            // Synchronize with Attendance record
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            const attendance = await tx.attendance.findFirst({
+                where: {
+                    employeeId: employee.id,
+                    date: {
+                        gte: startOfDay,
+                        lt: new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000)
+                    }
+                }
+            })
+
+            if (attendance) {
+                const addedHours = totalWorkSec / 3600
+                await tx.attendance.update({
+                    where: { id: attendance.id },
+                    data: {
+                        checkOut: now,
+                        workHours: (attendance.workHours || 0) + addedHours
+                    }
+                })
+            }
+
+            return result
+        })
 
         return NextResponse.json(updated)
     } catch (error: any) {

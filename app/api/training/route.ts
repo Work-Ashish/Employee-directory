@@ -5,7 +5,11 @@ import { auth } from "@/lib/auth"
 // GET /api/training – List all trainings
 export async function GET(req: Request) {
     try {
-        // Auth check disabled for dev
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
         const { searchParams } = new URL(req.url)
         const employeeId = searchParams.get("employeeId")
 
@@ -89,8 +93,8 @@ export async function POST(req: Request) {
 
         return NextResponse.json(training, { status: 201 })
     } catch (error: any) {
-        console.error("[TRAINING_POST] Error:", error.message || error)
-        return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 })
+        console.error("[TRAINING_POST] Error:", error)
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
     }
 }
 

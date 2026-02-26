@@ -5,10 +5,10 @@ import { auth } from "@/lib/auth"
 // GET /api/assets – List all assets
 export async function GET() {
     try {
-        // const session = await auth()
-        // if (!session) {
-        //     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        // }
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
 
         const assets = await prisma.asset.findMany({
             include: { assignedTo: true },
@@ -25,10 +25,10 @@ export async function GET() {
 // POST /api/assets – Create a new asset
 export async function POST(req: Request) {
     try {
-        // const session = await auth()
-        // if (!session || session.user?.role !== "ADMIN") {
-        //     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        // }
+        const session = await auth()
+        if (!session || session.user?.role !== "ADMIN") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
 
         const body = await req.json()
 

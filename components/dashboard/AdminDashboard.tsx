@@ -43,6 +43,8 @@ export function AdminDashboard() {
     const [loginData, setLoginData] = React.useState<any>(null)
     const [selectedDept, setSelectedDept] = React.useState<string | null>(null)
     const [selectedMonth, setSelectedMonth] = React.useState<string | null>(null)
+    const [reportLoading, setReportLoading] = React.useState(false)
+    const [reportData, setReportData] = React.useState<string | null>(null)
     const isFirstLoad = React.useRef(true)
 
     const fetchDashboardData = React.useCallback(async () => {
@@ -64,11 +66,52 @@ export function AdminDashboard() {
 
     React.useEffect(() => {
         fetchDashboardData()
-        const interval = setInterval(() => {
-            fetchDashboardData()
-        }, 10000) // Poll every 10 seconds
-        return () => clearInterval(interval)
+
+        let interval: NodeJS.Timeout | null = null
+
+        const startPolling = () => {
+            if (interval) clearInterval(interval)
+            interval = setInterval(() => {
+                fetchDashboardData()
+            }, 30000) // Poll every 30 seconds (not 10s — prevents connection storm at scale)
+        }
+
+        const handleVisibility = () => {
+            if (document.hidden) {
+                if (interval) clearInterval(interval)
+                interval = null
+            } else {
+                fetchDashboardData() // Refresh immediately when tab regains focus
+                startPolling()
+            }
+        }
+
+        startPolling()
+        document.addEventListener("visibilitychange", handleVisibility)
+
+        return () => {
+            if (interval) clearInterval(interval)
+            document.removeEventListener("visibilitychange", handleVisibility)
+        }
     }, [fetchDashboardData])
+
+    const generateReport = async () => {
+        setReportLoading(true)
+        try {
+            const res = await fetch('/api/admin/analytics/burnout')
+            if (res.ok) {
+                const json = await res.json()
+                setReportData(json.report || 'No data found')
+            } else {
+                setReportData('Error generating report.')
+            }
+        } catch (error) {
+            console.error(error)
+            setReportData('Failed to generate report.')
+        } finally {
+            setReportLoading(false)
+        }
+    }
 
     const deptData = data?.deptSplit || []
     const hiringData = data?.hiringTrend || []
@@ -87,6 +130,18 @@ export function AdminDashboard() {
 
     return (
         <div className="space-y-5">
+            <Modal
+                isOpen={!!reportData}
+                onClose={() => setReportData(null)}
+                title="AI Team Health & Burnout Report"
+            >
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <pre className="whitespace-pre-wrap font-sans text-[13.5px] text-[var(--text2)] leading-relaxed p-4 bg-[var(--surface3)] rounded-lg border border-[var(--border)] max-h-[60vh] overflow-y-auto">
+                        {reportData}
+                    </pre>
+                </div>
+            </Modal>
+
             <Modal
                 isOpen={!!selectedMonth}
                 onClose={() => setSelectedMonth(null)}
@@ -123,12 +178,31 @@ export function AdminDashboard() {
                     </h1>
                     <p className="text-[13px] text-[var(--text3)] mt-0.5">Here's what's happening with your team today.</p>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border)] shadow-sm">
-                    <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--green)] opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--green)]"></span>
-                    </span>
-                    <span className="text-[11px] font-bold text-[var(--text3)] uppercase tracking-wider">Live</span>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={generateReport}
+                        disabled={reportLoading}
+                        className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[var(--purple)] to-[var(--accent)] text-white text-[12px] font-semibold tracking-wide hover:opacity-90 disabled:opacity-50 transition-opacity border border-white/10 shadow-md"
+                    >
+                        {reportLoading ? (
+                            <>
+                                <span className="animate-spin text-[14px]">🧠</span>
+                                Generating...
+                            </>
+                        ) : (
+                            <>
+                                <span className="text-[14px]">✨</span>
+                                AI Team Health Report
+                            </>
+                        )}
+                    </button>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border)] shadow-sm">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--green)] opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--green)]"></span>
+                        </span>
+                        <span className="text-[11px] font-bold text-[var(--text3)] uppercase tracking-wider">Live</span>
+                    </div>
                 </div>
             </div>
 

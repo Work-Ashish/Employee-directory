@@ -5,7 +5,11 @@ import { auth } from "@/lib/auth"
 // GET /api/recruitment – List candidates
 export async function GET(req: Request) {
     try {
-        // Auth check disabled for dev
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
         const { searchParams } = new URL(req.url)
         const stage = searchParams.get("stage")
 

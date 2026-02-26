@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns"
 
 export async function GET() {
     try {
-        // Auth check disabled for development – admin metrics returned by default
+        const session = await auth()
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
 
         // 1. Employee Stats
         const [totalEmployees, activeEmployees, onLeaveEmployees] = await Promise.all([

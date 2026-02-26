@@ -74,11 +74,12 @@ export function AdminPFView() {
             setIsLoading(true)
             const [pfRes, empRes] = await Promise.all([
                 fetch('/api/pf'),
-                fetch('/api/employees')
+                fetch('/api/employees?limit=100')
             ])
             if (pfRes.ok && empRes.ok) {
                 setRecords(await pfRes.json())
-                setEmployees(await empRes.json())
+                const empJson = await empRes.json()
+                setEmployees(Array.isArray(empJson) ? empJson : empJson.data || [])
             }
         } catch (error) {
             toast.error("Failed to load data")

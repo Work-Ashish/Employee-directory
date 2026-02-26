@@ -131,6 +131,12 @@ model Employee {
   tickets            Ticket[]
   trainings          TrainingEnrollment[]
   timeSessions       TimeSession[]
+
+  @@index([departmentId])
+  @@index([userId])
+  @@index([managerId])
+  @@index([email])
+  @@index([status])
 }
 
 model Education {
@@ -141,6 +147,8 @@ model Education {
   grade      String?
   employeeId String
   employee   Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
 }
 
 model Asset {
@@ -157,6 +165,9 @@ model Asset {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   assignedTo   Employee?   @relation(fields: [assignedToId], references: [id])
+
+  @@index([assignedToId])
+  @@index([status])
 }
 
 model Document {
@@ -169,6 +180,8 @@ model Document {
   employeeId String?
   uploadDate DateTime    @default(now())
   employee   Employee?   @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
 }
 
 model Leave {
@@ -182,6 +195,9 @@ model Leave {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   employee   Employee    @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
 }
 
 model Resignation {
@@ -193,6 +209,8 @@ model Resignation {
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
   employee   Employee          @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
 }
 
 model Attendance {
@@ -205,6 +223,10 @@ model Attendance {
   employeeId String
   createdAt  DateTime         @default(now())
   employee   Employee         @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
+  @@index([date])
+  @@index([employeeId, date])
 }
 
 model Payroll {
@@ -221,6 +243,8 @@ model Payroll {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   employee    Employee      @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
 }
 
 model ProvidentFund {
@@ -248,6 +272,8 @@ model PerformanceReview {
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
   employee   Employee          @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
 }
 
 model Training {
@@ -302,6 +328,9 @@ model Ticket {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   employee    Employee       @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
 }
 
 model CalendarEvent {
@@ -501,6 +530,10 @@ model TimeSession {
   breaks      BreakEntry[]
   activities  ActivityLog[]
   snapshots   ActivitySnapshot[]
+
+  @@index([employeeId])
+  @@index([createdAt])
+  @@index([employeeId, createdAt])
 }
 
 model BreakEntry {
@@ -510,6 +543,8 @@ model BreakEntry {
   endedAt   DateTime?
   reason    String?
   session   TimeSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
 }
 
 model ActivityLog {
@@ -524,6 +559,8 @@ model ActivityLog {
   endedAt     DateTime?
   durationSec Int              @default(0)
   session     TimeSession      @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
 }
 
 model ActivitySnapshot {
@@ -534,6 +571,8 @@ model ActivitySnapshot {
   mouseClicks Int            @default(0)
   keystrokes  Int            @default(0)
   session     TimeSession    @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
 }
 
 enum SessionStatus {

@@ -88,14 +88,16 @@ export function TimeTracker() {
 
         const onMouse = () => { mouseClicksRef.current++; lastActivityRef.current = Date.now() }
         const onKey = () => { keystrokesRef.current++; lastActivityRef.current = Date.now() }
+        const onMove = () => { lastActivityRef.current = Date.now() }
 
         window.addEventListener("click", onMouse)
         window.addEventListener("keydown", onKey)
-        window.addEventListener("mousemove", () => { lastActivityRef.current = Date.now() })
+        window.addEventListener("mousemove", onMove)
 
         return () => {
             window.removeEventListener("click", onMouse)
             window.removeEventListener("keydown", onKey)
+            window.removeEventListener("mousemove", onMove)
         }
     }, [status])
 

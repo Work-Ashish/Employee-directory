@@ -90,10 +90,13 @@ export default function DocumentManagement() {
         try {
             const [docsRes, empsRes] = await Promise.all([
                 fetch("/api/documents", { cache: "no-store" }),
-                fetch("/api/employees", { cache: "no-store" }),
+                fetch("/api/employees?limit=100", { cache: "no-store" }),
             ])
             if (docsRes.ok) setDocuments(await docsRes.json())
-            if (empsRes.ok) setEmployees(await empsRes.json())
+            if (empsRes.ok) {
+                const empJson = await empsRes.json()
+                setEmployees(Array.isArray(empJson) ? empJson : empJson.data || [])
+            }
         } catch {
             toast.error("Failed to load data")
         } finally {

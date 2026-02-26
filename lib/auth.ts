@@ -11,8 +11,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     providers: [
         Google({
-            clientId: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
         }),
         Credentials({
             name: "credentials",
@@ -72,11 +72,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (account?.provider === "google" && user.email) {
                 const existing = await prisma.user.findUnique({ where: { email: user.email } })
                 if (!existing) {
+                    // Generate a random password so the field is never empty
+                    const randomPassword = globalThis.crypto.randomUUID() + globalThis.crypto.randomUUID()
+                    const hashedRandom = await bcrypt.hash(randomPassword, 10)
+
                     await prisma.user.create({
                         data: {
                             name: user.name || "Google User",
                             email: user.email,
-                            hashedPassword: "",
+                            hashedPassword: hashedRandom,
                             role: "EMPLOYEE",
                             avatar: user.image || null,
                         },

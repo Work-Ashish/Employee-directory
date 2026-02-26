@@ -78,8 +78,11 @@ export function AdminTrainingView() {
 
     const fetchEmployees = React.useCallback(async () => {
         try {
-            const res = await fetch('/api/employees')
-            if (res.ok) setEmployees(await res.json())
+            const res = await fetch('/api/employees?limit=100')
+            if (res.ok) {
+                const json = await res.json()
+                setEmployees(Array.isArray(json) ? json : json.data || [])
+            }
         } catch { console.error("Failed to load employees") }
     }, [])
 
