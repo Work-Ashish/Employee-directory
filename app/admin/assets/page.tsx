@@ -101,8 +101,8 @@ export default function AssetManagement() {
         try {
             const res = await fetch("/api/assets")
             if (!res.ok) throw new Error("Failed to fetch assets")
-            const data = await res.json()
-            setAssets(data)
+            const jsonData = await res.json()
+            setAssets(Array.isArray(jsonData) ? jsonData : jsonData.data || [])
         } catch {
             toast.error("Failed to load assets")
         } finally {

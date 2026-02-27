@@ -118,13 +118,6 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
             return employee
         })
 
-        // Clear dashboard cache
-        try {
-            await redis.set("admin:dashboard:metrics", "", { ex: 1 })
-        } catch (e) {
-            console.error("Failed to invalidate dashboard cache", e)
-        }
-
         console.log(`[NEW_EMPLOYEE] ${employeeCode} created in org ${ctx.organizationId}.`)
 
         return apiSuccess(result, undefined, 201)

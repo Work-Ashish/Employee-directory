@@ -268,8 +268,11 @@ export default function Organization() {
 
             if (!orgRes.ok || !deptRes.ok) throw new Error("API responded with an error")
 
-            const employees = await orgRes.json();
-            const depts = await deptRes.json();
+            const orgPayload = await orgRes.json();
+            const deptPayload = await deptRes.json();
+
+            const employees = orgPayload.data || orgPayload || [];
+            const depts = deptPayload.data || deptPayload || [];
             setDepartments(depts)
 
             let newNodes: Node[] = [];

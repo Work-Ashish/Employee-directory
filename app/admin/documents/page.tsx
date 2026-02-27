@@ -92,7 +92,10 @@ export default function DocumentManagement() {
                 fetch("/api/documents", { cache: "no-store" }),
                 fetch("/api/employees?limit=100", { cache: "no-store" }),
             ])
-            if (docsRes.ok) setDocuments(await docsRes.json())
+            if (docsRes.ok) {
+                const docJson = await docsRes.json()
+                setDocuments(Array.isArray(docJson) ? docJson : docJson.data || [])
+            }
             if (empsRes.ok) {
                 const empJson = await empsRes.json()
                 setEmployees(Array.isArray(empJson) ? empJson : empJson.data || [])

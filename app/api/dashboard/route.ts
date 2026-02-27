@@ -4,19 +4,11 @@ import { startOfMonth, endOfMonth, subMonths, format } from "date-fns"
 import { redis } from "@/lib/redis"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
+export const dynamic = "force-dynamic"
+export const fetchCache = "force-no-store"
+
 export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
     try {
-        const cacheKey = `dashboard:metrics:${ctx.role}:${ctx.userId}:${ctx.organizationId}`
-
-        try {
-            const cached = await redis.get(cacheKey)
-            if (cached) {
-                return apiSuccess(typeof cached === "string" ? JSON.parse(cached) : cached)
-            }
-        } catch (e) {
-            console.warn("Failed to read dashboard cache from Redis", e)
-        }
-
         let payload: any = { role: ctx.role }
 
         if (ctx.role === "ADMIN") {
@@ -182,12 +174,6 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
                     initials: `${tm.firstName[0]}${tm.lastName[0]}`.toUpperCase()
                 }))
             }
-        }
-
-        try {
-            await redis.set(cacheKey, payload, { ex: 300 })
-        } catch (e) {
-            console.warn("Failed to write dashboard cache to Redis", e)
         }
 
         return apiSuccess(payload)

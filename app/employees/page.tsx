@@ -100,7 +100,8 @@ function EmployeesContent() {
                 body: JSON.stringify({ name: newDeptName, color })
             })
             if (res.ok) {
-                const newDept = await res.json()
+                const response = await res.json()
+                const newDept = response.data || response
                 setDepartments(prev => [...prev, newDept])
                 form.setValue('departmentId', newDept.id)
                 toast.success('Department created successfully')
@@ -108,7 +109,8 @@ function EmployeesContent() {
                 setNewDeptName("")
             } else {
                 const errorData = await res.json()
-                toast.error(errorData.details || errorData.error || 'Failed to create department')
+                const errorMessage = errorData.error?.message || errorData.error || 'Failed to create department'
+                toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to create department')
             }
         } catch (err: any) {
             toast.error(err.message || 'An error occurred')
@@ -168,7 +170,7 @@ function EmployeesContent() {
             ])
             setTotalRows(empRes.total)
             setPageCount(Math.ceil(empRes.total / limit))
-            setDepartments(deptRes || [])
+            setDepartments(deptRes.data || [])
             setEmployees(mapApiToTableData(empRes.data))
         } catch (error) {
             toast.error("An error occurred while fetching data")

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
+export const dynamic = "force-dynamic"
+
 // GET /api/dashboard/logins
 // Returns employees who have logged in today + recent login history
 export async function GET() {

@@ -54,8 +54,14 @@ export function AdminDashboard() {
                 fetch('/api/dashboard', { cache: 'no-store' }),
                 fetch('/api/dashboard/logins', { cache: 'no-store' }),
             ])
-            if (dashRes.ok) setData(await dashRes.json())
-            if (loginRes.ok) setLoginData(await loginRes.json())
+            if (dashRes.ok) {
+                const dashJson = await dashRes.json()
+                setData(dashJson.data || dashJson)
+            }
+            if (loginRes.ok) {
+                const loginJson = await loginRes.json()
+                setLoginData(loginJson.data || loginJson)
+            }
         } catch (error) {
             console.error("Dashboard fetch error:", error)
         } finally {

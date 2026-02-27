@@ -1,18 +1,18 @@
-import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getSessionEmployee } from "@/lib/session-employee"
+import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
 export async function GET() {
     try {
         const session = await auth()
         if (!session) {
-            return new NextResponse("Unauthorized", { status: 401 })
+            return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
         }
 
         const employee = await getSessionEmployee()
         if (!employee) {
-            return new NextResponse("Employee record not found", { status: 404 })
+            return apiError("Employee record not found", ApiErrorCode.NOT_FOUND, 404)
         }
 
         // Fetch user's weekly scores, ordered by newest first
@@ -40,13 +40,13 @@ export async function GET() {
             aiFeedback: s.aiFeedback
         }))
 
-        return NextResponse.json({
+        return apiSuccess({
             scores: formattedScores,
             notifications
         })
 
     } catch (error) {
         console.error("[EMPLOYEE_PERFORMANCE_GET]", error)
-        return new NextResponse("Internal Server Error", { status: 500 })
+        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
 }
