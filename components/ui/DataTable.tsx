@@ -13,8 +13,10 @@ import {
     getSortedRowModel,
     useReactTable,
 } from "@tanstack/react-table"
-import { ChevronDownIcon, MagnifyingGlassIcon, ChevronUpIcon, CaretSortIcon } from "@radix-ui/react-icons"
+import { ChevronDownIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons"
 import { cn } from "@/lib/utils"
+import { Button } from "./Button"
+import { EmptyState } from "./EmptyState"
 
 interface FilterField {
     id: string
@@ -29,9 +31,12 @@ interface DataTableProps<TData, TValue> {
     filterFields?: FilterField[]
     actions?: React.ReactNode
     pageCount?: number
-    pageIndex?: number // 0-indexed
+    pageIndex?: number
     onPageChange?: (pageIndex: number) => void
     totalRows?: number
+    loading?: boolean
+    emptyTitle?: string
+    emptyDescription?: string
 }
 
 export function DataTable<TData, TValue>({
@@ -44,6 +49,9 @@ export function DataTable<TData, TValue>({
     pageIndex,
     onPageChange,
     totalRows,
+    loading,
+    emptyTitle = "No results",
+    emptyDescription,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -86,11 +94,15 @@ export function DataTable<TData, TValue>({
         ? pageIndex < pageCount - 1
         : table.getCanNextPage()
 
+    const currentPage = (pageIndex ?? table.getState().pagination.pageIndex) + 1
+    const totalPages = pageCount ?? table.getPageCount()
+
     return (
         <div className="space-y-4">
-            <div className="flex items-center gap-[12px] flex-wrap">
+            {/* Toolbar */}
+            <div className="flex items-center gap-3 flex-wrap">
                 <div className="relative flex-1 max-w-[340px]">
-                    <span className="absolute left-[12px] top-1/2 -translate-y-1/2 text-[var(--text4)]">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-4">
                         <MagnifyingGlassIcon className="w-4 h-4" />
                     </span>
                     <input
@@ -99,14 +111,14 @@ export function DataTable<TData, TValue>({
                         onChange={(event) =>
                             table.getColumn(searchKey)?.setFilterValue(event.target.value)
                         }
-                        className="w-full pl-[38px] pr-[14px] py-[9px] bg-[var(--surface)] border border-[var(--border)] rounded-[9px] text-[13px] text-[var(--text)] outline-none transition-all duration-200 shadow-sm focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(0,122,255,0.1)]"
+                        className="input-base pl-10 pr-4 py-2 bg-surface"
                     />
                 </div>
 
                 {filterFields.map((field) => (
                     <div key={field.id} className="relative">
                         <select
-                            className="p-[9px_14px] bg-[var(--surface)] border border-[var(--border)] rounded-[9px] text-[13px] text-[var(--text2)] cursor-pointer outline-none transition-all duration-200 shadow-sm hover:border-[var(--border2)] pr-8 appearance-none"
+                            className="input-base appearance-none py-2 pr-9 pl-3.5 bg-surface cursor-pointer w-auto"
                             onChange={(e) => {
                                 const value = e.target.value === "All" ? "" : e.target.value;
                                 table.getColumn(field.id)?.setFilterValue(value);
@@ -117,7 +129,7 @@ export function DataTable<TData, TValue>({
                                 <option key={opt} value={opt}>{opt}</option>
                             ))}
                         </select>
-                        <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--text3)] pointer-events-none" />
+                        <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-text-3 pointer-events-none" />
                     </div>
                 ))}
 
@@ -128,36 +140,48 @@ export function DataTable<TData, TValue>({
                 )}
             </div>
 
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[9px] overflow-hidden shadow-sm overflow-x-auto">
+            {/* Table */}
+            <div className="bg-surface border border-border rounded-lg overflow-hidden shadow-xs overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[800px]">
                     <thead>
                         {table.getHeaderGroups().map((headerGroup) => (
-                            <tr key={headerGroup.id} className="border-b border-[var(--border)] bg-[var(--surface2)] backdrop-blur-md">
-                                {headerGroup.headers.map((header) => {
-                                    return (
-                                        <th key={header.id} className="p-[11px_18px] text-[11.5px] font-bold text-[var(--text3)] text-left uppercase tracking-[0.5px]">
-                                            {header.isPlaceholder
-                                                ? null
-                                                : flexRender(
-                                                    header.column.columnDef.header,
-                                                    header.getContext()
-                                                )}
-                                        </th>
-                                    )
-                                })}
+                            <tr key={headerGroup.id} className="border-b border-border bg-surface-2">
+                                {headerGroup.headers.map((header) => (
+                                    <th
+                                        key={header.id}
+                                        className="px-4 py-3 text-xs font-bold text-text-3 text-left uppercase tracking-wider"
+                                    >
+                                        {header.isPlaceholder
+                                            ? null
+                                            : flexRender(
+                                                header.column.columnDef.header,
+                                                header.getContext()
+                                            )}
+                                    </th>
+                                ))}
                             </tr>
                         ))}
                     </thead>
                     <tbody>
-                        {table.getRowModel().rows?.length ? (
+                        {loading ? (
+                            Array.from({ length: 5 }).map((_, i) => (
+                                <tr key={i} className="border-b border-border/50">
+                                    {columns.map((_, ci) => (
+                                        <td key={ci} className="px-4 py-3.5">
+                                            <div className="h-4 bg-bg-2 rounded animate-pulse w-3/4" />
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))
+                        ) : table.getRowModel().rows?.length ? (
                             table.getRowModel().rows.map((row) => (
                                 <tr
                                     key={row.id}
                                     data-state={row.getIsSelected() && "selected"}
-                                    className="group hover:bg-[rgba(0,122,255,0.03)] transition-colors duration-200 border-b border-[#0000000a] last:border-0"
+                                    className="group hover:bg-accent/[0.03] transition-colors duration-150 border-b border-border/30 last:border-0"
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <td key={cell.id} className="p-[13px_18px]">
+                                        <td key={cell.id} className="px-4 py-3.5 text-base text-text">
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </td>
                                     ))}
@@ -165,8 +189,12 @@ export function DataTable<TData, TValue>({
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={columns.length} className="h-24 text-center text-[var(--text3)] text-[13px]">
-                                    No results.
+                                <td colSpan={columns.length}>
+                                    <EmptyState
+                                        title={emptyTitle}
+                                        description={emptyDescription}
+                                        className="py-10"
+                                    />
                                 </td>
                             </tr>
                         )}
@@ -174,27 +202,51 @@ export function DataTable<TData, TValue>({
                 </table>
             </div>
 
-            <div className="flex items-center justify-end space-x-2 py-4">
-                <div className="flex-1 text-[12.5px] text-[var(--text3)]">
+            {/* Pagination */}
+            <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-text-3">
                     {totalRows !== undefined
-                        ? `Showing page ${(pageIndex ?? 0) + 1} of ${pageCount || 1} (${totalRows} total rows)`
-                        : `Showing ${table.getRowModel().rows.length} rows`}
-                </div>
-                <div className="space-x-2">
-                    <button
-                        className={cn("px-3 py-1 text-[12px] border border-[var(--border)] rounded-md hover:bg-[var(--bg2)] disabled:opacity-50", !canPrevious && "pointer-events-none opacity-50")}
+                        ? `Page ${currentPage} of ${totalPages} (${totalRows} total)`
+                        : `${table.getRowModel().rows.length} rows`}
+                </span>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={handlePrevious}
                         disabled={!canPrevious}
                     >
                         Previous
-                    </button>
-                    <button
-                        className={cn("px-3 py-1 text-[12px] border border-[var(--border)] rounded-md hover:bg-[var(--bg2)] disabled:opacity-50", !canNext && "pointer-events-none opacity-50")}
+                    </Button>
+
+                    {/* Page numbers */}
+                    {totalPages > 1 && totalPages <= 7 && (
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: totalPages }, (_, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => onPageChange ? onPageChange(i) : table.setPageIndex(i)}
+                                    className={cn(
+                                        "w-8 h-8 rounded-md text-xs font-medium transition-colors",
+                                        currentPage === i + 1
+                                            ? "bg-accent text-white"
+                                            : "text-text-3 hover:bg-bg-2"
+                                    )}
+                                >
+                                    {i + 1}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={handleNext}
                         disabled={!canNext}
                     >
                         Next
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

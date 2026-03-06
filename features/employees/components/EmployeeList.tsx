@@ -2,9 +2,13 @@
 
 import * as React from "react"
 import { DataTable } from "@/components/ui/DataTable"
+import { Button } from "@/components/ui/Button"
+import { Badge } from "@/components/ui/Badge"
+import { Avatar } from "@/components/ui/Avatar"
+import { Tooltip } from "@/components/ui/Tooltip"
+import { Spinner } from "@/components/ui/Spinner"
 import { ColumnDef } from "@tanstack/react-table"
 import { CaretSortIcon, DownloadIcon, PlusIcon } from "@radix-ui/react-icons"
-import { cn } from "@/lib/utils"
 import { TableEmployee, Department } from "@/features/employees/types"
 
 interface EmployeeListProps {
@@ -24,6 +28,15 @@ interface EmployeeListProps {
     onExportCSV: () => void
     onExportPDF: () => void
     isResettingCreds: string | null
+}
+
+function getStatusVariant(status: string) {
+    switch (status) {
+        case "Active": return "success"
+        case "On Leave": return "warning"
+        case "Resigned": return "neutral"
+        default: return "danger"
+    }
 }
 
 export const EmployeeList = React.memo(function EmployeeList({
@@ -47,108 +60,90 @@ export const EmployeeList = React.memo(function EmployeeList({
     const columns = React.useMemo<ColumnDef<TableEmployee>[]>(() => [
         {
             accessorKey: "name",
-            header: ({ column }) => {
-                return (
-                    <button
-                        className="flex items-center gap-1 hover:text-[var(--text)] transition-colors"
-                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                    >
-                        Name
-                        <CaretSortIcon className="w-3 h-3" />
-                    </button>
-                )
-            },
+            header: ({ column }) => (
+                <button
+                    className="flex items-center gap-1 hover:text-text transition-colors"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                >
+                    Name
+                    <CaretSortIcon className="w-3 h-3" />
+                </button>
+            ),
             cell: ({ row }) => (
-                <div className="flex items-center gap-[11px] text-[13.5px] text-[var(--text)]">
-                    <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold text-white shrink-0 overflow-hidden",
-                        !row.original.avatarUrl && (row.original.color || "bg-gray-400"))}>
-                        {row.original.avatarUrl ? (
-                            <img src={row.original.avatarUrl} className="w-full h-full object-cover" />
-                        ) : (
-                            row.original.initials
-                        )}
-                    </div>
-                    <span className="font-semibold">{row.getValue("name")}</span>
+                <div className="flex items-center gap-3">
+                    <Avatar
+                        name={row.getValue("name") as string}
+                        src={row.original.avatarUrl}
+                        size="default"
+                    />
+                    <span className="font-semibold text-text">{row.getValue("name")}</span>
                 </div>
             ),
         },
         {
             accessorKey: "email",
             header: "Email",
-            cell: ({ row }) => <div className="text-[13px] text-[var(--text3)]">{row.getValue("email")}</div>,
+            cell: ({ row }) => <span className="text-sm text-text-3">{row.getValue("email")}</span>,
         },
         {
             accessorKey: "dept",
             header: "Department",
-            cell: ({ row }) => (
-                <span className="inline-flex items-center gap-[4px] px-[11px] py-[4px] rounded-[20px] text-[12px] font-semibold bg-[rgba(0,122,255,0.08)] text-[var(--accent)] border border-[rgba(0,122,255,0.18)]">
-                    {row.getValue("dept")}
-                </span>
-            ),
+            cell: ({ row }) => <Badge variant="default" size="sm">{row.getValue("dept")}</Badge>,
         },
         {
             accessorKey: "role",
             header: "Position",
-            cell: ({ row }) => <div className="text-[13.5px] text-[var(--text)]">{row.getValue("role")}</div>,
+            cell: ({ row }) => <span className="text-base text-text">{row.getValue("role")}</span>,
         },
         {
             accessorKey: "status",
             header: "Status",
             cell: ({ row }) => {
                 const status = row.getValue("status") as string
-                return (
-                    <span className={cn("inline-flex items-center gap-[4px] px-[11px] py-[4px] rounded-[20px] text-[12px] font-semibold border",
-                        status === 'Active'
-                            ? "bg-[var(--green-dim)] text-[#1a9140] border-[rgba(52,199,89,0.25)]"
-                            : status === 'On Leave'
-                                ? "bg-[var(--amber-dim)] text-[#b86c00] border-[rgba(255,149,0,0.25)]"
-                                : status === 'Resigned'
-                                    ? "bg-[var(--bg2)] text-[var(--text3)] border-[var(--border)]"
-                                    : "bg-[var(--red-dim)] text-[var(--red)] border-[rgba(255,59,48,0.25)]"
-                    )}>
-                        ● {status}
-                    </span>
-                )
+                return <Badge variant={getStatusVariant(status) as any} dot>{status}</Badge>
             },
         },
         {
             accessorKey: "start",
             header: "Start Date",
-            cell: ({ row }) => <div className="text-[13px] text-[var(--text3)] font-mono">{row.getValue("start")}</div>,
+            cell: ({ row }) => <span className="text-sm text-text-3 font-mono">{row.getValue("start")}</span>,
         },
         {
             id: "actions",
             cell: ({ row }) => {
                 const emp = row.original.raw
                 return (
-                    <div className="flex items-center gap-[6px] opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <button
-                            title="View"
-                            onClick={() => onOpenViewModal(emp)}
-                            className="w-[30px] h-[30px] rounded-[8px] border border-[var(--border)] bg-[var(--bg)] flex items-center justify-center text-[13px] text-[var(--text3)] transition-all duration-200 hover:bg-[rgba(0,122,255,0.08)] hover:border-[rgba(0,122,255,0.25)] hover:text-[var(--accent)] hover:scale-110">👁</button>
-                        <button
-                            title="Edit"
-                            onClick={() => onOpenEditModal(emp)}
-                            className="w-[30px] h-[30px] rounded-[8px] border border-[var(--border)] bg-[var(--bg)] flex items-center justify-center text-[13px] text-[var(--text3)] transition-all duration-200 hover:bg-[rgba(0,122,255,0.08)] hover:border-[rgba(0,122,255,0.25)] hover:text-[var(--accent)] hover:scale-110">✏</button>
-                        <button
-                            title="Reset Login Credentials"
-                            onClick={() => onResetCredentials(emp)}
-                            disabled={isResettingCreds === emp.id}
-                            className="w-[30px] h-[30px] rounded-[8px] border border-[var(--border)] bg-[var(--bg)] flex items-center justify-center text-[13px] text-[var(--text3)] transition-all duration-200 hover:bg-[rgba(255,149,0,0.08)] hover:border-[rgba(255,149,0,0.3)] hover:text-amber-500 hover:scale-110 disabled:opacity-40">🔑</button>
-                        <button
-                            title="Delete"
-                            onClick={() => onDelete(emp.id, `${emp.firstName} ${emp.lastName}`)}
-                            className="w-[30px] h-[30px] rounded-[8px] border border-[var(--border)] bg-[var(--bg)] flex items-center justify-center text-[13px] text-[var(--text3)] transition-all duration-200 hover:bg-[rgba(255,59,48,0.08)] hover:border-[rgba(255,59,48,0.25)] hover:text-[var(--red)] hover:scale-110">🗑</button>
+                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <Tooltip content="View">
+                            <button onClick={() => onOpenViewModal(emp)} className="w-8 h-8 rounded-md border border-border bg-bg flex items-center justify-center text-sm text-text-3 transition-all hover:bg-accent/10 hover:border-accent/25 hover:text-accent hover:scale-110">
+                                👁
+                            </button>
+                        </Tooltip>
+                        <Tooltip content="Edit">
+                            <button onClick={() => onOpenEditModal(emp)} className="w-8 h-8 rounded-md border border-border bg-bg flex items-center justify-center text-sm text-text-3 transition-all hover:bg-accent/10 hover:border-accent/25 hover:text-accent hover:scale-110">
+                                ✏
+                            </button>
+                        </Tooltip>
+                        <Tooltip content="Reset Credentials">
+                            <button onClick={() => onResetCredentials(emp)} disabled={isResettingCreds === emp.id} className="w-8 h-8 rounded-md border border-border bg-bg flex items-center justify-center text-sm text-text-3 transition-all hover:bg-warning/10 hover:border-warning/25 hover:text-warning hover:scale-110 disabled:opacity-40">
+                                {isResettingCreds === emp.id ? <Spinner size="sm" /> : "🔑"}
+                            </button>
+                        </Tooltip>
+                        <Tooltip content="Delete">
+                            <button onClick={() => onDelete(emp.id, `${emp.firstName} ${emp.lastName}`)} className="w-8 h-8 rounded-md border border-border bg-bg flex items-center justify-center text-sm text-text-3 transition-all hover:bg-danger/10 hover:border-danger/25 hover:text-danger hover:scale-110">
+                                🗑
+                            </button>
+                        </Tooltip>
                     </div>
                 )
             },
         },
-    ], [departments, isResettingCreds, onOpenEditModal, onOpenViewModal, onResetCredentials, onDelete]) // Re-memoize if passed functions change
+    ], [departments, isResettingCreds, onOpenEditModal, onOpenViewModal, onResetCredentials, onDelete])
 
     if (isLoading) {
         return (
-            <div className="h-[400px] w-full flex items-center justify-center text-[var(--text3)]">
-                Loading Data...
+            <div className="h-[400px] w-full flex items-center justify-center gap-2 text-text-3">
+                <Spinner /> Loading Data...
             </div>
         )
     }
@@ -168,29 +163,18 @@ export const EmployeeList = React.memo(function EmployeeList({
             ]}
             actions={
                 <>
-                    <button
-                        onClick={onImportClick}
-                        className="flex items-center gap-2 p-[9px_14px] bg-[var(--surface)] border border-[var(--border)] rounded-[9px] text-[13px] text-[var(--text2)] hover:bg-[var(--bg2)] transition-colors"
-                    >
-                        <DownloadIcon className="w-3.5 h-3.5 rotate-180" /> Import
-                    </button>
-                    <button
-                        onClick={onExportCSV}
-                        className="flex items-center gap-2 p-[9px_14px] bg-[var(--surface)] border border-[var(--border)] rounded-[9px] text-[13px] text-[var(--text2)] hover:bg-[var(--bg2)] transition-colors"
-                    >
-                        <DownloadIcon className="w-3.5 h-3.5" /> CSV
-                    </button>
-                    <button
-                        onClick={onExportPDF}
-                        className="flex items-center gap-2 p-[9px_14px] bg-[var(--surface)] border border-[var(--border)] rounded-[9px] text-[13px] text-[var(--text2)] hover:bg-[var(--bg2)] transition-colors"
-                    >
-                        <DownloadIcon className="w-3.5 h-3.5" /> PDF
-                    </button>
-                    <button
-                        onClick={onOpenCreateModal}
-                        className="flex items-center gap-2 p-[9px_14px] bg-[var(--accent)] text-white rounded-[9px] text-[13px] font-semibold hover:opacity-90 transition-opacity shadow-[0_2px_8px_rgba(0,122,255,0.25)]">
-                        <PlusIcon className="w-4 h-4" /> Add Employee
-                    </button>
+                    <Button variant="secondary" size="sm" onClick={onImportClick} leftIcon={<DownloadIcon className="w-3.5 h-3.5 rotate-180" />}>
+                        Import
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={onExportCSV} leftIcon={<DownloadIcon className="w-3.5 h-3.5" />}>
+                        CSV
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={onExportPDF} leftIcon={<DownloadIcon className="w-3.5 h-3.5" />}>
+                        PDF
+                    </Button>
+                    <Button onClick={onOpenCreateModal} leftIcon={<PlusIcon className="w-4 h-4" />}>
+                        Add Employee
+                    </Button>
                 </>
             }
         />

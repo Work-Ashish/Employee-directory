@@ -9,7 +9,10 @@
       "Bash(npx vitest run)",
       "Bash(npm run build)",
       "Bash(node -e \"require\\(''dotenv''\\).config\\(\\); const u = process.env.DATABASE_URL || ''''; console.log\\(''Has URL:'', !!u\\); console.log\\(''Host:'', u.split\\(''@''\\)[1]?.split\\(''/''\\)[0] || ''N/A''\\); console.log\\(''DB:'', u.split\\(''/''\\).pop\\(\\)?.split\\(''?''\\)[0] || ''N/A''\\)\")",
-      "Bash(node -e \"require\\(''dotenv''\\).config\\(\\); const u = process.env.DATABASE_URL || ''''; console.log\\(''Has URL:'', u.length > 0\\); console.log\\(''Host:'', \\(u.split\\(''@''\\)[1] || ''''\\).split\\(''/''\\)[0] || ''N/A''\\)\")"
+      "Bash(node -e \"require\\(''dotenv''\\).config\\(\\); const u = process.env.DATABASE_URL || ''''; console.log\\(''Has URL:'', u.length > 0\\); console.log\\(''Host:'', \\(u.split\\(''@''\\)[1] || ''''\\).split\\(''/''\\)[0] || ''N/A''\\)\")",
+      "Bash(grep -r \"px-\\\\\\\\[.*\\\\\\\\].*py-\\\\\\\\[.*\\\\\\\\]\" \"c:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\Employee directory/components\")",
+      "Bash(npm install @radix-ui/react-tooltip @radix-ui/react-dropdown-menu)",
+      "Bash(npx next build)"
     ]
   }
 }
