@@ -1,2 +1,0 @@
-﻿lib/security.test.ts(23,19): error TS2741: Property 'params' is missing in type '{ requestId: string; userId: string; organizationId: string; role: "ADMIN"; }' but required in type 'AuthContext'.
-lib/security.test.ts(34,19): error TS2741: Property 'params' is missing in type '{ requestId: string; userId: string; organizationId: string; role: "EMPLOYEE"; }' but required in type 'AuthContext'.

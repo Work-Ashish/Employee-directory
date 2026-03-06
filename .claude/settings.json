@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(npx tsx -e \":*)",
-      "Bash(npx tsx seed-roles.ts)"
+      "Bash(npx tsx seed-roles.ts)",
+      "Bash(grep -l \"admin\" scripts/*.js scripts/*.ts)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(ls -la *.log *.json)"
     ]
   }
 }
