@@ -21,12 +21,15 @@ import { useAuth } from "@/context/AuthContext"
 import { Roles } from "@/lib/permissions"
 import { useRouter } from "next/navigation"
 import dagre from 'dagre';
-import { toast, Toaster } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { Modal } from "@/components/ui/Modal"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { PlusIcon, Pencil2Icon, TrashIcon } from "@radix-ui/react-icons"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { Spinner } from "@/components/ui/Spinner"
 
 // ----------------------------------------------------------------------------
 // Zod Schema for Validation
@@ -58,38 +61,38 @@ export type Department = {
 const CustomNode = ({ data }: any) => {
     return (
         <div className={cn(
-            "relative px-4 py-3 rounded-xl border bg-[var(--surface)] shadow-lg min-w-[200px] transition-all duration-200 hover:shadow-xl hover:border-[var(--accent)] group",
-            data.isRoot ? "border-[var(--accent)] bg-[rgba(0,122,255,0.05)]" : "border-[var(--border)]"
+            "relative px-4 py-3 rounded-xl border bg-surface shadow-lg min-w-[200px] transition-all duration-200 hover:shadow-xl hover:border-accent group",
+            data.isRoot ? "border-accent bg-accent/5" : "border-border"
         )}>
-            <Handle type="target" position={Position.Top} className="!bg-[var(--text4)] !w-2 !h-2" />
+            <Handle type="target" position={Position.Top} className="!bg-text-4 !w-2 !h-2" />
 
             <div className="flex items-center gap-3">
                 <div className={cn(
                     "w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0 bg-gradient-to-br shadow-sm",
-                    data.gradient || "from-[var(--text3)] to-[var(--text4)]"
+                    data.gradient || "from-text-3 to-text-4"
                 )}>
                     {data.initials}
                 </div>
                 <div className="flex flex-col">
-                    <div className="text-[14px] font-bold text-[var(--text)]">{data.label}</div>
-                    <div className="text-[11px] text-[var(--text3)] font-medium">{data.role}</div>
+                    <div className="text-sm font-bold text-text">{data.label}</div>
+                    <div className="text-[11px] text-text-3 font-medium">{data.role}</div>
                 </div>
             </div>
 
             {/* Hover Actions */}
-            <div className="absolute -top-3 -right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--surface)] border border-[var(--border)] rounded-full shadow-sm p-1 z-10">
-                <button onClick={(e) => { e.stopPropagation(); data.onAddChild(); }} className="p-1 hover:bg-[rgba(0,122,255,0.1)] hover:text-[var(--accent)] rounded-full text-[var(--text3)] transition-colors" title="Add Direct Report">
+            <div className="absolute -top-3 -right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-surface border border-border rounded-full shadow-sm p-1 z-10">
+                <button onClick={(e) => { e.stopPropagation(); data.onAddChild(); }} className="p-1 hover:bg-accent/10 hover:text-accent rounded-full text-text-3 transition-colors" title="Add Direct Report">
                     <PlusIcon className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); data.onEdit(); }} className="p-1 hover:bg-[rgba(0,122,255,0.1)] hover:text-[var(--accent)] rounded-full text-[var(--text3)] transition-colors" title="Edit Employee">
+                <button onClick={(e) => { e.stopPropagation(); data.onEdit(); }} className="p-1 hover:bg-accent/10 hover:text-accent rounded-full text-text-3 transition-colors" title="Edit Employee">
                     <Pencil2Icon className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); data.onDelete(); }} className="p-1 hover:bg-[rgba(255,59,48,0.1)] hover:text-[var(--red)] rounded-full text-[var(--text3)] transition-colors" title="Delete Employee">
+                <button onClick={(e) => { e.stopPropagation(); data.onDelete(); }} className="p-1 hover:bg-danger/10 hover:text-danger rounded-full text-text-3 transition-colors" title="Delete Employee">
                     <TrashIcon className="w-3.5 h-3.5" />
                 </button>
             </div>
 
-            <Handle type="source" position={Position.Bottom} className="!bg-[var(--text4)] !w-2 !h-2" />
+            <Handle type="source" position={Position.Bottom} className="!bg-text-4 !w-2 !h-2" />
         </div>
     );
 };
@@ -358,30 +361,33 @@ export default function Organization() {
     }, [setEdges, fetchData]);
 
     if (authLoading || isLoading || user?.role === Roles.EMPLOYEE) {
-        return <div className="p-8 text-center text-[var(--text3)]">Loading Chart...</div>
+        return (
+            <div className="p-8 text-center text-text-3 flex items-center justify-center gap-2">
+                <Spinner /> Loading Chart...
+            </div>
+        )
     }
 
     return (
-        <div className="h-[calc(100vh-80px)] md:h-[calc(100vh-40px)] w-full rounded-xl overflow-hidden border border-[var(--border)] shadow-sm bg-[var(--surface)] animate-in fade-in duration-300 relative">
-            <Toaster position="top-right" />
+        <div className="h-[calc(100vh-80px)] md:h-[calc(100vh-40px)] w-full rounded-xl overflow-hidden border border-border shadow-sm bg-surface animate-in fade-in duration-300 relative">
             <div className="absolute top-4 left-4 z-10 glass px-3 py-1.5 md:px-4 md:py-2 pointer-events-none rounded-lg">
-                <h1 className="text-[14px] md:text-[16px] font-extrabold text-[var(--text)]">Organization Chart</h1>
-                <p className="text-[11px] md:text-[12px] text-[var(--text3)]">Drag connections to change managers</p>
+                <h1 className="text-sm md:text-base font-extrabold text-text">Organization Chart</h1>
+                <p className="text-[11px] md:text-xs text-text-3">Drag connections to change managers</p>
             </div>
 
             <div className="absolute top-4 right-4 z-10 flex gap-2">
-                <button
+                <Button
                     onClick={() => openCreateModal(null)}
-                    className="flex items-center gap-2 bg-[var(--accent)] text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-[0_2px_8px_rgba(0,122,255,0.25)] hover:opacity-90 transition-opacity"
+                    leftIcon={<PlusIcon className="w-4 h-4" />}
                 >
-                    <PlusIcon className="w-4 h-4" /> Add Employee
-                </button>
-                <button
+                    Add Employee
+                </Button>
+                <Button
+                    variant="secondary"
                     onClick={fetchData}
-                    className="bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] px-4 py-2 rounded-lg text-sm shadow-sm hover:bg-[var(--bg2)] transition-colors"
                 >
                     Auto Layout
-                </button>
+                </Button>
             </div>
 
             <ReactFlow
@@ -393,11 +399,11 @@ export default function Organization() {
                 nodeTypes={nodeTypes}
                 fitView
                 attributionPosition="bottom-right"
-                className="bg-[var(--bg2)]"
+                className="bg-bg-2"
             >
-                <Controls className="!bg-[var(--surface)] !border-[var(--border)] !shadow-sm [&>button]:!border-b-[var(--border)] [&>button]:!fill-[var(--text2)] hover:[&>button]:!bg-[var(--bg)]" />
+                <Controls className="!bg-surface !border-border !shadow-sm [&>button]:!border-b-border [&>button]:!fill-text-2 hover:[&>button]:!bg-bg" />
                 <MiniMap
-                    className="hidden md:block !bg-[var(--surface)] !border-[var(--border)] !shadow-sm rounded-lg overflow-hidden"
+                    className="hidden md:block !bg-surface !border-border !shadow-sm rounded-lg overflow-hidden"
                     nodeColor={(n) => {
                         if (n.data?.isRoot) return 'var(--accent)';
                         return 'var(--text4)';
@@ -415,103 +421,81 @@ export default function Organization() {
             >
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-[12px] font-semibold text-[var(--text2)]">First Name *</label>
-                            <input
-                                {...form.register('firstName')}
-                                className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
-                            />
-                            {form.formState.errors.firstName && <span className="text-[11px] text-red-500">{form.formState.errors.firstName.message}</span>}
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[12px] font-semibold text-[var(--text2)]">Last Name *</label>
-                            <input
-                                {...form.register('lastName')}
-                                className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
-                            />
-                            {form.formState.errors.lastName && <span className="text-[11px] text-red-500">{form.formState.errors.lastName.message}</span>}
-                        </div>
+                        <Input
+                            label="First Name *"
+                            {...form.register('firstName')}
+                            error={form.formState.errors.firstName?.message}
+                        />
+                        <Input
+                            label="Last Name *"
+                            {...form.register('lastName')}
+                            error={form.formState.errors.lastName?.message}
+                        />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-[12px] font-semibold text-[var(--text2)]">Email *</label>
-                            <input
-                                type="email"
-                                {...form.register('email')}
-                                className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
-                            />
-                            {form.formState.errors.email && <span className="text-[11px] text-red-500">{form.formState.errors.email.message}</span>}
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[12px] font-semibold text-[var(--text2)]">Designation *</label>
-                            <input
-                                {...form.register('designation')}
-                                className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
-                            />
-                        </div>
+                        <Input
+                            label="Email *"
+                            type="email"
+                            {...form.register('email')}
+                            error={form.formState.errors.email?.message}
+                        />
+                        <Input
+                            label="Designation *"
+                            {...form.register('designation')}
+                        />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-[12px] font-semibold text-[var(--text2)]">Department *</label>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-medium text-text-2">Department *</label>
                             <select
                                 {...form.register('departmentId')}
-                                className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
+                                className="input-base"
                             >
                                 <option value="">Select Department...</option>
                                 {departments.map((d) => (
                                     <option key={d.id} value={d.id}>{d.name}</option>
                                 ))}
                             </select>
-                            {form.formState.errors.departmentId && <span className="text-[11px] text-red-500">{form.formState.errors.departmentId.message}</span>}
+                            {form.formState.errors.departmentId && <span className="text-xs text-danger">{form.formState.errors.departmentId.message}</span>}
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-[12px] font-semibold text-[var(--text2)]">Salary *</label>
-                            <input
-                                type="number"
-                                {...form.register('salary', { valueAsNumber: true })}
-                                className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
-                            />
-                        </div>
+                        <Input
+                            label="Salary *"
+                            type="number"
+                            {...form.register('salary', { valueAsNumber: true })}
+                        />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-[12px] font-semibold text-[var(--text2)]">Employee Code *</label>
-                            <input
-                                {...form.register('employeeCode')}
-                                className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[12px] font-semibold text-[var(--text2)]">Date Of Joining *</label>
-                            <input
-                                type="date"
-                                {...form.register('dateOfJoining')}
-                                className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
-                            />
-                        </div>
+                        <Input
+                            label="Employee Code *"
+                            {...form.register('employeeCode')}
+                        />
+                        <Input
+                            label="Date Of Joining *"
+                            type="date"
+                            {...form.register('dateOfJoining')}
+                        />
                     </div>
 
                     {/* Hidden Field for Pre-populating Manager relationships on creation */}
                     <input type="hidden" {...form.register('managerId')} />
 
-                    <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-[var(--border)]">
-                        <button
+                    <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-border">
+                        <Button
                             type="button"
+                            variant="secondary"
                             onClick={() => setIsModalOpen(false)}
-                            className="px-4 py-2 text-[13px] font-semibold bg-[var(--surface)] border border-[var(--border)] rounded-lg hover:bg-[var(--bg2)] text-[var(--text2)] transition-colors"
                         >
                             Cancel
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="submit"
-                            disabled={form.formState.isSubmitting}
-                            className="px-4 py-2 text-[13px] font-semibold text-white bg-[var(--accent)] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                            loading={form.formState.isSubmitting}
                         >
-                            {form.formState.isSubmitting ? "Saving..." : modalMode === "CREATE" ? "Create Node" : "Save Changes"}
-                        </button>
+                            {modalMode === "CREATE" ? "Create Node" : "Save Changes"}
+                        </Button>
                     </div>
                 </form>
             </Modal>

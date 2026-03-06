@@ -105,7 +105,7 @@ export function AdminAttendanceView() {
     const totalHours = records.reduce((sum, r) => sum + (r.workHours || 0), 0)
 
     return (
-        <div className="space-y-6 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)]">
+        <div className="space-y-6 animate-page-in">
             <PageHeader
                 title="Attendance Tracking"
                 description="Track daily attendance and work hours"

@@ -4,6 +4,12 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { PlusIcon, TrashIcon, ArrowRightIcon } from '@radix-ui/react-icons'
 import { ROLES } from '@/lib/permissions'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
+import { Textarea } from '@/components/ui/Textarea'
+import { Card, CardContent } from '@/components/ui/Card'
 
 export default function BuilderPage() {
     const router = useRouter()
@@ -55,112 +61,139 @@ export default function BuilderPage() {
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto pb-12 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-[var(--text)]">Workflow Builder</h1>
-                    <p className="text-sm text-[var(--text3)] mt-1">Configure logic layers for automatic approval routing.</p>
-                </div>
-                <button onClick={handleSave} className="flex items-center gap-2 px-6 py-2 bg-[var(--accent)] text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity">
-                    Save Workflow
-                </button>
-            </div>
+            <PageHeader
+                title="Workflow Builder"
+                description="Configure logic layers for automatic approval routing."
+                actions={
+                    <Button onClick={handleSave}>
+                        Save Workflow
+                    </Button>
+                }
+                className="mb-8"
+            />
 
-            <div className="p-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] mb-8 shadow-sm">
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[13px] font-semibold text-[var(--text2)] block">Workflow Name</label>
-                            <input type="text" className="w-full p-2 border border-[var(--border)] rounded text-sm bg-[var(--bg)] text-[var(--text)] focus:outline-none focus:border-[var(--accent)]" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Executive Leave Policy" />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[13px] font-semibold text-[var(--text2)] block">Trigger Entity</label>
-                            <select className="w-full p-2 border border-[var(--border)] rounded text-sm bg-[var(--bg)] text-[var(--text)] focus:outline-none focus:border-[var(--accent)]" value={entityType} onChange={e => setEntityType(e.target.value)}>
-                                <option value="LEAVE">Leave Request</option>
-                                <option value="ASSET">Asset Request</option>
-                                <option value="EXPENSE">Expense Claim</option>
-                                <option value="RESIGNATION">Resignation Request</option>
-                                <option value="TICKET">Support Ticket</option>
-                            </select>
-                        </div>
-                        <div className="col-span-2 space-y-2 text-sm font-medium">
-                            <label className="text-[13px] font-semibold text-[var(--text2)] block">Description</label>
-                            <textarea className="w-full p-2 border border-[var(--border)] rounded min-h-[80px] bg-[var(--bg)] text-sm text-[var(--text)] focus:outline-none focus:border-[var(--accent)]" value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the purpose of this workflow..." />
+            <Card className="mb-8 shadow-sm">
+                <CardContent>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <Input
+                                label="Workflow Name"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                placeholder="e.g. Executive Leave Policy"
+                            />
+                            <Select
+                                label="Trigger Entity"
+                                value={entityType}
+                                onChange={e => setEntityType(e.target.value)}
+                                options={[
+                                    { value: "LEAVE", label: "Leave Request" },
+                                    { value: "ASSET", label: "Asset Request" },
+                                    { value: "EXPENSE", label: "Expense Claim" },
+                                    { value: "RESIGNATION", label: "Resignation Request" },
+                                    { value: "TICKET", label: "Support Ticket" },
+                                ]}
+                            />
+                            <Textarea
+                                wrapperClassName="col-span-2"
+                                label="Description"
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
+                                placeholder="Describe the purpose of this workflow..."
+                            />
                         </div>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
             <div className="space-y-4">
-                <h2 className="text-xl font-bold text-[var(--text)] tracking-tight hover:text-[var(--accent)] transition-colors">Approval Sequence</h2>
+                <h2 className="text-xl font-bold text-text tracking-tight hover:text-accent transition-colors">Approval Sequence</h2>
                 {steps.map((step, index) => (
                     <div key={index} className="flex flex-col gap-2 relative">
-                        <div className="flex items-center space-x-4 bg-[var(--surface)] p-5 rounded-xl shadow-sm border border-[var(--border)] hover:border-blue-500/20 transition-all">
+                        <div className="flex items-center space-x-4 bg-surface p-5 rounded-xl shadow-sm border border-border hover:border-blue-500/20 transition-all">
                             <div className="w-8 h-8 flex items-center justify-center bg-blue-500/10 text-blue-500 rounded-full font-bold text-sm shrink-0 border border-blue-500/20">{index + 1}</div>
                             <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div>
-                                    <label className="text-[11px] font-bold text-[var(--text3)] uppercase mb-1 block tracking-wider">Approver Role Type</label>
-                                    <select className="w-full p-2 border border-[var(--border)] rounded text-sm bg-[var(--bg)] text-[var(--text)] focus:outline-none" value={step.approverType} onChange={e => {
+                                <Select
+                                    label="Approver Role Type"
+                                    value={step.approverType}
+                                    onChange={e => {
                                         const newSteps = [...steps];
                                         newSteps[index].approverType = e.target.value;
                                         setSteps(newSteps)
-                                    }}>
-                                        <option value="MANAGER">Direct Manager</option>
-                                        <option value="ROLE">Specific Role</option>
-                                        <option value="SPECIFIC_USER">Specific Employee</option>
-                                    </select>
-                                </div>
+                                    }}
+                                    options={[
+                                        { value: "MANAGER", label: "Direct Manager" },
+                                        { value: "ROLE", label: "Specific Role" },
+                                        { value: "SPECIFIC_USER", label: "Specific Employee" },
+                                    ]}
+                                />
                                 {step.approverType === 'ROLE' && (
-                                    <div>
-                                        <label className="text-[11px] font-bold text-[var(--text3)] uppercase mb-1 block tracking-wider">Target System Role</label>
-                                        <select className="w-full p-2 border border-[var(--border)] rounded text-sm bg-[var(--bg)] text-[var(--text)] focus:outline-none" value={step.role} onChange={e => {
+                                    <Select
+                                        label="Target System Role"
+                                        value={step.role}
+                                        onChange={e => {
                                             const newSteps = [...steps];
                                             newSteps[index].role = e.target.value;
                                             setSteps(newSteps)
-                                        }}>
-                                            <option value="">Select Role</option>
-                                            {ROLES.map(role => (
-                                                <option key={role} value={role}>{role.replace("_", " ")}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                        }}
+                                    >
+                                        <option value="">Select Role</option>
+                                        {ROLES.map(role => (
+                                            <option key={role} value={role}>{role.replace("_", " ")}</option>
+                                        ))}
+                                    </Select>
                                 )}
                                 {step.approverType === 'SPECIFIC_USER' && (
-                                    <div>
-                                        <label className="text-[11px] font-bold text-[var(--text3)] uppercase mb-1 block tracking-wider">Configured User ID</label>
-                                        <input type="text" className="w-full p-2 border border-[var(--border)] rounded text-sm bg-[var(--bg)] text-[var(--text)] focus:outline-none" value={step.userId} placeholder="Enter Employee ID" onChange={e => {
+                                    <Input
+                                        label="Configured User ID"
+                                        value={step.userId}
+                                        placeholder="Enter Employee ID"
+                                        onChange={e => {
                                             const newSteps = [...steps]
                                             newSteps[index].userId = e.target.value
                                             setSteps(newSteps)
-                                        }} />
-                                    </div>
+                                        }}
+                                    />
                                 )}
                                 <div className={step.approverType === 'MANAGER' ? 'md:col-span-2' : ''}>
-                                    <label className="text-[11px] font-bold text-[var(--text3)] uppercase mb-1 block tracking-wider">SLA Timeout (Hours)</label>
-                                    <div className="flex items-center space-x-2">
-                                        <input type="number" className="w-full p-2 border border-[var(--border)] rounded text-sm bg-[var(--bg)] text-[var(--text)] focus:outline-none" value={step.slaHours} onChange={e => {
+                                    <Input
+                                        label="SLA Timeout (Hours)"
+                                        type="number"
+                                        value={step.slaHours}
+                                        onChange={e => {
                                             const newSteps = [...steps]
                                             newSteps[index].slaHours = Number(e.target.value)
                                             setSteps(newSteps)
-                                        }} />
-                                    </div>
+                                        }}
+                                    />
                                 </div>
                             </div>
-                            <button className="p-2 text-red-500 hover:text-white border border-[var(--border)] hover:bg-red-500 rounded-lg transition-colors ml-2 shrink-0" onClick={() => removeStep(index)}>
+                            <Button
+                                variant="danger"
+                                size="icon"
+                                onClick={() => removeStep(index)}
+                                className="ml-2 shrink-0"
+                            >
                                 <TrashIcon className="w-4 h-4" />
-                            </button>
+                            </Button>
                         </div>
                         {index < steps.length - 1 && (
                             <div className="flex justify-center py-1 text-gray-400">
-                                <div className="w-[2px] h-6 bg-[var(--border)] border-dashed border-l-2"></div>
+                                <div className="w-[2px] h-6 bg-border border-dashed border-l-2"></div>
                             </div>
                         )}
                     </div>
                 ))}
 
                 <div className="flex justify-center mt-8">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-[var(--bg2)] border border-[var(--border)] border-dashed text-blue-500 font-semibold rounded-lg hover:border-blue-500 hover:bg-blue-500/5 transition-colors text-sm" onClick={addStep}>
-                        <PlusIcon className="w-4 h-4" /> Add Secondary Approver
-                    </button>
+                    <Button
+                        variant="secondary"
+                        leftIcon={<PlusIcon className="w-4 h-4" />}
+                        onClick={addStep}
+                        className="border-dashed text-blue-500 hover:border-blue-500 hover:bg-blue-500/5"
+                    >
+                        Add Secondary Approver
+                    </Button>
                 </div>
             </div>
         </div>

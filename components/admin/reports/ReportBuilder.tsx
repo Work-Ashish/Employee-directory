@@ -15,6 +15,10 @@ import {
     TokensIcon
 } from "@radix-ui/react-icons"
 import { format } from "date-fns"
+import { Button } from "@/components/ui/Button"
+import { Card, CardContent } from "@/components/ui/Card"
+import { Input } from "@/components/ui/Input"
+import { Spinner } from "@/components/ui/Spinner"
 
 type EntityType = "EMPLOYEE" | "PAYROLL" | "ATTENDANCE"
 
@@ -137,32 +141,31 @@ export function ReportBuilder() {
     }
 
     return (
-        <div className="space-y-6 animate-[pageIn_0.3s_ease-out]">
+        <div className="space-y-6 animate-page-in">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Configuration Panel */}
                 <div className="lg:col-span-1 space-y-6">
-                    <div className="glass p-6 space-y-6">
+                    <Card variant="glass" className="p-6 space-y-6">
                         <div>
-                            <label className="text-[12px] font-bold text-[var(--text3)] uppercase tracking-tight block mb-2">Report Name</label>
-                            <input
+                            <label className="text-sm font-bold text-text-3 uppercase tracking-tight block mb-2">Report Name</label>
+                            <Input
                                 type="text"
                                 value={reportName}
                                 onChange={(e) => setReportName(e.target.value)}
                                 placeholder="e.g., Monthly Payroll Summary"
-                                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg p-2.5 text-[14px] focus:outline-none focus:border-[var(--accent)]"
                             />
                         </div>
 
                         <div>
-                            <label className="text-[12px] font-bold text-[var(--text3)] uppercase tracking-tight block mb-2">Entity Type</label>
+                            <label className="text-sm font-bold text-text-3 uppercase tracking-tight block mb-2">Entity Type</label>
                             <div className="grid grid-cols-3 gap-2">
                                 {(["EMPLOYEE", "PAYROLL", "ATTENDANCE"] as EntityType[]).map((type) => (
                                     <button
                                         key={type}
                                         onClick={() => setEntityType(type)}
-                                        className={`p-2 rounded-lg border text-[11px] font-bold transition-all ${entityType === type
-                                            ? "bg-[var(--accent)] text-white border-[var(--accent)]"
-                                            : "bg-[var(--surface)] text-[var(--text2)] border-[var(--border)] hover:border-[var(--accent)]/30"
+                                        className={`p-2 rounded-lg border text-xs font-bold transition-all ${entityType === type
+                                            ? "bg-accent text-white border-accent"
+                                            : "bg-surface text-text-2 border-border hover:border-accent/30"
                                             }`}
                                     >
                                         {type}
@@ -172,10 +175,10 @@ export function ReportBuilder() {
                         </div>
 
                         <div>
-                            <label className="text-[12px] font-bold text-[var(--text3)] uppercase tracking-tight block mb-2">Select Columns</label>
+                            <label className="text-sm font-bold text-text-3 uppercase tracking-tight block mb-2">Select Columns</label>
                             <div className="space-y-1 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
                                 {ENTITY_COLUMNS.filter(c => c.entity === entityType).map((col) => (
-                                    <label key={col.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-[var(--surface)] cursor-pointer group">
+                                    <label key={col.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-surface cursor-pointer group">
                                         <input
                                             type="checkbox"
                                             checked={selectedColumns.includes(col.id)}
@@ -183,60 +186,64 @@ export function ReportBuilder() {
                                                 if (e.target.checked) setSelectedColumns([...selectedColumns, col.id])
                                                 else setSelectedColumns(selectedColumns.filter(id => id !== col.id))
                                             }}
-                                            className="accent-[var(--accent)]"
+                                            className="accent-accent"
                                         />
-                                        <span className="text-[13px] text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">{col.label}</span>
+                                        <span className="text-base text-text group-hover:text-accent transition-colors">{col.label}</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="pt-4 border-t border-[var(--border)]">
-                            <button
+                        <div className="pt-4 border-t border-border">
+                            <Button
+                                variant="secondary"
                                 onClick={handlePreview}
-                                disabled={loading}
-                                className="w-full py-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-[13px] font-bold text-[var(--text)] hover:bg-[var(--bg2)] transition-all flex items-center justify-center gap-2"
+                                loading={loading}
+                                leftIcon={<ReloadIcon />}
+                                className="w-full"
                             >
-                                {loading ? <ReloadIcon className="animate-spin" /> : <ReloadIcon />}
                                 Preview Data
-                            </button>
+                            </Button>
                         </div>
-                    </div>
+                    </Card>
                 </div>
 
                 {/* Preview & Actions */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="glass p-6 min-h-[400px] flex flex-col">
+                    <Card variant="glass" className="p-6 min-h-[400px] flex flex-col">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-[16px] font-bold">Preview (Top 10)</h3>
+                            <h3 className="text-lg font-bold">Preview (Top 10)</h3>
                             <div className="flex items-center gap-2">
-                                <button
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
                                     onClick={handleSave}
-                                    disabled={saving}
-                                    className="px-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-[12px] font-bold hover:border-[var(--accent)]/50 transition-all flex items-center gap-2"
+                                    loading={saving}
+                                    leftIcon={<PlusIcon />}
                                 >
-                                    {saving ? <ReloadIcon className="animate-spin" /> : <PlusIcon />}
                                     Save Report
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    size="sm"
                                     onClick={handleExport}
-                                    className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg text-[12px] font-bold hover:scale-[1.02] transition-transform flex items-center gap-2 shadow-lg shadow-blue-500/20"
+                                    leftIcon={<DownloadIcon />}
+                                    className="shadow-lg shadow-blue-500/20"
                                 >
-                                    <DownloadIcon />
                                     Export CSV
-                                </button>
+                                </Button>
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                        <div className="flex-1 overflow-x-auto rounded-xl border border-border bg-surface">
                             {previewData.length > 0 ? (
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="bg-[var(--bg2)]">
+                                        <tr className="bg-bg-2">
                                             {selectedColumns.map(col => {
                                                 const def = ENTITY_COLUMNS.find(c => c.id === col)
                                                 return (
-                                                    <th key={col} className="p-3 text-[11px] font-bold text-[var(--text3)] uppercase tracking-tight border-b border-[var(--border)] whitespace-nowrap">
+                                                    <th key={col} className="p-3 text-xs font-bold text-text-3 uppercase tracking-tight border-b border-border whitespace-nowrap">
                                                         {def?.label || col}
                                                     </th>
                                                 )
@@ -245,7 +252,7 @@ export function ReportBuilder() {
                                     </thead>
                                     <tbody>
                                         {previewData.map((row, i) => (
-                                            <tr key={i} className="hover:bg-[var(--surface2)]/50 transition-colors">
+                                            <tr key={i} className="hover:bg-surface-2/50 transition-colors">
                                                 {selectedColumns.map(col => {
                                                     let val = row
                                                     if (col.includes(".")) {
@@ -254,7 +261,7 @@ export function ReportBuilder() {
                                                         val = row[col]
                                                     }
                                                     return (
-                                                        <td key={col} className="p-3 text-[13px] text-[var(--text2)] border-b border-[var(--border)]">
+                                                        <td key={col} className="p-3 text-base text-text-2 border-b border-border">
                                                             {typeof val === "object" ? "..." : String(val ?? "-")}
                                                         </td>
                                                     )
@@ -264,13 +271,13 @@ export function ReportBuilder() {
                                     </tbody>
                                 </table>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-[var(--text3)] space-y-2 py-20">
+                                <div className="h-full flex flex-col items-center justify-center text-text-3 space-y-2 py-20">
                                     <ArchiveIcon className="w-8 h-8 opacity-20" />
-                                    <p className="text-[13px] italic">Configure columns and click Preview to see data</p>
+                                    <p className="text-base italic">Configure columns and click Preview to see data</p>
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </Card>
                 </div>
             </div>
         </div>

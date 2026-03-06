@@ -1,8 +1,16 @@
 import * as React from "react"
 import { extractArray, cn } from "@/lib/utils"
-import { toast, Toaster } from "react-hot-toast"
+import { toast } from "sonner"
 import { format } from "date-fns"
 import { CsvImportModal } from "@/components/ui/CsvImportModal"
+import { PageHeader } from "@/components/ui/PageHeader"
+import { Button } from "@/components/ui/Button"
+import { Badge } from "@/components/ui/Badge"
+import { Spinner } from "@/components/ui/Spinner"
+import { StatCard } from "@/components/ui/StatCard"
+import { Card, CardContent } from "@/components/ui/Card"
+import { Select } from "@/components/ui/Select"
+import { Avatar } from "@/components/ui/Avatar"
 
 type Resignation = {
     id: string
@@ -80,147 +88,164 @@ export function AdminResignationView() {
         return Object.entries(counts).sort((a, b) => b[1] - a[1])
     }, [resignations])
 
-    return (
-        <div className="space-y-6 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)]">
-            <Toaster position="top-right" />
+    const getStatusBadgeVariant = (status: string): "info" | "warning" | "success" => {
+        switch (status) {
+            case 'UNDER_REVIEW': return "info"
+            case 'NOTICE_PERIOD': return "warning"
+            default: return "success"
+        }
+    }
 
-            <div className="flex items-center justify-between mb-2">
-                <div>
-                    <h1 className="text-[26px] font-extrabold tracking-[-0.5px] text-[var(--text)]">Resignation Management</h1>
-                    <p className="text-[13.5px] text-[var(--text3)] mt-[4px]">Review and manage resignation requests</p>
-                </div>
-                <button
-                    onClick={() => setIsImportOpen(true)}
-                    className="flex items-center gap-2 bg-[var(--surface)] text-[var(--text2)] border border-[var(--border)] px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-[var(--bg2)] transition-colors"
-                >
-                    📥 Import CSV
-                </button>
-            </div>
+    return (
+        <div className="space-y-6 animate-page-in">
+            <PageHeader
+                title="Resignation Management"
+                description="Review and manage resignation requests"
+                actions={
+                    <Button
+                        variant="secondary"
+                        onClick={() => setIsImportOpen(true)}
+                    >
+                        📥 Import CSV
+                    </Button>
+                }
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="glass p-5 bg-[var(--surface)] border-[var(--border)] relative overflow-hidden">
-                    <div className="text-[11px] font-bold text-[var(--red)] uppercase tracking-[0.6px] mb-[6px]">Under Review</div>
-                    <div className="text-[36px] font-extrabold text-[var(--red)]">{stats.highRisk}</div>
-                    <div className="text-[12px] text-[var(--text3)] mt-1">Pending approval</div>
-                    <div className="absolute right-[16px] top-1/2 -translate-y-1/2 text-[30px] opacity-20">🚨</div>
+                <div className="glass p-5 bg-surface border-border relative overflow-hidden">
+                    <div className="text-xs font-bold text-danger uppercase tracking-[0.6px] mb-1.5">Under Review</div>
+                    <div className="text-[36px] font-extrabold text-danger">{stats.highRisk}</div>
+                    <div className="text-sm text-text-3 mt-1">Pending approval</div>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[30px] opacity-20">🚨</div>
                 </div>
-                <div className="glass p-5 bg-[var(--surface)] border-[var(--border)] relative overflow-hidden">
-                    <div className="text-[11px] font-bold text-[var(--amber)] uppercase tracking-[0.6px] mb-[6px]">Notice Period</div>
-                    <div className="text-[36px] font-extrabold text-[var(--amber)]">{stats.notice}</div>
-                    <div className="text-[12px] text-[var(--text3)] mt-1">Serving notice</div>
-                    <div className="absolute right-[16px] top-1/2 -translate-y-1/2 text-[30px] opacity-20">⏳</div>
+                <div className="glass p-5 bg-surface border-border relative overflow-hidden">
+                    <div className="text-xs font-bold text-warning uppercase tracking-[0.6px] mb-1.5">Notice Period</div>
+                    <div className="text-[36px] font-extrabold text-warning">{stats.notice}</div>
+                    <div className="text-sm text-text-3 mt-1">Serving notice</div>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[30px] opacity-20">⏳</div>
                 </div>
-                <div className="glass p-5 bg-[var(--surface)] border-[var(--border)] relative overflow-hidden">
-                    <div className="text-[11px] font-bold text-[#1a9140] uppercase tracking-[0.6px] mb-[6px]">Processed</div>
-                    <div className="text-[36px] font-extrabold text-[#1a9140]">{stats.processed}</div>
-                    <div className="text-[12px] text-[var(--text3)] mt-1">Successfully exited</div>
-                    <div className="absolute right-[16px] top-1/2 -translate-y-1/2 text-[30px] opacity-20">✅</div>
+                <div className="glass p-5 bg-surface border-border relative overflow-hidden">
+                    <div className="text-xs font-bold text-success uppercase tracking-[0.6px] mb-1.5">Processed</div>
+                    <div className="text-[36px] font-extrabold text-success">{stats.processed}</div>
+                    <div className="text-sm text-text-3 mt-1">Successfully exited</div>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[30px] opacity-20">✅</div>
                 </div>
-                <div className="glass p-5 bg-[var(--surface)] border-[var(--border)]">
-                    <div className="text-[11px] font-bold text-[var(--text3)] uppercase mb-2">Attrition Rate</div>
-                    <div className="text-[36px] font-extrabold text-[var(--accent)]">{stats.attrition}%</div>
-                    <div className="h-2 rounded-full bg-[var(--bg2)] mt-2 overflow-hidden">
-                        <div className="h-full bg-[var(--accent)]" style={{ width: `${stats.attrition}%` }} />
+                <div className="glass p-5 bg-surface border-border">
+                    <div className="text-xs font-bold text-text-3 uppercase mb-2">Attrition Rate</div>
+                    <div className="text-[36px] font-extrabold text-accent">{stats.attrition}%</div>
+                    <div className="h-2 rounded-full bg-bg-2 mt-2 overflow-hidden">
+                        <div className="h-full bg-accent" style={{ width: `${stats.attrition}%` }} />
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6">
-                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--r)] overflow-hidden shadow-sm">
-                    <div className="p-[16px_20px] flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface2)]">
-                        <div className="text-[14px] font-bold text-[var(--text)]">📋 Resignation Records</div>
-                        <select
+                <Card className="overflow-hidden">
+                    <div className="px-5 py-4 flex items-center justify-between border-b border-border bg-surface-2">
+                        <div className="text-md font-bold text-text">📋 Resignation Records</div>
+                        <Select
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
-                            className="p-1 text-[12px] bg-[var(--surface)] border border-[var(--border)] rounded-md outline-none"
+                            className="w-auto py-1 text-sm"
                         >
                             <option value="ALL">All Status</option>
                             <option value="UNDER_REVIEW">Under Review</option>
                             <option value="NOTICE_PERIOD">Notice Period</option>
                             <option value="PROCESSED">Processed</option>
-                        </select>
+                        </Select>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse">
                             <thead>
-                                <tr className="border-b border-[var(--border)] bg-[var(--surface2)]">
+                                <tr className="border-b border-border bg-surface-2">
                                     {['Employee', 'Reason', 'Last Day', 'Status', 'Actions'].map((h) => (
-                                        <th key={h} className="p-[11px_18px] text-[11px] font-bold text-[var(--text3)] text-left uppercase">{h}</th>
+                                        <th key={h} className="px-4 py-3 text-xs font-bold text-text-3 text-left uppercase">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {!isLoading ? filtered.map((res) => (
                                     <tr key={res.id} className="border-b border-[#0000000a] last:border-0 hover:bg-[rgba(0,122,255,0.02)] transition-colors">
-                                        <td className="p-[13px_18px]">
+                                        <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-[11px]">
-                                                    {res.employee.firstName.charAt(0)}{res.employee.lastName.charAt(0)}
-                                                </div>
+                                                <Avatar
+                                                    name={`${res.employee.firstName} ${res.employee.lastName}`}
+                                                    size="sm"
+                                                />
                                                 <div>
-                                                    <div className="font-semibold text-[13px]">{res.employee.firstName} {res.employee.lastName}</div>
-                                                    <div className="text-[11px] text-[var(--text3)]">{res.employee.designation}</div>
+                                                    <div className="font-semibold text-base">{res.employee.firstName} {res.employee.lastName}</div>
+                                                    <div className="text-xs text-text-3">{res.employee.designation}</div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="p-[13px_18px]">
-                                            <span className="px-2 py-1 bg-[var(--bg2)] text-[11px] rounded font-medium text-[var(--text2)]">{res.reason}</span>
+                                        <td className="px-4 py-3">
+                                            <Badge variant="neutral" size="sm">{res.reason}</Badge>
                                         </td>
-                                        <td className="p-[13px_18px] text-[12px] font-mono">{format(new Date(res.lastDay), "MMM d, yyyy")}</td>
-                                        <td className="p-[13px_18px]">
-                                            <span className={cn("text-[11px] font-bold px-2 py-1 rounded-full border",
-                                                res.status === 'UNDER_REVIEW' ? "bg-[var(--blue-dim)] text-[var(--accent)] border-[var(--accent)]/20" :
-                                                    res.status === 'NOTICE_PERIOD' ? "bg-[var(--amber-dim)] text-[var(--amber)] border-[var(--amber)]/20" :
-                                                        "bg-[var(--green-dim)] text-[#1a9140] border-[#1a9140]/20"
-                                            )}>
+                                        <td className="px-4 py-3 text-sm font-mono">{format(new Date(res.lastDay), "MMM d, yyyy")}</td>
+                                        <td className="px-4 py-3">
+                                            <Badge variant={getStatusBadgeVariant(res.status)}>
                                                 {res.status.replace('_', ' ')}
-                                            </span>
+                                            </Badge>
                                         </td>
-                                        <td className="p-[13px_18px]">
+                                        <td className="px-4 py-3">
                                             <div className="flex gap-1">
                                                 {res.status === 'UNDER_REVIEW' && (
-                                                    <button
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
                                                         onClick={() => updateStatus(res.id, 'NOTICE_PERIOD')}
-                                                        className="p-1 hover:bg-[var(--amber-dim)] rounded text-[var(--amber)]" title="Approve to Notice Period">⏳</button>
+                                                        title="Approve to Notice Period"
+                                                    >
+                                                        ⏳
+                                                    </Button>
                                                 )}
                                                 {res.status === 'NOTICE_PERIOD' && (
-                                                    <button
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
                                                         onClick={() => updateStatus(res.id, 'PROCESSED')}
-                                                        className="p-1 hover:bg-[var(--green-dim)] rounded text-[var(--green)]" title="Mark as Processed">✓</button>
+                                                        title="Mark as Processed"
+                                                    >
+                                                        ✓
+                                                    </Button>
                                                 )}
                                             </div>
                                         </td>
                                     </tr>
                                 )) : (
-                                    <tr><td colSpan={5} className="p-10 text-center text-[var(--text3)]">Loading...</td></tr>
+                                    <tr>
+                                        <td colSpan={5} className="p-10 text-center">
+                                            <Spinner size="lg" />
+                                        </td>
+                                    </tr>
                                 )}
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </Card>
 
-                <div className="glass p-6 space-y-6">
+                <Card variant="glass" className="p-6 space-y-6">
                     <div>
-                        <div className="text-[14px] font-bold mb-4">📊 Exit Reason Trends</div>
+                        <div className="text-md font-bold mb-4">📊 Exit Reason Trends</div>
                         <div className="space-y-4">
                             {reasonCounts.map(([reason, count]) => (
                                 <div key={reason} className="space-y-1">
-                                    <div className="flex justify-between text-[12px]">
+                                    <div className="flex justify-between text-sm">
                                         <span>{reason}</span>
                                         <span className="font-bold">{count}</span>
                                     </div>
-                                    <div className="h-1.5 rounded-full bg-[var(--bg2)] overflow-hidden">
+                                    <div className="h-1.5 rounded-full bg-bg-2 overflow-hidden">
                                         <div
-                                            className="h-full bg-gradient-to-r from-[var(--blue)] to-[var(--accent)]"
+                                            className="h-full bg-gradient-to-r from-info to-accent"
                                             style={{ width: `${(count / resignations.length) * 100}%` }}
                                         />
                                     </div>
                                 </div>
                             ))}
-                            {resignations.length === 0 && <div className="text-[12px] text-[var(--text3)]">No data yet</div>}
+                            {resignations.length === 0 && <div className="text-sm text-text-3">No data yet</div>}
                         </div>
                     </div>
-                </div>
+                </Card>
             </div>
             <CsvImportModal
                 isOpen={isImportOpen}

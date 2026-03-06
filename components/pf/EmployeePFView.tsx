@@ -1,6 +1,11 @@
 import * as React from "react"
 import { cn, extractArray } from "@/lib/utils"
-import { toast } from "react-hot-toast"
+import { toast } from "sonner"
+import { PageHeader } from "@/components/ui/PageHeader"
+import { Card } from "@/components/ui/Card"
+import { Badge } from "@/components/ui/Badge"
+import { Spinner } from "@/components/ui/Spinner"
+import { EmptyState } from "@/components/ui/EmptyState"
 
 type PFRecord = {
     id: string
@@ -37,87 +42,98 @@ export function EmployeePFView() {
     const totalAccumulated = records.reduce((sum, r) => sum + r.totalContribution, 0)
 
     return (
-        <div className="space-y-6 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)]">
-            <div className="mb-[26px]">
-                <h1 className="text-[26px] font-extrabold tracking-[-0.5px] text-[var(--text)]">My Provident Fund</h1>
-                <p className="text-[13.5px] text-[var(--text3)] mt-[4px]">Your savings and contributions overview</p>
-            </div>
+        <div className="space-y-6 animate-page-in">
+            <PageHeader
+                title="My Provident Fund"
+                description="Your savings and contributions overview"
+            />
 
             <div className="grid grid-cols-[1.5fr_1fr] gap-6 mb-6">
                 <div className="glass p-8 bg-gradient-to-br from-[#007aff] to-[#5856d6] text-white relative overflow-hidden">
                     <div className="relative z-10">
-                        <div className="text-[13px] font-medium text-white/80 uppercase tracking-wider mb-2">Total Accumulated Corpus</div>
+                        <div className="text-base font-medium text-white/80 uppercase tracking-wider mb-2">Total Accumulated Corpus</div>
                         <div className="text-[48px] font-extrabold leading-none mb-4">${totalAccumulated.toLocaleString()}</div>
-                        <div className="flex gap-4 text-[13px] text-white/90">
-                            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-medium">Last Credit: {latest?.month || 'N/A'}</span>
-                            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-medium">Status: {latest?.status || 'No Records'}</span>
+                        <div className="flex gap-4 text-base text-white/90">
+                            <Badge className="bg-white/20 text-white border-transparent text-xs">Last Credit: {latest?.month || 'N/A'}</Badge>
+                            <Badge className="bg-white/20 text-white border-transparent text-xs">Status: {latest?.status || 'No Records'}</Badge>
                         </div>
                     </div>
                     <div className="absolute right-[-30px] top-[-30px] text-[180px] opacity-10 rotate-12">💰</div>
                 </div>
 
-                <div className="glass p-6 gap-4">
+                <Card variant="glass" className="p-6 gap-4">
                     <div className="mb-4">
-                        <div className="text-[12px] text-[var(--text3)] uppercase font-semibold">UAN Number</div>
-                        <div className="text-[18px] font-mono font-bold text-[var(--text)] tracking-wider">
+                        <div className="text-sm text-text-3 uppercase font-semibold">UAN Number</div>
+                        <div className="text-[18px] font-mono font-bold text-text tracking-wider">
                             {latest?.accountNumber ? "100" + latest.accountNumber.replace(/\D/g, '') : "Pending Verification"}
                         </div>
                     </div>
                     <div>
-                        <div className="text-[12px] text-[var(--text3)] uppercase font-semibold">PF Account No</div>
-                        <div className="text-[18px] font-mono font-bold text-[var(--text)] break-all">
+                        <div className="text-sm text-text-3 uppercase font-semibold">PF Account No</div>
+                        <div className="text-[18px] font-mono font-bold text-text break-all">
                             {latest?.accountNumber || "Not Linked"}
                         </div>
                     </div>
-                </div>
+                </Card>
             </div>
 
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--r)] overflow-hidden shadow-sm">
-                <div className="p-[16px_20px] flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface2)] backdrop-blur-md">
-                    <div className="text-[14px] font-bold text-[var(--text)]">📄 Monthly Ledger</div>
+            <Card>
+                <div className="px-5 py-4 flex items-center justify-between border-b border-border bg-surface-2 backdrop-blur-md">
+                    <div className="text-md font-bold text-text">📄 Monthly Ledger</div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
-                            <tr className="border-b border-[var(--border)] bg-[var(--surface2)] backdrop-blur-md">
+                            <tr className="border-b border-border bg-surface-2 backdrop-blur-md">
                                 {['Month', 'Your Share (12%)', 'Employer Share (12%)', 'Total Credit', 'Status'].map((h) => (
-                                    <th key={h} className="p-[11px_18px] text-[11.5px] font-bold text-[var(--text3)] text-left uppercase tracking-[0.5px]">
+                                    <th key={h} className="px-4 py-3 text-xs font-bold text-text-3 text-left uppercase tracking-[0.5px]">
                                         {h}
                                     </th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
-                            {!isLoading ? records.map((rec, i) => (
+                            {!isLoading ? records.map((rec) => (
                                 <tr key={rec.id} className="group hover:bg-[rgba(0,122,255,0.03)] transition-colors duration-200 border-b border-[#0000000a] last:border-0 grow-in">
-                                    <td className="p-[13px_18px] font-mono text-[13px] text-[var(--text)]">{rec.month}</td>
-                                    <td className="p-[13px_18px] font-mono text-[13px] font-semibold text-[var(--green)]">${rec.employeeContribution.toLocaleString()}</td>
-                                    <td className="p-[13px_18px] font-mono text-[13px] font-semibold text-[var(--green)]">${rec.employerContribution.toLocaleString()}</td>
-                                    <td className="p-[13px_18px] font-mono text-[14px] font-bold text-[var(--accent)]">${rec.totalContribution.toLocaleString()}</td>
-                                    <td className="p-[13px_18px]">
-                                        <span className={cn("inline-flex items-center gap-[4px] px-[11px] py-[4px] rounded-[20px] text-[11px] font-semibold border",
-                                            rec.status === 'Credited' ? "bg-[var(--green-dim)] text-[#1a9140] border-[rgba(52,199,89,0.25)]" :
-                                                rec.status === 'Pending' ? "bg-[var(--blue-dim)] text-[#007aff] border-[rgba(0,122,255,0.25)]" :
-                                                    "bg-[var(--bg2)] text-[var(--text3)] border-[var(--border)]")
-                                        }>
+                                    <td className="px-4 py-3 font-mono text-base text-text">{rec.month}</td>
+                                    <td className="px-4 py-3 font-mono text-base font-semibold text-success">${rec.employeeContribution.toLocaleString()}</td>
+                                    <td className="px-4 py-3 font-mono text-base font-semibold text-success">${rec.employerContribution.toLocaleString()}</td>
+                                    <td className="px-4 py-3 font-mono text-md font-bold text-accent">${rec.totalContribution.toLocaleString()}</td>
+                                    <td className="px-4 py-3">
+                                        <Badge
+                                            variant={
+                                                rec.status === 'Credited' ? 'success' :
+                                                rec.status === 'Pending' ? 'info' :
+                                                'neutral'
+                                            }
+                                        >
                                             {rec.status === 'Credited' && '✓ '} {rec.status}
-                                        </span>
+                                        </Badge>
                                     </td>
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={5} className="p-10 text-center text-[var(--text3)]">Loading ledger...</td>
+                                    <td colSpan={5} className="p-10 text-center text-text-3">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <Spinner /> Loading ledger...
+                                        </div>
+                                    </td>
                                 </tr>
                             )}
                             {!isLoading && records.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="p-10 text-center text-[var(--text3)]">No PF records found.</td>
+                                    <td colSpan={5}>
+                                        <EmptyState
+                                            title="No PF records found"
+                                            description="Your provident fund records will appear here once they are available."
+                                        />
+                                    </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </Card>
         </div>
     )
 }

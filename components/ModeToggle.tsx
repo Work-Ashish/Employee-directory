@@ -12,7 +12,7 @@ export function ModeToggle() {
         <button
             onClick={() => setTheme(theme === "light" ? "dark" : "light")}
             className={cn(
-                "relative w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--bg2)] text-[var(--text2)]"
+                "relative w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-bg-2 text-text-2"
             )}
             aria-label="Toggle theme"
         >

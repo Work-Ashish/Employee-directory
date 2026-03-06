@@ -2,13 +2,21 @@
 
 import * as React from "react"
 import { extractArray, cn } from "@/lib/utils"
-import { toast, Toaster } from "react-hot-toast"
+import { toast } from "sonner"
 import { format } from "date-fns"
 import { PlusIcon, TrashIcon, Pencil2Icon } from "@radix-ui/react-icons"
 import { Modal } from "@/components/ui/Modal"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { PageHeader } from "@/components/ui/PageHeader"
+import { Button } from "@/components/ui/Button"
+import { Badge } from "@/components/ui/Badge"
+import { Spinner } from "@/components/ui/Spinner"
+import { Input } from "@/components/ui/Input"
+import { Select } from "@/components/ui/Select"
+import { Textarea } from "@/components/ui/Textarea"
+import { Card, CardContent } from "@/components/ui/Card"
 
 const trainingSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -38,17 +46,17 @@ type Training = {
 
 function LearnerRow({ name, courses, score, rank }: any) {
     return (
-        <div className="flex items-center gap-[12px] pb-[10px] border-b border-[var(--border)] last:border-0 last:pb-0">
-            <div className={cn("w-[24px] h-[24px] rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0",
+        <div className="flex items-center gap-3 pb-[10px] border-b border-border last:border-0 last:pb-0">
+            <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0",
                 rank === 1 ? "bg-[#eab308]" : (rank === 2 ? "bg-[#94a3b8]" : "bg-[#b45309]")
             )}>
                 {rank}
             </div>
             <div className="flex-1">
-                <div className="text-[13px] font-semibold text-[var(--text)]">{name}</div>
-                <div className="text-[11px] text-[var(--text3)]">{courses} courses completed</div>
+                <div className="text-base font-semibold text-text">{name}</div>
+                <div className="text-xs text-text-3">{courses} courses completed</div>
             </div>
-            <div className="text-[13px] font-mono font-bold text-[var(--green)]">
+            <div className="text-base font-mono font-bold text-success">
                 {score}
             </div>
         </div>
@@ -211,6 +219,14 @@ export function AdminTrainingView() {
         }
     }
 
+    const getStatusBadgeVariant = (status: string): "success" | "warning" | "info" => {
+        switch (status) {
+            case 'COMPLETED': return "success"
+            case 'IN_PROGRESS': return "warning"
+            default: return "info"
+        }
+    }
+
     // Dynamic Analytics Calculations
     const totalEnrollments = React.useMemo(() =>
         trainings.reduce((sum, t) => sum + (t.enrollments?.length || 0), 0)
@@ -256,32 +272,31 @@ export function AdminTrainingView() {
     }, [trainings])
 
     return (
-        <div className="space-y-6 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)]">
-            <Toaster position="top-right" />
-            <div className="flex items-center justify-between mb-[26px]">
-                <div>
-                    <h1 className="text-[26px] font-extrabold tracking-[-0.5px] text-[var(--text)]">Learning & Development</h1>
-                    <p className="text-[13.5px] text-[var(--text3)] mt-[4px]">Assign and track employee training modules</p>
-                </div>
-                <button
-                    onClick={() => {
-                        setEditingId(null)
-                        form.reset()
-                        setIsModalOpen(true)
-                    }}
-                    className="flex items-center gap-2 bg-[var(--accent)] text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity"
-                >
-                    <PlusIcon className="w-4 h-4" /> Create Course
-                </button>
-            </div>
+        <div className="space-y-6 animate-page-in">
+            <PageHeader
+                title="Learning & Development"
+                description="Assign and track employee training modules"
+                actions={
+                    <Button
+                        onClick={() => {
+                            setEditingId(null)
+                            form.reset()
+                            setIsModalOpen(true)
+                        }}
+                        leftIcon={<PlusIcon className="w-4 h-4" />}
+                    >
+                        Create Course
+                    </Button>
+                }
+            />
 
-            <div className="grid grid-cols-[2fr_1fr] gap-[20px]">
-                <div className="flex flex-col gap-[20px]">
-                    <div className="glass p-[24px] bg-gradient-to-br from-[#007aff] to-[#5856d6] text-white relative overflow-hidden">
+            <div className="grid grid-cols-[2fr_1fr] gap-5">
+                <div className="flex flex-col gap-5">
+                    <div className="glass p-6 bg-gradient-to-br from-[#007aff] to-[#5856d6] text-white relative overflow-hidden">
                         <div className="relative z-10 flex flex-col items-start gap-4">
                             <div>
                                 <h2 className="text-[20px] font-bold mb-1">Training Hub</h2>
-                                <p className="text-[13.5px] text-white/80 max-w-[400px]">Manage mandatory compliance and skill-building modules for your entire organization.</p>
+                                <p className="text-base text-white/80 max-w-[400px]">Manage mandatory compliance and skill-building modules for your entire organization.</p>
                             </div>
                         </div>
                         <div className="absolute right-[-20px] top-[-20px] w-[200px] h-[200px] bg-white/10 rounded-full blur-[40px]" />
@@ -289,82 +304,90 @@ export function AdminTrainingView() {
                     </div>
 
                     <div>
-                        <div className="text-[15px] font-bold text-[var(--text)] mb-[14px]">Active Courses</div>
-                        <div className="flex flex-col gap-[12px]">
+                        <div className="text-[15px] font-bold text-text mb-[14px]">Active Courses</div>
+                        <div className="flex flex-col gap-3">
                             {!isLoading ? trainings.map((t, i) => {
                                 const [grad, text, bg, icon] = getTypeColor(t.type).split(' ')
                                 return (
-                                    <div key={t.id} className="glass p-[18px] flex items-center gap-[16px] group transition-all duration-200 hover:-translate-y-[2px] hover:shadow-md animate-[fadeRow_0.4s_both]" style={{ animationDelay: `${i * 0.1}s` }}>
-                                        <div className={cn("w-[48px] h-[48px] rounded-[12px] flex items-center justify-center text-[24px] shrink-0", bg)}>
+                                    <div key={t.id} className="glass p-[18px] flex items-center gap-4 group transition-all duration-200 hover:-translate-y-[2px] hover:shadow-md animate-[fadeRow_0.4s_both]" style={{ animationDelay: `${i * 0.1}s` }}>
+                                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0", bg)}>
                                             {icon.split('-')[1]}
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex justify-between items-start mb-1">
-                                                <h3 className="text-[14px] font-bold text-[var(--text)]">{t.name}</h3>
+                                                <h3 className="text-md font-bold text-text">{t.name}</h3>
                                                 <div className="flex items-center gap-2">
-                                                    <span className={cn("text-[11px] font-bold px-[8px] py-[2px] rounded-[10px] uppercase tracking-[0.5px]",
-                                                        t.status === 'COMPLETED' ? "bg-[var(--green-dim)] text-[#1a9140]" : (t.status === 'IN_PROGRESS' ? "bg-[var(--amber-dim)] text-[#b86c00]" : "bg-[var(--blue-dim)] text-[#0a7ea4]")
-                                                    )}>
+                                                    <Badge variant={getStatusBadgeVariant(t.status)} size="sm">
                                                         {t.status.replace('_', ' ')}
-                                                    </span>
-                                                    <button onClick={() => openEdit(t)} className="p-1 hover:bg-[var(--bg2)] rounded"><Pencil2Icon className="w-3.5 h-3.5 text-[var(--text3)]" /></button>
-                                                    <button onClick={() => deleteTraining(t.id)} className="p-1 hover:bg-[var(--red-dim)] rounded"><TrashIcon className="w-3.5 h-3.5 text-[var(--red)]" /></button>
+                                                    </Badge>
+                                                    <Button variant="ghost" size="icon" onClick={() => openEdit(t)}>
+                                                        <Pencil2Icon className="w-3.5 h-3.5 text-text-3" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => deleteTraining(t.id)}>
+                                                        <TrashIcon className="w-3.5 h-3.5 text-danger" />
+                                                    </Button>
                                                 </div>
                                             </div>
-                                            <div className="text-[12px] text-[var(--text3)] mb-[8px] flex items-center gap-[10px]">
+                                            <div className="text-sm text-text-3 mb-2 flex items-center gap-[10px]">
                                                 <span>{t.type}</span>
                                                 {t.dueDate && (
                                                     <>
-                                                        <span className="w-[3px] h-[3px] bg-[var(--text3)] rounded-full" />
+                                                        <span className="w-[3px] h-[3px] bg-text-3 rounded-full" />
                                                         <span>Due: {format(new Date(t.dueDate), "MMM d, yyyy")}</span>
                                                     </>
                                                 )}
-                                                <span className="w-[3px] h-[3px] bg-[var(--text3)] rounded-full" />
+                                                <span className="w-[3px] h-[3px] bg-text-3 rounded-full" />
                                                 <span>👥 {t.enrollments?.length || 0} enrolled</span>
-                                                {t.videoUrl && <span className="text-[11px] text-[var(--red)] font-bold">● Live Video</span>}
+                                                {t.videoUrl && <span className="text-xs text-danger font-bold">● Live Video</span>}
                                             </div>
-                                            <div className="w-full h-[6px] bg-[var(--bg2)] rounded-[3px] overflow-hidden">
+                                            <div className="w-full h-[6px] bg-bg-2 rounded-[3px] overflow-hidden">
                                                 <div className={cn("h-full rounded-[3px] bg-gradient-to-r", grad)} style={{ width: `${t.progress}%` }} />
                                             </div>
                                         </div>
                                     </div>
                                 )
                             }) : (
-                                <div className="p-10 text-center text-[var(--text3)]">Loading courses...</div>
+                                <div className="p-10 flex justify-center">
+                                    <Spinner size="lg" />
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-[20px]">
-                    <div className="glass p-[22px]">
-                        <div className="text-[13.5px] font-bold text-[var(--text)] mb-[16px] flex items-center gap-2">
-                            <span>📊</span> Analytics
-                        </div>
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center text-[12px]">
-                                <span className="text-[var(--text3)]">Total Enrollments</span>
-                                <span className="text-[var(--accent)] font-bold">{totalEnrollments}</span>
+                <div className="flex flex-col gap-5">
+                    <Card variant="glass">
+                        <CardContent>
+                            <div className="text-base font-bold text-text mb-4 flex items-center gap-2">
+                                <span>📊</span> Analytics
                             </div>
-                            <div className="flex justify-between items-center text-[12px]">
-                                <span className="text-[var(--text3)]">Avg. Score</span>
-                                <span className="font-bold">{avgScore}/100</span>
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-text-3">Total Enrollments</span>
+                                    <span className="text-accent font-bold">{totalEnrollments}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-text-3">Avg. Score</span>
+                                    <span className="font-bold">{avgScore}/100</span>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
 
-                    <div className="glass p-[22px] flex-1">
-                        <div className="text-[13.5px] font-bold text-[var(--text)] mb-[16px] flex items-center gap-2">
-                            <span>🏆</span> Rewards Center
-                        </div>
-                        <div className="flex flex-col gap-[12px]">
-                            {topPerformers.length > 0 ? topPerformers.map((p, i) => (
-                                <LearnerRow key={p.name} name={p.name} courses={p.completed} score={p.avgScore} rank={i + 1} />
-                            )) : (
-                                <div className="text-[11px] text-[var(--text3)] italic py-4 text-center">No results yet</div>
-                            )}
-                        </div>
-                    </div>
+                    <Card variant="glass" className="flex-1">
+                        <CardContent>
+                            <div className="text-base font-bold text-text mb-4 flex items-center gap-2">
+                                <span>🏆</span> Rewards Center
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                {topPerformers.length > 0 ? topPerformers.map((p, i) => (
+                                    <LearnerRow key={p.name} name={p.name} courses={p.completed} score={p.avgScore} rank={i + 1} />
+                                )) : (
+                                    <div className="text-xs text-text-3 italic py-4 text-center">No results yet</div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
 
@@ -374,64 +397,52 @@ export function AdminTrainingView() {
                 title={editingId ? "Edit Training Course" : "Create New Course"}
             >
                 <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
-                    <div className="space-y-1">
-                        <label className="text-[12px] font-semibold text-[var(--text2)]">Course Name *</label>
-                        <input
-                            {...form.register('name')}
-                            className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
-                            placeholder="e.g. Advanced Cybersecurity"
+                    <Input
+                        label="Course Name *"
+                        {...form.register('name')}
+                        placeholder="e.g. Advanced Cybersecurity"
+                        error={form.formState.errors.name ? String(form.formState.errors.name.message) : undefined}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <Select
+                            label="Category *"
+                            {...form.register('type')}
+                        >
+                            <option value="TECHNICAL">Technical</option>
+                            <option value="COMPLIANCE">Compliance</option>
+                            <option value="SECURITY">Security</option>
+                            <option value="SOFT_SKILLS">Soft Skills</option>
+                            <option value="LEADERSHIP">Leadership</option>
+                        </Select>
+                        <Input
+                            label="Due Date"
+                            type="date"
+                            {...form.register('dueDate')}
                         />
-                        {form.formState.errors.name && <p className="text-[11px] text-[var(--red)]">{String(form.formState.errors.name.message)}</p>}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-[12px] font-semibold text-[var(--text2)]">Category *</label>
-                            <select
-                                {...form.register('type')}
-                                className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
-                            >
-                                <option value="TECHNICAL">Technical</option>
-                                <option value="COMPLIANCE">Compliance</option>
-                                <option value="SECURITY">Security</option>
-                                <option value="SOFT_SKILLS">Soft Skills</option>
-                                <option value="LEADERSHIP">Leadership</option>
-                            </select>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[12px] font-semibold text-[var(--text2)]">Due Date</label>
-                            <input
-                                type="date"
-                                {...form.register('dueDate')}
-                                className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-[12px] font-semibold text-[var(--text2)]">Status *</label>
-                            <select
-                                {...form.register('status')}
-                                className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
-                            >
-                                <option value="UPCOMING">Upcoming</option>
-                                <option value="IN_PROGRESS">In Progress</option>
-                                <option value="COMPLETED">Completed</option>
-                            </select>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[12px] font-semibold text-[var(--text2)] flex justify-between">
+                        <Select
+                            label="Status *"
+                            {...form.register('status')}
+                        >
+                            <option value="UPCOMING">Upcoming</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="COMPLETED">Completed</option>
+                        </Select>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-medium text-text-2 flex justify-between">
                                 <span>Video URL / Upload</span>
-                                <span className="text-[10px] text-[var(--text3)]">Upload max 100MB</span>
+                                <span className="text-[10px] text-text-3">Upload max 100MB</span>
                             </label>
                             <div className="flex gap-2">
                                 <input
                                     {...form.register('videoUrl')}
-                                    className="flex-1 p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]"
+                                    className="input-base flex-1"
                                     placeholder="YouTube URL or Uploaded Link"
                                 />
-                                <label className="shrink-0 px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-md text-[12px] font-semibold cursor-pointer hover:bg-[var(--bg2)] transition-colors">
+                                <label className="shrink-0 px-3 py-2 bg-surface border border-border rounded-md text-sm font-semibold cursor-pointer hover:bg-bg-2 transition-colors">
                                     📁 Upload
                                     <input type="file" className="hidden" accept="video/*" onChange={handleVideoUpload} />
                                 </label>
@@ -439,10 +450,10 @@ export function AdminTrainingView() {
                         </div>
                     </div>
 
-                    <div className="space-y-1 p-3 bg-[var(--surface2)] rounded-lg border border-[var(--border)]">
+                    <div className="space-y-1 p-3 bg-surface-2 rounded-lg border border-border">
                         <div className="flex items-center justify-between mb-2">
-                            <label className="text-[12px] font-bold text-[var(--text2)] uppercase tracking-wider">Assign To</label>
-                            <label className="flex items-center gap-2 text-[12px] font-bold cursor-pointer text-[var(--accent)]">
+                            <label className="text-sm font-bold text-text-2 uppercase tracking-wider">Assign To</label>
+                            <label className="flex items-center gap-2 text-sm font-bold cursor-pointer text-accent">
                                 <input type="checkbox" {...form.register('assignToAll')} className="w-3.5 h-3.5" />
                                 Assign to All Employees
                             </label>
@@ -452,7 +463,7 @@ export function AdminTrainingView() {
                             <div className="space-y-2">
                                 <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto pr-1 custom-scrollbar">
                                     {employees.map(emp => (
-                                        <label key={emp.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-[var(--bg2)] cursor-pointer border border-transparent hover:border-[var(--border)] transition-all">
+                                        <label key={emp.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-bg-2 cursor-pointer border border-transparent hover:border-border transition-all">
                                             <input
                                                 type="checkbox"
                                                 value={emp.id}
@@ -460,44 +471,40 @@ export function AdminTrainingView() {
                                                 className="w-3.5 h-3.5"
                                             />
                                             <div className="flex flex-col">
-                                                <span className="text-[12px] font-semibold text-[var(--text)] leading-tight">{emp.firstName} {emp.lastName}</span>
-                                                <span className="text-[10px] text-[var(--text3)] uppercase tracking-tight">{emp.designation}</span>
+                                                <span className="text-sm font-semibold text-text leading-tight">{emp.firstName} {emp.lastName}</span>
+                                                <span className="text-[10px] text-text-3 uppercase tracking-tight">{emp.designation}</span>
                                             </div>
                                         </label>
                                     ))}
                                 </div>
-                                <div className="text-[10px] text-[var(--text3)] italic">
+                                <div className="text-[10px] text-text-3 italic">
                                     {form.watch('assignedEmployeeIds')?.length || 0} employees selected
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    <div className="space-y-1">
-                        <label className="text-[12px] font-semibold text-[var(--text2)]">Description</label>
-                        <textarea
-                            {...form.register('description')}
-                            rows={2}
-                            className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)] resize-none"
-                            placeholder="Provide details about the course..."
-                        />
-                    </div>
+                    <Textarea
+                        label="Description"
+                        {...form.register('description')}
+                        rows={2}
+                        placeholder="Provide details about the course..."
+                    />
 
-                    <div className="flex justify-end gap-2 pt-4 border-t border-[var(--border)]">
-                        <button
+                    <div className="flex justify-end gap-2 pt-4 border-t border-border">
+                        <Button
                             type="button"
+                            variant="secondary"
                             onClick={() => setIsModalOpen(false)}
-                            className="px-4 py-2 text-[13px] font-semibold bg-[var(--surface)] border border-[var(--border)] rounded-lg hover:bg-[var(--bg2)] transition-colors"
                         >
                             Cancel
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="submit"
-                            disabled={form.formState.isSubmitting}
-                            className="px-4 py-2 text-[13px] font-semibold text-white bg-[var(--accent)] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                            loading={form.formState.isSubmitting}
                         >
-                            {form.formState.isSubmitting ? "Saving..." : "Save Course"}
-                        </button>
+                            Save Course
+                        </Button>
                     </div>
                 </form>
             </Modal>

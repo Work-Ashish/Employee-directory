@@ -16,6 +16,10 @@ import { EmployeeFormModal } from "@/features/employees/components/EmployeeFormM
 import { EmployeeAPI } from "@/features/employees/api/client"
 import { TableEmployee, Department, EmployeeApiData } from "@/features/employees/types"
 import { Modal } from "@/components/ui/Modal"
+import { PageHeader } from "@/components/ui/PageHeader"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { Spinner } from "@/components/ui/Spinner"
 
 const employeeSchema = z.object({
     id: z.string().optional(),
@@ -287,11 +291,11 @@ function EmployeesContent() {
     if (authLoading || !canAccessModule(user?.role ?? '', Module.EMPLOYEES)) return null
 
     return (
-        <div className="space-y-6 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)]">
-            <div className="mb-[26px]">
-                <h1 className="text-[26px] font-extrabold tracking-[-0.5px] text-[var(--text)]">Employee Management</h1>
-                <p className="text-[13.5px] text-[var(--text3)] mt-[4px]">Manage and organize your employee records</p>
-            </div>
+        <div className="space-y-6 animate-page-in">
+            <PageHeader
+                title="Employee Management"
+                description="Manage and organize your employee records"
+            />
 
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx, .xls, .csv" />
 
@@ -334,14 +338,14 @@ function EmployeesContent() {
                     {/* Existing Departments List */}
                     {departments.length > 0 && (
                         <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                            <p className="text-[11px] font-bold text-[var(--text3)] uppercase tracking-wide">Existing Departments</p>
+                            <p className="text-[11px] font-bold text-text-3 uppercase tracking-wide">Existing Departments</p>
                             {departments.map(dept => (
-                                <div key={dept.id} className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--bg2)] transition-colors">
-                                    <span className="text-[13px] font-medium text-[var(--text)]">{dept.name}</span>
+                                <div key={dept.id} className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-border bg-bg hover:bg-bg-2 transition-colors">
+                                    <span className="text-sm font-medium text-text">{dept.name}</span>
                                     <button
                                         type="button"
                                         onClick={() => handleDeleteDepartment(dept.id, dept.name)}
-                                        className="text-[11px] font-bold text-red-500 hover:text-red-400 hover:bg-red-500/10 px-2 py-1 rounded transition-colors"
+                                        className="text-[11px] font-bold text-danger hover:text-danger hover:bg-danger/10 px-2 py-1 rounded transition-colors"
                                         title="Delete department"
                                     >
                                         🗑 Delete
@@ -351,16 +355,21 @@ function EmployeesContent() {
                         </div>
                     )}
 
-                    <div className="border-t border-[var(--border)] pt-4">
-                        <p className="text-[11px] font-bold text-[var(--text3)] uppercase tracking-wide mb-3">Create New</p>
+                    <div className="border-t border-border pt-4">
+                        <p className="text-[11px] font-bold text-text-3 uppercase tracking-wide mb-3">Create New</p>
                         <form onSubmit={handleCreateDepartment} className="space-y-3">
-                            <div className="space-y-1">
-                                <label className="text-[12px] font-semibold text-[var(--text2)]">Department Name *</label>
-                                <input required value={newDeptName} onChange={(e) => setNewDeptName(e.target.value)} className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)]" placeholder="e.g. Marketing" />
-                            </div>
+                            <Input
+                                label="Department Name *"
+                                required
+                                value={newDeptName}
+                                onChange={(e) => setNewDeptName(e.target.value)}
+                                placeholder="e.g. Marketing"
+                            />
                             <div className="flex justify-end gap-2">
-                                <button type="button" onClick={() => setIsDeptModalOpen(false)} className="px-4 py-2 text-[13px] font-semibold bg-[var(--surface)] border border-[var(--border)] rounded-lg hover:bg-[var(--bg2)] text-[var(--text2)] transition-colors">Close</button>
-                                <button type="submit" disabled={isDeptCreating || !newDeptName.trim()} className="px-4 py-2 text-[13px] font-semibold text-white bg-[var(--accent)] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50">{isDeptCreating ? "Creating..." : "Create Department"}</button>
+                                <Button variant="secondary" type="button" onClick={() => setIsDeptModalOpen(false)}>Close</Button>
+                                <Button type="submit" disabled={isDeptCreating || !newDeptName.trim()} loading={isDeptCreating}>
+                                    {isDeptCreating ? "Creating..." : "Create Department"}
+                                </Button>
                             </div>
                         </form>
                     </div>
@@ -370,23 +379,23 @@ function EmployeesContent() {
             <Modal isOpen={!!credCard} onClose={() => setCredCard(null)} title="🔑 Employee Login Credentials">
                 {credCard && (
                     <div className="space-y-5">
-                        <div className="p-4 rounded-xl bg-gradient-to-br from-[rgba(0,122,255,0.06)] to-[rgba(88,86,214,0.06)] border border-[rgba(0,122,255,0.15)]">
-                            <p className="text-[12px] text-[var(--text3)] mb-3">Share these credentials with <strong className="text-[var(--text)]">{credCard.name}</strong>. The employee will be prompted to change their password on first login.</p>
+                        <div className="p-4 rounded-xl bg-gradient-to-br from-accent/5 to-purple/5 border border-accent/15">
+                            <p className="text-xs text-text-3 mb-3">Share these credentials with <strong className="text-text">{credCard.name}</strong>. The employee will be prompted to change their password on first login.</p>
                             <div className="space-y-3">
-                                <div className="flex items-center justify-between p-3 bg-[var(--surface)] rounded-lg border border-[var(--border)]">
-                                    <div><p className="text-[11px] text-[var(--text3)] mb-0.5">Employee ID (Username)</p><p className="text-[15px] font-bold font-mono text-[var(--accent)]">{credCard.username}</p></div>
-                                    <button onClick={() => { navigator.clipboard.writeText(credCard.username); toast.success("Username copied!") }} className="text-[11px] px-2.5 py-1 rounded-md bg-[var(--accent)] text-white font-semibold hover:opacity-80">Copy</button>
+                                <div className="flex items-center justify-between p-3 bg-surface rounded-lg border border-border">
+                                    <div><p className="text-[11px] text-text-3 mb-0.5">Employee ID (Username)</p><p className="text-base font-bold font-mono text-accent">{credCard.username}</p></div>
+                                    <Button size="sm" onClick={() => { navigator.clipboard.writeText(credCard.username); toast.success("Username copied!") }}>Copy</Button>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-[var(--surface)] rounded-lg border border-[var(--border)]">
-                                    <div><p className="text-[11px] text-[var(--text3)] mb-0.5">Temporary Password</p><p className="text-[15px] font-bold font-mono text-[var(--accent)]">{credCard.password}</p></div>
-                                    <button onClick={() => { navigator.clipboard.writeText(credCard.password); toast.success("Password copied!") }} className="text-[11px] px-2.5 py-1 rounded-md bg-[var(--accent)] text-white font-semibold hover:opacity-80">Copy</button>
+                                <div className="flex items-center justify-between p-3 bg-surface rounded-lg border border-border">
+                                    <div><p className="text-[11px] text-text-3 mb-0.5">Temporary Password</p><p className="text-base font-bold font-mono text-accent">{credCard.password}</p></div>
+                                    <Button size="sm" onClick={() => { navigator.clipboard.writeText(credCard.password); toast.success("Password copied!") }}>Copy</Button>
                                 </div>
                             </div>
                         </div>
-                        <p className="text-[11.5px] text-amber-500 flex items-start gap-1.5">⚠️ <span>This password is shown <strong>once only</strong>. Share it now via WhatsApp, Slack, or email. Use the 🔑 button on the employee row to regenerate if needed.</span></p>
-                        <div className="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
-                            <button onClick={() => { navigator.clipboard.writeText(`Login URL: ${window.location.origin}/login\nUsername: ${credCard.username}\nPassword: ${credCard.password}`); toast.success("All credentials copied!") }} className="px-4 py-2 text-[13px] font-semibold bg-[var(--surface)] border border-[var(--border)] rounded-lg hover:bg-[var(--bg2)] text-[var(--text2)] transition-colors">Copy All</button>
-                            <button onClick={() => setCredCard(null)} className="px-4 py-2 text-[13px] font-semibold text-white bg-[var(--accent)] rounded-lg hover:opacity-90 transition-opacity">Done</button>
+                        <p className="text-[11.5px] text-warning flex items-start gap-1.5">⚠️ <span>This password is shown <strong>once only</strong>. Share it now via WhatsApp, Slack, or email. Use the 🔑 button on the employee row to regenerate if needed.</span></p>
+                        <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                            <Button variant="secondary" onClick={() => { navigator.clipboard.writeText(`Login URL: ${window.location.origin}/login\nUsername: ${credCard.username}\nPassword: ${credCard.password}`); toast.success("All credentials copied!") }}>Copy All</Button>
+                            <Button onClick={() => setCredCard(null)}>Done</Button>
                         </div>
                     </div>
                 )}
@@ -397,7 +406,7 @@ function EmployeesContent() {
 
 export default function EmployeesPage() {
     return (
-        <React.Suspense fallback={<div className="p-8 text-[var(--text3)]">Loading workspace...</div>}>
+        <React.Suspense fallback={<div className="p-8 text-text-3">Loading workspace...</div>}>
             <EmployeesContent />
         </React.Suspense>
     )

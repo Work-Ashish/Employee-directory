@@ -1,13 +1,18 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { PlusIcon, TrashIcon, RocketIcon, ReloadIcon, DownloadIcon, CheckCircledIcon, CrossCircledIcon } from "@radix-ui/react-icons"
-import { toast, Toaster } from "react-hot-toast"
+import { PlusIcon, TrashIcon, RocketIcon, DownloadIcon, CheckCircledIcon } from "@radix-ui/react-icons"
+import { toast } from "sonner"
 import { Modal } from "@/components/ui/Modal"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { webhookSchema } from "@/lib/schemas/integrations"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/Button"
+import { Badge } from "@/components/ui/Badge"
+import { Input } from "@/components/ui/Input"
+import { PageHeader } from "@/components/ui/PageHeader"
+import { Spinner } from "@/components/ui/Spinner"
 
 const AVAILABLE_EVENTS = [
     { value: "employee.created", label: "Employee Created" },
@@ -113,62 +118,63 @@ export default function IntegrationsPage() {
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-10 animate-in fade-in duration-500">
-            <Toaster position="top-right" />
-
-            <header className="flex justify-between items-end">
-                <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-[var(--text)]">Integrations</h1>
-                    <p className="text-[var(--text3)] mt-2">Connect your HRMS data with external platforms.</p>
-                </div>
-                <div className="flex gap-3">
-                    <button
+            <PageHeader
+                title="Integrations"
+                description="Connect your HRMS data with external platforms."
+                actions={
+                    <Button
                         onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-2 bg-[var(--accent)] text-white px-5 py-2.5 rounded-xl font-bold shadow-lg hover:opacity-90 transition-all active:scale-95"
+                        leftIcon={<PlusIcon className="w-5 h-5" />}
+                        size="lg"
                     >
-                        <PlusIcon className="w-5 h-5" /> Add Webhook
-                    </button>
-                </div>
-            </header>
+                        Add Webhook
+                    </Button>
+                }
+            />
 
             <section className="grid md:grid-cols-3 gap-8">
                 {/* Webhooks List */}
                 <div className="md:col-span-2 space-y-6">
                     <div className="flex items-center gap-2 mb-2">
-                        <RocketIcon className="w-5 h-5 text-[var(--accent)]" />
+                        <RocketIcon className="w-5 h-5 text-accent" />
                         <h2 className="text-xl font-bold">Outbound Webhooks</h2>
                     </div>
 
                     {isLoading ? (
-                        <div className="glass p-12 text-center text-[var(--text3)] rounded-2xl">Loading webhooks...</div>
+                        <div className="glass p-12 text-center text-text-3 rounded-2xl flex items-center justify-center gap-2">
+                            <Spinner /> Loading webhooks...
+                        </div>
                     ) : webhooks.length === 0 ? (
-                        <div className="glass p-12 text-center text-[var(--text3)] rounded-2xl border-dashed border-2">
+                        <div className="glass p-12 text-center text-text-3 rounded-2xl border-dashed border-2">
                             No webhooks configured. Add one to start syncing data.
                         </div>
                     ) : (
                         <div className="grid gap-4">
                             {webhooks.map((wh) => (
-                                <div key={wh.id} className="glass p-5 rounded-2xl flex justify-between items-center group hover:border-[var(--accent)] transition-all">
+                                <div key={wh.id} className="glass p-5 rounded-2xl flex justify-between items-center group hover:border-accent transition-all">
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2">
                                             <span className="font-bold text-[15px] max-w-[300px] truncate">{wh.url}</span>
                                             {wh.isActive ? (
-                                                <span className="px-2 py-0.5 bg-green-500/10 text-green-500 text-[10px] font-bold rounded-full uppercase tracking-wider">Active</span>
+                                                <Badge variant="success" size="sm" dot>Active</Badge>
                                             ) : (
-                                                <span className="px-2 py-0.5 bg-gray-500/10 text-[var(--text3)] text-[10px] font-bold rounded-full uppercase tracking-wider">Disabled</span>
+                                                <Badge variant="neutral" size="sm">Disabled</Badge>
                                             )}
                                         </div>
                                         <div className="flex gap-2 flex-wrap">
                                             {wh.events.map((e: string) => (
-                                                <span key={e} className="text-[11px] text-[var(--text3)] bg-[var(--bg2)] px-2 py-1 rounded-md">{e}</span>
+                                                <span key={e} className="text-[11px] text-text-3 bg-bg-2 px-2 py-1 rounded-md">{e}</span>
                                             ))}
                                         </div>
                                     </div>
-                                    <button
+                                    <Button
+                                        variant="danger"
+                                        size="icon"
                                         onClick={() => handleDelete(wh.id)}
-                                        className="p-2.5 text-[var(--red)] hover:bg-red-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
+                                        className="opacity-0 group-hover:opacity-100 transition-all"
                                     >
                                         <TrashIcon className="w-5 h-5" />
-                                    </button>
+                                    </Button>
                                 </div>
                             ))}
                         </div>
@@ -178,42 +184,44 @@ export default function IntegrationsPage() {
                 {/* Accounting Sidebar */}
                 <div className="space-y-6">
                     <div className="flex items-center gap-2 mb-2">
-                        <DownloadIcon className="w-5 h-5 text-[var(--accent)]" />
+                        <DownloadIcon className="w-5 h-5 text-accent" />
                         <h2 className="text-xl font-bold">Accounting Sync</h2>
                     </div>
 
                     <div className="glass p-6 rounded-2xl space-y-6">
-                        <div className="p-4 bg-[var(--bg2)] rounded-xl flex items-center gap-4">
+                        <div className="p-4 bg-bg-2 rounded-xl flex items-center gap-4">
                             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center font-bold text-blue-600 text-xl shadow-sm">QB</div>
                             <div className="flex-1">
                                 <div className="text-sm font-bold">Quickbooks</div>
-                                <div className="text-[11px] text-[var(--text3)]">Export payroll entries</div>
+                                <div className="text-[11px] text-text-3">Export payroll entries</div>
                             </div>
-                            <button
+                            <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => handleExport("QUICKBOOKS")}
                                 disabled={exportLoading}
-                                className="p-2 hover:bg-[var(--bg)] rounded-lg transition-colors disabled:opacity-50"
                             >
                                 <DownloadIcon className="w-5 h-5" />
-                            </button>
+                            </Button>
                         </div>
 
-                        <div className="p-4 bg-[var(--bg2)] rounded-xl flex items-center gap-4">
+                        <div className="p-4 bg-bg-2 rounded-xl flex items-center gap-4">
                             <div className="w-10 h-10 bg-[#13B5EA] rounded-lg flex items-center justify-center font-bold text-white text-xl shadow-sm">X</div>
                             <div className="flex-1">
                                 <div className="text-sm font-bold">Xero</div>
-                                <div className="text-[11px] text-[var(--text3)]">Direct bank import file</div>
+                                <div className="text-[11px] text-text-3">Direct bank import file</div>
                             </div>
-                            <button
+                            <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => handleExport("XERO")}
                                 disabled={exportLoading}
-                                className="p-2 hover:bg-[var(--bg)] rounded-lg transition-colors disabled:opacity-50"
                             >
                                 <DownloadIcon className="w-5 h-5" />
-                            </button>
+                            </Button>
                         </div>
 
-                        <p className="text-[11px] text-[var(--text3)] italic">
+                        <p className="text-[11px] text-text-3 italic">
                             Exports include all finalized payroll records for the current period (Mar 2024).
                         </p>
                     </div>
@@ -226,29 +234,25 @@ export default function IntegrationsPage() {
                 title="Configure New Webhook"
             >
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-[13px] font-bold text-[var(--text2)]">Payload URL</label>
-                        <input
-                            {...form.register("url")}
-                            placeholder="Enter your webhook endpoint URL"
-                            className="w-full p-3 bg-[var(--bg2)] border border-[var(--border)] rounded-xl text-sm focus:border-[var(--accent)] outline-none"
-                        />
-                        {form.formState.errors.url && <p className="text-[11px] text-[var(--red)]">{form.formState.errors.url.message as string}</p>}
-                    </div>
+                    <Input
+                        label="Payload URL"
+                        {...form.register("url")}
+                        placeholder="Enter your webhook endpoint URL"
+                        error={form.formState.errors.url?.message as string}
+                    />
 
-                    <div className="space-y-2">
-                        <label className="text-[13px] font-bold text-[var(--text2)]">Secret (Optional)</label>
-                        <input
+                    <div className="space-y-1.5">
+                        <Input
+                            label="Secret (Optional)"
                             {...form.register("secret")}
                             type="password"
                             placeholder="HMAC secret for signing"
-                            className="w-full p-3 bg-[var(--bg2)] border border-[var(--border)] rounded-xl text-sm focus:border-[var(--accent)] outline-none"
                         />
-                        <p className="text-[10px] text-[var(--text3)]">Used to calculate X-EMS-Signature header.</p>
+                        <p className="text-[10px] text-text-3">Used to calculate X-EMS-Signature header.</p>
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[13px] font-bold text-[var(--text2)]">Subscribed Events</label>
+                        <label className="text-sm font-medium text-text-2">Subscribed Events</label>
                         <div className="grid grid-cols-2 gap-3">
                             {AVAILABLE_EVENTS.map(event => (
                                 <label
@@ -256,8 +260,8 @@ export default function IntegrationsPage() {
                                     className={cn(
                                         "flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all",
                                         form.watch("events").includes(event.value)
-                                            ? "border-[var(--accent)] bg-[rgba(0,122,255,0.05)]"
-                                            : "border-[var(--border)] bg-[var(--bg2)]"
+                                            ? "border-accent bg-accent/5"
+                                            : "border-border bg-bg-2"
                                     )}
                                 >
                                     <input
@@ -273,29 +277,28 @@ export default function IntegrationsPage() {
                                             }
                                         }}
                                     />
-                                    <span className="text-[12px] font-medium">{event.label}</span>
-                                    {form.watch("events").includes(event.value) && <CheckCircledIcon className="ml-auto w-4 h-4 text-[var(--accent)]" />}
+                                    <span className="text-xs font-medium">{event.label}</span>
+                                    {form.watch("events").includes(event.value) && <CheckCircledIcon className="ml-auto w-4 h-4 text-accent" />}
                                 </label>
                             ))}
                         </div>
-                        {form.formState.errors.events && <p className="text-[11px] text-[var(--red)]">{form.formState.errors.events.message as string}</p>}
+                        {form.formState.errors.events && <p className="text-[11px] text-danger">{form.formState.errors.events.message as string}</p>}
                     </div>
 
-                    <div className="pt-6 border-t border-[var(--border)] flex justify-end gap-3">
-                        <button
+                    <div className="pt-6 border-t border-border flex justify-end gap-3">
+                        <Button
                             type="button"
+                            variant="secondary"
                             onClick={() => setIsModalOpen(false)}
-                            className="px-6 py-2.5 rounded-xl text-sm font-bold bg-[var(--bg2)] text-[var(--text2)]"
                         >
                             Cancel
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="submit"
-                            disabled={form.formState.isSubmitting}
-                            className="px-6 py-2.5 rounded-xl text-sm font-bold bg-[var(--accent)] text-white disabled:opacity-50"
+                            loading={form.formState.isSubmitting}
                         >
-                            {form.formState.isSubmitting ? "Saving..." : "Create Webhook"}
-                        </button>
+                            Create Webhook
+                        </Button>
                     </div>
                 </form>
             </Modal>

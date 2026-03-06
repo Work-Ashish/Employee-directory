@@ -4,6 +4,10 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { PlayIcon, StopIcon, PauseIcon, ResumeIcon } from "@radix-ui/react-icons"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/Button"
+import { Badge } from "@/components/ui/Badge"
+import { Card } from "@/components/ui/Card"
+import { Spinner } from "@/components/ui/Spinner"
 
 /* ─── Constants ─── */
 const HEARTBEAT_INTERVAL = 300_000 // 5 minutes (K4: reduced from 60s to avoid DB overload at scale)
@@ -227,17 +231,17 @@ export function TimeTracker() {
 
     if (loading) {
         return (
-            <div className="glass p-6">
+            <Card variant="glass" className="p-6">
                 <div className="animate-pulse flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-[var(--border)]" />
-                    <div className="h-4 w-32 bg-[var(--border)] rounded" />
+                    <div className="w-6 h-6 rounded-full bg-border" />
+                    <div className="h-4 w-32 bg-border rounded" />
                 </div>
-            </div>
+            </Card>
         )
     }
 
     return (
-        <div className="glass p-6 relative">
+        <Card variant="glass" className="p-6 relative">
             {/* Ambient glow when active */}
             {status === 'running' && (
                 <div className="absolute inset-0 pointer-events-none" style={{
@@ -248,10 +252,10 @@ export function TimeTracker() {
             {/* Header */}
             <div className="flex justify-between items-start mb-4 relative">
                 <div>
-                    <h3 className="text-[16px] font-bold text-[var(--text)] flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-text flex items-center gap-2">
                         ⏱️ Time Tracker
                     </h3>
-                    <p className="text-[12px] text-[var(--text3)] mt-1">
+                    <p className="text-sm text-text-3 mt-1">
                         {status === 'idle' ? 'Not checked in yet' : (
                             status === 'paused' ? '☕ On Break' : `Checked in at ${checkInTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                         )}
@@ -266,46 +270,55 @@ export function TimeTracker() {
                             <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ backgroundColor: `rgb(${statusColor})` }} />
                         </span>
                     )}
-                    <div className={cn("px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border",
-                        status === 'running' && activityStatus === "ACTIVE" ? "bg-[rgba(52,199,89,0.1)] text-[#1a9140] border-[rgba(52,199,89,0.2)]" :
-                            status === 'running' && activityStatus === "IDLE" ? "bg-[rgba(255,149,0,0.1)] text-[var(--amber)] border-[rgba(255,149,0,0.2)]" :
-                                status === 'paused' ? "bg-[rgba(255,59,48,0.1)] text-[var(--red)] border-[rgba(255,59,48,0.2)]" :
-                                    "bg-[var(--bg2)] text-[var(--text3)] border-[var(--border)]"
-                    )}>
+                    <Badge
+                        variant={
+                            status === 'running' && activityStatus === "ACTIVE" ? "success" :
+                            status === 'running' && activityStatus === "IDLE" ? "warning" :
+                            status === 'paused' ? "danger" :
+                            "neutral"
+                        }
+                        className="uppercase tracking-wider font-bold"
+                    >
                         {statusLabel}
-                    </div>
+                    </Badge>
                 </div>
             </div>
 
             {/* Timer + Buttons */}
             <div className="flex items-center justify-between relative">
-                <div className="font-mono text-[32px] font-bold text-[var(--text)] tracking-tight tabular-nums">
+                <div className="font-mono text-[32px] font-bold text-text tracking-tight tabular-nums">
                     {formatTime(seconds)}
                 </div>
 
                 <div className="flex gap-2 relative">
                     {status === 'idle' ? (
-                        <button
+                        <Button
                             onClick={handleCheckIn}
-                            className="bg-[var(--accent)] text-white px-4 py-2 rounded-lg text-[13px] font-bold shadow-lg shadow-blue-500/20 hover:scale-105 transition-transform flex items-center gap-2"
+                            variant="primary"
+                            leftIcon={<PlayIcon />}
+                            className="shadow-lg shadow-blue-500/20 hover:scale-105 transition-transform"
                         >
-                            <PlayIcon /> Check In
-                        </button>
+                            Check In
+                        </Button>
                     ) : (
                         <>
                             {/* Break button with dropdown */}
                             <div className="relative">
-                                <button
+                                <Button
                                     onClick={() => {
                                         if (status === 'paused') handleBreak()
                                         else setShowBreakMenu(!showBreakMenu)
                                     }}
-                                    className={cn("px-4 py-2 rounded-lg text-[13px] font-bold transition-colors flex items-center gap-2 border",
-                                        status === 'paused' ? "bg-[rgba(52,199,89,0.1)] text-[#1a9140] border-[rgba(52,199,89,0.2)]" : "bg-[rgba(255,149,0,0.1)] text-[var(--amber)] border-[rgba(255,149,0,0.2)]"
+                                    variant={status === 'paused' ? "success" : "danger"}
+                                    leftIcon={status === 'paused' ? <ResumeIcon /> : <PauseIcon />}
+                                    className={cn(
+                                        status === 'paused'
+                                            ? "bg-success/10 text-success border-success/20"
+                                            : "bg-warning/10 text-warning border-warning/20"
                                     )}
                                 >
-                                    {status === 'paused' ? <><ResumeIcon /> Resume</> : <><PauseIcon /> Break</>}
-                                </button>
+                                    {status === 'paused' ? 'Resume' : 'Break'}
+                                </Button>
 
                                 {/* Break reason dropdown */}
                                 {showBreakMenu && status === 'running' && (
@@ -314,7 +327,7 @@ export function TimeTracker() {
                                             <button
                                                 key={reason}
                                                 onClick={() => handleBreak(reason)}
-                                                className="w-full px-4 py-2.5 text-left text-[13px] text-white/90 hover:bg-white/5 transition-colors flex items-center gap-2"
+                                                className="w-full px-4 py-2.5 text-left text-base text-white/90 hover:bg-white/5 transition-colors flex items-center gap-2"
                                             >
                                                 <span>{reason === "Lunch" ? "🍽️" : reason === "Tea / Coffee" ? "☕" : reason === "Personal" ? "🏠" : reason === "Meeting" ? "📞" : "📝"}</span>
                                                 {reason}
@@ -324,12 +337,13 @@ export function TimeTracker() {
                                 )}
                             </div>
 
-                            <button
+                            <Button
                                 onClick={handleCheckOut}
-                                className="bg-[rgba(255,59,48,0.1)] text-[var(--red)] border border-[rgba(255,59,48,0.2)] px-4 py-2 rounded-lg text-[13px] font-bold hover:bg-[rgba(255,59,48,0.2)] transition-colors flex items-center gap-2"
+                                variant="danger"
+                                leftIcon={<StopIcon />}
                             >
-                                <StopIcon /> Check Out
-                            </button>
+                                Check Out
+                            </Button>
                         </>
                     )}
                 </div>
@@ -337,28 +351,28 @@ export function TimeTracker() {
 
             {/* Today's Summary */}
             {(status !== 'idle' || todaySummary) && (
-                <div className="mt-4 pt-3 border-t border-[var(--border)] flex items-center gap-6 text-[11px] font-medium">
+                <div className="mt-4 pt-3 border-t border-border flex items-center gap-6 text-xs font-medium">
                     <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-[#34c759]" />
-                        <span className="text-[var(--text3)] uppercase tracking-wider">Worked</span>
-                        <span className="text-[var(--text)] font-bold">{fmtDuration(todaySummary?.totalWork || seconds)}</span>
+                        <span className="w-2 h-2 rounded-full bg-success" />
+                        <span className="text-text-3 uppercase tracking-wider">Worked</span>
+                        <span className="text-text font-bold">{fmtDuration(todaySummary?.totalWork || seconds)}</span>
                     </div>
                     {(todaySummary?.totalBreak || 0) > 0 && (
                         <div className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-[var(--amber)]" />
-                            <span className="text-[var(--text3)] uppercase tracking-wider">Break</span>
-                            <span className="text-[var(--text)] font-bold">{fmtDuration(todaySummary?.totalBreak || 0)}</span>
+                            <span className="w-2 h-2 rounded-full bg-warning" />
+                            <span className="text-text-3 uppercase tracking-wider">Break</span>
+                            <span className="text-text font-bold">{fmtDuration(todaySummary?.totalBreak || 0)}</span>
                         </div>
                     )}
                     {(todaySummary?.totalIdle || 0) > 0 && (
                         <div className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-[var(--text4)]" />
-                            <span className="text-[var(--text3)] uppercase tracking-wider">Idle</span>
-                            <span className="text-[var(--text)] font-bold">{fmtDuration(todaySummary?.totalIdle || 0)}</span>
+                            <span className="w-2 h-2 rounded-full bg-text-4" />
+                            <span className="text-text-3 uppercase tracking-wider">Idle</span>
+                            <span className="text-text font-bold">{fmtDuration(todaySummary?.totalIdle || 0)}</span>
                         </div>
                     )}
                 </div>
             )}
-        </div>
+        </Card>
     )
 }

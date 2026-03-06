@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@radix-ui/react-tabs"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
 import { toast } from "sonner"
@@ -9,6 +8,13 @@ import { PersonIcon, LockClosedIcon, BlendingModeIcon } from "@radix-ui/react-ic
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { Textarea } from "@/components/ui/Textarea"
+import { Card, CardContent, CardTitle } from "@/components/ui/Card"
+import { PageHeader } from "@/components/ui/PageHeader"
+import { Spinner } from "@/components/ui/Spinner"
 
 const profileSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -196,192 +202,167 @@ export default function SettingsPage() {
     }
 
     if (isLoading) {
-        return <div className="p-10 text-center text-[var(--text3)]">Loading settings...</div>
+        return <div className="p-10 text-center text-text-3">Loading settings...</div>
     }
 
     return (
-        <div className="space-y-6 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)] max-w-4xl mx-auto">
-            <div className="mb-[26px]">
-                <h1 className="text-[26px] font-extrabold tracking-[-0.5px] text-[var(--text)]">Settings</h1>
-                <p className="text-[13.5px] text-[var(--text3)] mt-[4px]">Manage your profile and preferences</p>
-            </div>
+        <div className="space-y-6 animate-page-in max-w-4xl mx-auto">
+            <PageHeader title="Settings" description="Manage your profile and preferences" />
 
             <Tabs defaultValue="profile" className="w-full">
-                <TabsList className="flex gap-2 mb-8 bg-[var(--bg2)] p-1 rounded-xl w-fit">
-                    <TabsTrigger
-                        value="profile"
-                        className="px-4 py-2 rounded-[9px] text-[13px] font-medium transition-all data-[state=active]:bg-[var(--surface)] data-[state=active]:text-[var(--text)] data-[state=active]:shadow-sm text-[var(--text3)] flex items-center gap-2"
-                    >
+                <TabsList className="flex gap-2 mb-8 w-fit">
+                    <TabsTrigger value="profile" className="flex items-center gap-2">
                         <PersonIcon /> Profile
                     </TabsTrigger>
-                    <TabsTrigger
-                        value="security"
-                        className="px-4 py-2 rounded-[9px] text-[13px] font-medium transition-all data-[state=active]:bg-[var(--surface)] data-[state=active]:text-[var(--text)] data-[state=active]:shadow-sm text-[var(--text3)] flex items-center gap-2"
-                    >
+                    <TabsTrigger value="security" className="flex items-center gap-2">
                         <LockClosedIcon /> Security
                     </TabsTrigger>
-                    <TabsTrigger
-                        value="appearance"
-                        className="px-4 py-2 rounded-[9px] text-[13px] font-medium transition-all data-[state=active]:bg-[var(--surface)] data-[state=active]:text-[var(--text)] data-[state=active]:shadow-sm text-[var(--text3)] flex items-center gap-2"
-                    >
+                    <TabsTrigger value="appearance" className="flex items-center gap-2">
                         <BlendingModeIcon /> Appearance
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="profile" className="space-y-6 animate-[fadeSlide_0.3s_both]">
-                    <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="glass p-6">
-                        <h2 className="text-[16px] font-bold text-[var(--text)] mb-6">Personal Information</h2>
+                <TabsContent value="profile" className="space-y-6">
+                    <Card variant="glass">
+                        <CardContent className="p-6">
+                            <form onSubmit={profileForm.handleSubmit(onProfileSubmit)}>
+                                <CardTitle className="mb-6">Personal Information</CardTitle>
 
-                        <div className="flex items-start gap-6 mb-8">
-                            <div className="relative group">
-                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--accent)] to-[#5856d6] flex items-center justify-center text-white text-[24px] font-bold shadow-lg shrink-0 overflow-hidden">
-                                    {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : user?.name?.substring(0, 2).toUpperCase() || "AD"}
-                                </div>
-                                <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity rounded-full">
-                                    CHANGE
-                                    <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
-                                </label>
-                            </div>
-                            <div className="flex-1 space-y-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-[12px] font-medium text-[var(--text3)]">Full Name</label>
-                                    <input
-                                        {...profileForm.register('name')}
-                                        type="text"
-                                        className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[13px] focus:border-[var(--accent)] outline-none"
-                                    />
-                                    {profileForm.formState.errors.name && <p className="text-[11px] text-[var(--red)]">{profileForm.formState.errors.name.message}</p>}
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12px] font-medium text-[var(--text3)]">Bio</label>
-                                    <textarea
-                                        {...profileForm.register('bio')}
-                                        className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[13px] focus:border-[var(--accent)] outline-none h-24 resize-none"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end pt-4 border-t border-[var(--border)]">
-                            <button
-                                type="submit"
-                                disabled={profileForm.formState.isSubmitting}
-                                className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg text-[13px] font-bold hover:opacity-90 disabled:opacity-50 transition-opacity"
-                            >
-                                {profileForm.formState.isSubmitting ? "Saving..." : "Save Changes"}
-                            </button>
-                        </div>
-                    </form>
-                </TabsContent>
-
-                <TabsContent value="security" className="space-y-6 animate-[fadeSlide_0.3s_both]">
-                    <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="glass p-6">
-                        <h2 className="text-[16px] font-bold text-[var(--text)] mb-6">Change Password</h2>
-                        <div className="space-y-4 max-w-md">
-                            <div className="space-y-1.5">
-                                <label className="text-[12px] font-medium text-[var(--text3)]">Current Password</label>
-                                <input
-                                    {...passwordForm.register('currentPassword')}
-                                    type="password"
-                                    className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[13px] focus:border-[var(--accent)] outline-none"
-                                />
-                                {passwordForm.formState.errors.currentPassword && <p className="text-[11px] text-[var(--red)]">{passwordForm.formState.errors.currentPassword.message}</p>}
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[12px] font-medium text-[var(--text3)]">New Password</label>
-                                <input
-                                    {...passwordForm.register('newPassword')}
-                                    type="password"
-                                    className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[13px] focus:border-[var(--accent)] outline-none"
-                                />
-                                {passwordForm.formState.errors.newPassword && <p className="text-[11px] text-[var(--red)]">{passwordForm.formState.errors.newPassword.message}</p>}
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[12px] font-medium text-[var(--text3)]">Confirm New Password</label>
-                                <input
-                                    {...passwordForm.register('confirmPassword')}
-                                    type="password"
-                                    className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[13px] focus:border-[var(--accent)] outline-none"
-                                />
-                                {passwordForm.formState.errors.confirmPassword && <p className="text-[11px] text-[var(--red)]">{passwordForm.formState.errors.confirmPassword.message}</p>}
-                            </div>
-                        </div>
-                        <div className="flex justify-start mt-6">
-                            <button
-                                type="submit"
-                                disabled={passwordForm.formState.isSubmitting}
-                                className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg text-[13px] font-bold hover:opacity-90 disabled:opacity-50 transition-opacity"
-                            >
-                                {passwordForm.formState.isSubmitting ? "Updating..." : "Update Password"}
-                            </button>
-                        </div>
-                    </form>
-                </TabsContent>
-
-                <TabsContent value="appearance" className="space-y-6 animate-[fadeSlide_0.3s_both]">
-                    <div className="glass p-6">
-                        <h2 className="text-[16px] font-bold text-[var(--text)] mb-6">Theme Preferences</h2>
-
-                        <div className="grid gap-8">
-                            <div className="space-y-3">
-                                <label className="text-[13px] font-medium text-[var(--text)]">Mode</label>
-                                <div className="flex gap-4">
-                                    <button
-                                        onClick={() => setTheme('light')}
-                                        className={cn(
-                                            "flex-1 p-4 rounded-xl border-2 flex items-center justify-center gap-2 transition-all",
-                                            theme === 'light' ? "border-[var(--accent)] bg-[rgba(var(--accent-rgb),0.05)]" : "border-[var(--border)] hover:border-[var(--border2)]"
-                                        )}
-                                    >
-                                        <span className="text-[13px] font-medium">Light</span>
-                                    </button>
-                                    <button
-                                        onClick={() => setTheme('dark')}
-                                        className={cn(
-                                            "flex-1 p-4 rounded-xl border-2 flex items-center justify-center gap-2 transition-all",
-                                            theme === 'dark' ? "border-[var(--accent)] bg-[rgba(var(--accent-rgb),0.05)]" : "border-[var(--border)] hover:border-[var(--border2)]"
-                                        )}
-                                    >
-                                        <span className="text-[13px] font-medium">Dark</span>
-                                    </button>
-                                    <button
-                                        onClick={() => setTheme('system')}
-                                        className={cn(
-                                            "flex-1 p-4 rounded-xl border-2 flex items-center justify-center gap-2 transition-all",
-                                            theme === 'system' ? "border-[var(--accent)] bg-[rgba(var(--accent-rgb),0.05)]" : "border-[var(--border)] hover:border-[var(--border2)]"
-                                        )}
-                                    >
-                                        <span className="text-[13px] font-medium">System</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3">
-                                <label className="text-[13px] font-medium text-[var(--text)]">Accent Color</label>
-                                <div className="flex gap-3 flex-wrap">
-                                    {[
-                                        { name: 'blue', hex: '#007aff' },
-                                        { name: 'purple', hex: '#af52de' },
-                                        { name: 'pink', hex: '#ff2d55' },
-                                        { name: 'amber', hex: '#ff9500' },
-                                        { name: 'green', hex: '#34c759' },
-                                        { name: 'cyan', hex: '#5ac8fa' },
-                                    ].map((c) => (
-                                        <button
-                                            key={c.name}
-                                            onClick={() => handleColorChange(c.name)}
-                                            className={cn(
-                                                "w-8 h-8 rounded-full shadow-sm transition-transform hover:scale-110 border-2",
-                                                profileForm.watch('accentColor') === c.name ? "border-[var(--text)]" : "border-transparent"
-                                            )}
-                                            style={{ background: c.hex }}
+                                <div className="flex items-start gap-6 mb-8">
+                                    <div className="relative group">
+                                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent to-[#5856d6] flex items-center justify-center text-white text-2xl font-bold shadow-lg shrink-0 overflow-hidden">
+                                            {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : user?.name?.substring(0, 2).toUpperCase() || "AD"}
+                                        </div>
+                                        <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity rounded-full">
+                                            CHANGE
+                                            <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+                                        </label>
+                                    </div>
+                                    <div className="flex-1 space-y-4">
+                                        <Input
+                                            label="Full Name"
+                                            {...profileForm.register('name')}
+                                            error={profileForm.formState.errors.name?.message}
                                         />
-                                    ))}
+                                        <Textarea
+                                            label="Bio"
+                                            {...profileForm.register('bio')}
+                                            className="h-24 resize-none"
+                                        />
+                                    </div>
                                 </div>
-                                <p className="text-[11px] text-[var(--text3)] italic mt-2">Accent color is saved to your profile.</p>
+
+                                <div className="flex justify-end pt-4 border-t border-border">
+                                    <Button type="submit" loading={profileForm.formState.isSubmitting}>
+                                        {profileForm.formState.isSubmitting ? "Saving..." : "Save Changes"}
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="security" className="space-y-6">
+                    <Card variant="glass">
+                        <CardContent className="p-6">
+                            <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}>
+                                <CardTitle className="mb-6">Change Password</CardTitle>
+                                <div className="space-y-4 max-w-md">
+                                    <Input
+                                        label="Current Password"
+                                        type="password"
+                                        {...passwordForm.register('currentPassword')}
+                                        error={passwordForm.formState.errors.currentPassword?.message}
+                                    />
+                                    <Input
+                                        label="New Password"
+                                        type="password"
+                                        {...passwordForm.register('newPassword')}
+                                        error={passwordForm.formState.errors.newPassword?.message}
+                                    />
+                                    <Input
+                                        label="Confirm New Password"
+                                        type="password"
+                                        {...passwordForm.register('confirmPassword')}
+                                        error={passwordForm.formState.errors.confirmPassword?.message}
+                                    />
+                                </div>
+                                <div className="flex justify-start mt-6">
+                                    <Button type="submit" loading={passwordForm.formState.isSubmitting}>
+                                        {passwordForm.formState.isSubmitting ? "Updating..." : "Update Password"}
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="appearance" className="space-y-6">
+                    <Card variant="glass">
+                        <CardContent className="p-6">
+                            <CardTitle className="mb-6">Theme Preferences</CardTitle>
+
+                            <div className="grid gap-8">
+                                <div className="space-y-3">
+                                    <label className="text-sm font-medium text-text">Mode</label>
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={() => setTheme('light')}
+                                            className={cn(
+                                                "flex-1 p-4 rounded-xl border-2 flex items-center justify-center gap-2 transition-all",
+                                                theme === 'light' ? "border-accent bg-[rgba(var(--accent-rgb),0.05)]" : "border-border hover:border-border-2"
+                                            )}
+                                        >
+                                            <span className="text-sm font-medium">Light</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setTheme('dark')}
+                                            className={cn(
+                                                "flex-1 p-4 rounded-xl border-2 flex items-center justify-center gap-2 transition-all",
+                                                theme === 'dark' ? "border-accent bg-[rgba(var(--accent-rgb),0.05)]" : "border-border hover:border-border-2"
+                                            )}
+                                        >
+                                            <span className="text-sm font-medium">Dark</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setTheme('system')}
+                                            className={cn(
+                                                "flex-1 p-4 rounded-xl border-2 flex items-center justify-center gap-2 transition-all",
+                                                theme === 'system' ? "border-accent bg-[rgba(var(--accent-rgb),0.05)]" : "border-border hover:border-border-2"
+                                            )}
+                                        >
+                                            <span className="text-sm font-medium">System</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-sm font-medium text-text">Accent Color</label>
+                                    <div className="flex gap-3 flex-wrap">
+                                        {[
+                                            { name: 'blue', hex: '#007aff' },
+                                            { name: 'purple', hex: '#af52de' },
+                                            { name: 'pink', hex: '#ff2d55' },
+                                            { name: 'amber', hex: '#ff9500' },
+                                            { name: 'green', hex: '#34c759' },
+                                            { name: 'cyan', hex: '#5ac8fa' },
+                                        ].map((c) => (
+                                            <button
+                                                key={c.name}
+                                                onClick={() => handleColorChange(c.name)}
+                                                className={cn(
+                                                    "w-8 h-8 rounded-full shadow-sm transition-transform hover:scale-110 border-2",
+                                                    profileForm.watch('accentColor') === c.name ? "border-text" : "border-transparent"
+                                                )}
+                                                style={{ background: c.hex }}
+                                            />
+                                        ))}
+                                    </div>
+                                    <p className="text-[11px] text-text-3 italic mt-2">Accent color is saved to your profile.</p>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
             </Tabs>
         </div>

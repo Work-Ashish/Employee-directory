@@ -1,15 +1,16 @@
 "use client"
 import * as React from "react"
 import * as XLSX from "xlsx"
+import { Button } from "@/components/ui/Button"
 
 /**
  * Reusable CSV / Excel Import Modal.
  * Props:
- *  - isOpen / onClose  – visibility control
- *  - title             – module name shown in the header
- *  - templateHeaders   – column names shown in the download template
- *  - apiEndpoint       – the POST URL that accepts { rows: Record<string, any>[] }
- *  - onSuccess         – called after a successful import so the parent can refresh
+ *  - isOpen / onClose  -- visibility control
+ *  - title             -- module name shown in the header
+ *  - templateHeaders   -- column names shown in the download template
+ *  - apiEndpoint       -- the POST URL that accepts { rows: Record<string, any>[] }
+ *  - onSuccess         -- called after a successful import so the parent can refresh
  */
 interface ImportModalProps {
     isOpen: boolean
@@ -120,17 +121,17 @@ export function CsvImportModal({
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-            <div className="relative bg-white dark:bg-[#1c1c1e] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-[var(--border)]">
+            <div className="relative bg-white dark:bg-[#1c1c1e] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-border">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                     <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-[rgba(99,102,241,0.1)] flex items-center justify-center text-lg">📥</div>
+                        <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center text-lg">📥</div>
                         <div>
-                            <h2 className="text-[16px] font-bold text-[var(--text)]">Import {title}</h2>
-                            <p className="text-[11.5px] text-[var(--text3)]">Upload a CSV or Excel file to bulk-import records</p>
+                            <h2 className="text-lg font-bold text-text">Import {title}</h2>
+                            <p className="text-xs text-text-3">Upload a CSV or Excel file to bulk-import records</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[var(--bg2)] text-[var(--text3)] hover:text-[var(--text)] transition-colors text-lg">×</button>
+                    <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-bg-2 text-text-3 hover:text-text transition-colors text-lg">&times;</button>
                 </div>
 
                 {/* Body */}
@@ -143,31 +144,32 @@ export function CsvImportModal({
                             onDragLeave={() => setIsDragging(false)}
                             onDrop={handleDrop}
                             onClick={() => fileRef.current?.click()}
-                            className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all duration-200 ${isDragging ? "border-[#6366f1] bg-[rgba(99,102,241,0.06)]" : "border-[var(--border2)] hover:border-[#6366f1] hover:bg-[rgba(99,102,241,0.03)]"}`}
+                            className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all duration-200 ${isDragging ? "border-accent bg-accent/[0.06]" : "border-border-2 hover:border-accent hover:bg-accent/[0.03]"}`}
                         >
                             <div className="text-4xl">{state === "parsing" ? "⏳" : "📂"}</div>
-                            <p className="text-[14px] font-semibold text-[var(--text)]">
-                                {state === "parsing" ? "Parsing file…" : "Drop a CSV or Excel file here"}
+                            <p className="text-md font-semibold text-text">
+                                {state === "parsing" ? "Parsing file..." : "Drop a CSV or Excel file here"}
                             </p>
-                            <p className="text-[12px] text-[var(--text3)]">or click to browse — supports .csv, .xlsx, .xls</p>
+                            <p className="text-sm text-text-3">or click to browse -- supports .csv, .xlsx, .xls</p>
                             <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFile} />
                         </div>
                     )}
 
                     {/* Template download */}
                     {state === "idle" && (
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--bg)] border border-[var(--border)]">
+                        <div className="flex items-center gap-3 p-3 rounded-xl bg-bg border border-border">
                             <span className="text-xl">📋</span>
                             <div className="flex-1">
-                                <p className="text-[12.5px] font-semibold text-[var(--text)]">Need a template?</p>
-                                <p className="text-[11px] text-[var(--text3)]">Download a pre-formatted Excel file with the correct column headers</p>
+                                <p className="text-sm font-semibold text-text">Need a template?</p>
+                                <p className="text-xs text-text-3">Download a pre-formatted Excel file with the correct column headers</p>
                             </div>
-                            <button
+                            <Button
+                                variant="secondary"
+                                size="sm"
                                 onClick={downloadTemplate}
-                                className="shrink-0 text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-white dark:bg-[var(--surface)] border border-[var(--border)] text-[var(--text2)] hover:border-[#6366f1] hover:text-[#6366f1] transition-colors"
                             >
                                 ⬇ Template
-                            </button>
+                            </Button>
                         </div>
                     )}
 
@@ -175,15 +177,15 @@ export function CsvImportModal({
                     {state === "preview" && (
                         <>
                             <div className="flex items-center justify-between">
-                                <p className="text-[13px] font-semibold text-[var(--text)]">Preview — {rows.length} row{rows.length !== 1 ? "s" : ""} detected</p>
-                                <button onClick={() => { setState("idle"); setRows([]) }} className="text-[11.5px] text-[var(--text3)] hover:text-[var(--text)] underline">Choose another file</button>
+                                <p className="text-sm font-semibold text-text">Preview -- {rows.length} row{rows.length !== 1 ? "s" : ""} detected</p>
+                                <button onClick={() => { setState("idle"); setRows([]) }} className="text-xs text-text-3 hover:text-text underline">Choose another file</button>
                             </div>
-                            <div className="overflow-auto max-h-[320px] rounded-xl border border-[var(--border)]">
-                                <table className="w-full text-[11.5px] border-collapse">
-                                    <thead className="sticky top-0 bg-[var(--surface2)]">
+                            <div className="overflow-auto max-h-[320px] rounded-xl border border-border">
+                                <table className="w-full text-xs border-collapse">
+                                    <thead className="sticky top-0 bg-surface-2">
                                         <tr>
                                             {Object.keys(rows[0]).map((k) => (
-                                                <th key={k} className="px-3 py-2 text-left font-bold text-[var(--text3)] uppercase tracking-wide whitespace-nowrap border-b border-[var(--border)]">
+                                                <th key={k} className="px-3 py-2 text-left font-bold text-text-3 uppercase tracking-wide whitespace-nowrap border-b border-border">
                                                     {k}
                                                 </th>
                                             ))}
@@ -191,9 +193,9 @@ export function CsvImportModal({
                                     </thead>
                                     <tbody>
                                         {rows.slice(0, 8).map((row, i) => (
-                                            <tr key={i} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg)]">
+                                            <tr key={i} className="border-b border-border last:border-0 hover:bg-bg">
                                                 {Object.values(row).map((v, j) => (
-                                                    <td key={j} className="px-3 py-2 text-[var(--text2)] whitespace-nowrap max-w-[160px] truncate">
+                                                    <td key={j} className="px-3 py-2 text-text-2 whitespace-nowrap max-w-[160px] truncate">
                                                         {String(v)}
                                                     </td>
                                                 ))}
@@ -201,16 +203,16 @@ export function CsvImportModal({
                                         ))}
                                         {rows.length > 8 && (
                                             <tr>
-                                                <td colSpan={Object.keys(rows[0]).length} className="px-3 py-2 text-center text-[var(--text3)] font-medium">
-                                                    …and {rows.length - 8} more rows
+                                                <td colSpan={Object.keys(rows[0]).length} className="px-3 py-2 text-center text-text-3 font-medium">
+                                                    ...and {rows.length - 8} more rows
                                                 </td>
                                             </tr>
                                         )}
                                     </tbody>
                                 </table>
                             </div>
-                            <p className="text-[11.5px] text-[var(--text3)] bg-[rgba(99,102,241,0.06)] rounded-lg px-3 py-2 border border-[rgba(99,102,241,0.15)]">
-                                ℹ️ Rows where a matching employee cannot be found will be skipped. All other validation errors will be reported after import.
+                            <p className="text-xs text-text-3 bg-accent/[0.06] rounded-lg px-3 py-2 border border-accent/15">
+                                Rows where a matching employee cannot be found will be skipped. All other validation errors will be reported after import.
                             </p>
                         </>
                     )}
@@ -218,8 +220,8 @@ export function CsvImportModal({
                     {/* Importing */}
                     {state === "importing" && (
                         <div className="flex flex-col items-center justify-center py-12 gap-4">
-                            <div className="w-12 h-12 border-4 border-[var(--border)] border-t-[#6366f1] rounded-full animate-spin" />
-                            <p className="text-[14px] font-semibold text-[var(--text)]">Importing {rows.length} records…</p>
+                            <div className="w-12 h-12 border-4 border-border border-t-accent rounded-full animate-spin" />
+                            <p className="text-md font-semibold text-text">Importing {rows.length} records...</p>
                         </div>
                     )}
 
@@ -227,16 +229,16 @@ export function CsvImportModal({
                     {state === "done" && importResult && (
                         <div className="flex flex-col items-center justify-center py-10 gap-4">
                             <div className="text-5xl">✅</div>
-                            <p className="text-[16px] font-bold text-[var(--text)]">Import Complete!</p>
+                            <p className="text-lg font-bold text-text">Import Complete!</p>
                             <div className="flex gap-6 text-center">
-                                <div className="px-5 py-3 rounded-xl bg-[#e8f8ef] border border-[rgba(52,199,89,0.2)]">
-                                    <div className="text-[22px] font-extrabold text-[#1a9140]">{importResult.inserted}</div>
-                                    <div className="text-[11px] text-[#1a9140] font-semibold">Inserted</div>
+                                <div className="px-5 py-3 rounded-xl bg-success/10 border border-success/20">
+                                    <div className="text-2xl font-extrabold text-success">{importResult.inserted}</div>
+                                    <div className="text-xs text-success font-semibold">Inserted</div>
                                 </div>
                                 {importResult.skipped > 0 && (
-                                    <div className="px-5 py-3 rounded-xl bg-[var(--amber-dim)] border border-[rgba(255,149,0,0.2)]">
-                                        <div className="text-[22px] font-extrabold text-[var(--amber)]">{importResult.skipped}</div>
-                                        <div className="text-[11px] text-[var(--amber)] font-semibold">Skipped</div>
+                                    <div className="px-5 py-3 rounded-xl bg-warning/10 border border-warning/20">
+                                        <div className="text-2xl font-extrabold text-warning">{importResult.skipped}</div>
+                                        <div className="text-xs text-warning font-semibold">Skipped</div>
                                     </div>
                                 )}
                             </div>
@@ -247,34 +249,34 @@ export function CsvImportModal({
                     {state === "error" && (
                         <div className="flex flex-col items-center justify-center py-10 gap-4">
                             <div className="text-5xl">⚠️</div>
-                            <p className="text-[14px] font-semibold text-[var(--text)]">Import Failed</p>
-                            <p className="text-[12.5px] text-center text-[var(--text3)] max-w-sm">{errorMsg}</p>
-                            <button onClick={() => setState("idle")} className="text-[12.5px] font-semibold px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--border)] hover:bg-[var(--bg2)] text-[var(--text)] transition-colors">
+                            <p className="text-md font-semibold text-text">Import Failed</p>
+                            <p className="text-sm text-center text-text-3 max-w-sm">{errorMsg}</p>
+                            <Button variant="secondary" size="sm" onClick={() => setState("idle")}>
                                 Try Again
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-[var(--border)] bg-[var(--surface2)] rounded-b-2xl">
+                <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-surface-2 rounded-b-2xl">
                     {state === "done" ? (
-                        <button onClick={onClose} className="px-5 py-2 text-[13px] font-semibold text-white bg-[#6366f1] rounded-lg hover:opacity-90 transition-opacity">
+                        <Button onClick={onClose}>
                             Done
-                        </button>
+                        </Button>
                     ) : state === "preview" ? (
                         <>
-                            <button onClick={onClose} className="px-4 py-2 text-[13px] font-semibold bg-[var(--surface)] border border-[var(--border)] rounded-lg hover:bg-[var(--bg2)] text-[var(--text2)] transition-colors">
+                            <Button variant="secondary" onClick={onClose}>
                                 Cancel
-                            </button>
-                            <button onClick={handleImport} className="px-5 py-2 text-[13px] font-semibold text-white bg-[#6366f1] rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2">
-                                📥 Import {rows.length} Records
-                            </button>
+                            </Button>
+                            <Button onClick={handleImport} leftIcon={<span>📥</span>}>
+                                Import {rows.length} Records
+                            </Button>
                         </>
                     ) : (
-                        <button onClick={onClose} className="px-4 py-2 text-[13px] font-semibold bg-[var(--surface)] border border-[var(--border)] rounded-lg hover:bg-[var(--bg2)] text-[var(--text2)] transition-colors">
+                        <Button variant="secondary" onClick={onClose}>
                             Cancel
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>

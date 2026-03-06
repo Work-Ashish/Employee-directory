@@ -6,6 +6,14 @@ import { Modal } from "@/components/ui/Modal"
 import { PlusIcon, FileTextIcon, DownloadIcon, TrashIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { PageHeader } from "@/components/ui/PageHeader"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { Select } from "@/components/ui/Select"
+import { Badge } from "@/components/ui/Badge"
+import { Avatar } from "@/components/ui/Avatar"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { Spinner } from "@/components/ui/Spinner"
 
 // ─── Constants ──────────────────────────────────────────────
 
@@ -296,21 +304,21 @@ export default function DocumentManagement() {
                 className={cn(
                     "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all group",
                     isActive
-                        ? "border-[var(--accent)] bg-[rgba(0,122,255,0.06)]"
-                        : "border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--surface)]"
+                        ? "border-accent bg-accent/5"
+                        : "border-border bg-bg hover:bg-surface"
                 )}
             >
-                <div className="w-10 h-10 rounded-lg bg-[rgba(0,122,255,0.06)] flex items-center justify-center text-[20px] shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-accent/5 flex items-center justify-center text-[20px] shrink-0">
                     {CATEGORY_ICONS[doc.category]}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <div className={cn("text-[13px] font-semibold truncate", isActive ? "text-[var(--accent)]" : "text-[var(--text)]")}>{doc.title}</div>
+                    <div className={cn("text-base font-semibold truncate", isActive ? "text-accent" : "text-text")}>{doc.title}</div>
                     <div className="flex items-center gap-2 mt-0.5">
                         <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-md border", CATEGORY_COLORS[doc.category])}>
                             {CATEGORY_LABELS[doc.category]}
                         </span>
-                        {doc.size && <span className="text-[10px] text-[var(--text3)]">{doc.size}</span>}
-                        <span className="text-[10px] text-[var(--text3)]">{new Date(doc.uploadDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                        {doc.size && <span className="text-[10px] text-text-3">{doc.size}</span>}
+                        <span className="text-[10px] text-text-3">{new Date(doc.uploadDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -321,14 +329,14 @@ export default function DocumentManagement() {
                             rel="noopener noreferrer"
                             download={doc.title}
                             onClick={e => e.stopPropagation()}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text3)] hover:text-[var(--accent)] hover:bg-[rgba(0,122,255,0.08)] transition-all"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-text-3 hover:text-accent hover:bg-accent/[0.08] transition-all"
                         >
                             <DownloadIcon className="w-3.5 h-3.5" />
                         </a>
                     )}
                     <button
                         onClick={e => { e.stopPropagation(); handleDelete(doc.id) }}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text3)] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-text-3 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
                     >
                         <TrashIcon className="w-3.5 h-3.5" />
                     </button>
@@ -340,20 +348,20 @@ export default function DocumentManagement() {
     // ─── Render ──────────────────────────────────────────────
 
     return (
-        <div className="h-[calc(100vh-80px)] flex flex-col gap-0 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)]">
+        <div className="h-[calc(100vh-80px)] flex flex-col gap-0 animate-page-in">
             {/* Header */}
-            <div className="flex items-center justify-between mb-5">
-                <div>
-                    <h1 className="text-[26px] font-extrabold tracking-[-0.5px] text-[var(--text)]">Document Management</h1>
-                    <p className="text-[13.5px] text-[var(--text3)] mt-[4px]">Browse employee files and broadcast company policies</p>
-                </div>
-                <button
-                    onClick={() => { resetForm(); setIsModalOpen(true) }}
-                    className="flex items-center gap-2 p-[9px_14px] bg-[var(--accent)] text-white rounded-[9px] text-[13px] font-semibold hover:opacity-90 transition-opacity shadow-[0_2px_8px_rgba(0,122,255,0.25)]"
-                >
-                    <PlusIcon className="w-4 h-4" /> Upload Document
-                </button>
-            </div>
+            <PageHeader
+                title="Document Management"
+                description="Browse employee files and broadcast company policies"
+                actions={
+                    <Button
+                        onClick={() => { resetForm(); setIsModalOpen(true) }}
+                        leftIcon={<PlusIcon className="w-4 h-4" />}
+                    >
+                        Upload Document
+                    </Button>
+                }
+            />
 
             {/* Two-Panel Layout */}
             <div className="flex gap-4 flex-1 min-h-0">
@@ -365,37 +373,33 @@ export default function DocumentManagement() {
                         className={cn(
                             "flex items-center gap-3 p-3 rounded-xl border text-left transition-all",
                             !selectedEmployee
-                                ? "border-[var(--accent)] bg-[rgba(0,122,255,0.06)] text-[var(--accent)]"
-                                : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--bg2)] text-[var(--text)]"
+                                ? "border-accent bg-accent/5 text-accent"
+                                : "border-border bg-surface hover:bg-bg-2 text-text"
                         )}
                     >
-                        <div className="w-9 h-9 rounded-lg bg-[rgba(0,122,255,0.1)] flex items-center justify-center text-[18px]">🏢</div>
+                        <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center text-[18px]">🏢</div>
                         <div className="flex-1 min-w-0">
-                            <div className="text-[13px] font-semibold">Company Policies</div>
-                            <div className="text-[11px] text-[var(--text3)]">{companyPolicies.length} document{companyPolicies.length !== 1 ? "s" : ""}</div>
+                            <div className="text-base font-semibold">Company Policies</div>
+                            <div className="text-xs text-text-3">{companyPolicies.length} document{companyPolicies.length !== 1 ? "s" : ""}</div>
                         </div>
                     </button>
 
                     {/* Search */}
-                    <div className="relative">
-                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text3)]" />
-                        <input
-                            value={empSearch}
-                            onChange={e => setEmpSearch(e.target.value)}
-                            placeholder="Search employees..."
-                            className="w-full pl-8 pr-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[13px] text-[var(--text)] outline-none focus:border-[var(--accent)] transition-all"
-                        />
-                    </div>
+                    <Input
+                        value={empSearch}
+                        onChange={e => setEmpSearch(e.target.value)}
+                        placeholder="Search employees..."
+                        leftIcon={<MagnifyingGlassIcon className="w-3.5 h-3.5" />}
+                    />
 
                     {/* Employee cards */}
                     <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
                         {loadingDocs ? (
                             Array(6).fill(0).map((_, i) => (
-                                <div key={i} className="h-14 rounded-xl bg-[var(--surface)] animate-pulse" />
+                                <div key={i} className="h-14 rounded-xl bg-surface animate-pulse" />
                             ))
                         ) : filteredEmployees.map(emp => {
                             const docCount = getEmpDocs(emp.id).length
-                            const initials = `${emp.firstName[0]}${emp.lastName[0]}`
                             const isSelected = selectedEmployee?.id === emp.id
                             return (
                                 <button
@@ -404,29 +408,27 @@ export default function DocumentManagement() {
                                     className={cn(
                                         "w-full flex items-center gap-3 p-2.5 rounded-xl border text-left transition-all",
                                         isSelected
-                                            ? "border-[var(--accent)] bg-[rgba(0,122,255,0.06)]"
-                                            : "border-transparent hover:border-[var(--border)] hover:bg-[var(--surface)]"
+                                            ? "border-accent bg-accent/5"
+                                            : "border-transparent hover:border-border hover:bg-surface"
                                     )}
                                 >
-                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#007aff] to-[#5856d6] flex items-center justify-center text-[11px] font-bold text-white shrink-0">
-                                        {initials}
-                                    </div>
+                                    <Avatar name={`${emp.firstName} ${emp.lastName}`} size="default" />
                                     <div className="flex-1 min-w-0">
-                                        <div className={cn("text-[12.5px] font-semibold truncate", isSelected ? "text-[var(--accent)]" : "text-[var(--text)]")}>
+                                        <div className={cn("text-sm font-semibold truncate", isSelected ? "text-accent" : "text-text")}>
                                             {emp.firstName} {emp.lastName}
                                         </div>
-                                        <div className="text-[11px] text-[var(--text3)] truncate">{emp.employeeCode}</div>
+                                        <div className="text-xs text-text-3 truncate">{emp.employeeCode}</div>
                                     </div>
                                     {docCount > 0 && (
-                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[rgba(0,122,255,0.1)] text-[var(--accent)]">
+                                        <Badge variant="default" size="sm">
                                             {docCount}
-                                        </span>
+                                        </Badge>
                                     )}
                                 </button>
                             )
                         })}
                         {!loadingDocs && filteredEmployees.length === 0 && (
-                            <div className="text-center text-[12px] text-[var(--text3)] py-8">No employees found</div>
+                            <div className="text-center text-sm text-text-3 py-8">No employees found</div>
                         )}
                     </div>
                 </div>
@@ -439,36 +441,34 @@ export default function DocumentManagement() {
                             <div>
                                 {selectedEmployee ? (
                                     <>
-                                        <h2 className="text-[16px] font-bold text-[var(--text)]">
+                                        <h2 className="text-lg font-bold text-text">
                                             {selectedEmployee.firstName} {selectedEmployee.lastName}
                                         </h2>
-                                        <p className="text-[12px] text-[var(--text3)]">{selectedEmployee.employeeCode} · {selectedEmployee.designation}</p>
+                                        <p className="text-sm text-text-3">{selectedEmployee.employeeCode} · {selectedEmployee.designation}</p>
                                     </>
                                 ) : (
                                     <>
-                                        <h2 className="text-[16px] font-bold text-[var(--text)]">Company Policies</h2>
-                                        <p className="text-[12px] text-[var(--text3)]">Documents visible to all employees</p>
+                                        <h2 className="text-lg font-bold text-text">Company Policies</h2>
+                                        <p className="text-sm text-text-3">Documents visible to all employees</p>
                                     </>
                                 )}
                             </div>
-                            <div className="text-[12px] text-[var(--text3)]">{viewedDocs.length} doc{viewedDocs.length !== 1 ? "s" : ""}</div>
+                            <div className="text-sm text-text-3">{viewedDocs.length} doc{viewedDocs.length !== 1 ? "s" : ""}</div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto space-y-2 pr-1">
                             {loadingDocs ? (
                                 Array(4).fill(0).map((_, i) => (
-                                    <div key={i} className="h-16 rounded-xl bg-[var(--bg2)] animate-pulse" />
+                                    <div key={i} className="h-16 rounded-xl bg-bg-2 animate-pulse" />
                                 ))
                             ) : viewedDocs.length > 0 ? (
                                 viewedDocs.map(doc => <DocCard key={doc.id} doc={doc} />)
                             ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-16">
-                                    <div className="w-16 h-16 rounded-2xl bg-[var(--bg2)] flex items-center justify-center text-[32px]">📂</div>
-                                    <div className="text-[14px] font-semibold text-[var(--text2)]">No documents yet</div>
-                                    <div className="text-[12px] text-[var(--text3)]">
-                                        {selectedEmployee ? `Upload documents for ${selectedEmployee.firstName} using the button above` : "Upload a company policy to get started"}
-                                    </div>
-                                </div>
+                                <EmptyState
+                                    icon={<span className="text-[32px]">📂</span>}
+                                    title="No documents yet"
+                                    description={selectedEmployee ? `Upload documents for ${selectedEmployee.firstName} using the button above` : "Upload a company policy to get started"}
+                                />
                             )}
                         </div>
                     </div>
@@ -477,27 +477,28 @@ export default function DocumentManagement() {
                     {selectedDoc && (
                         <div className="flex-1 glass rounded-2xl flex flex-col min-h-0 overflow-hidden">
                             {/* Preview Header */}
-                            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] shrink-0">
+                            <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
                                 <div className="flex items-center gap-2 min-w-0">
                                     <span className="text-[18px]">{CATEGORY_ICONS[selectedDoc.category]}</span>
                                     <div className="min-w-0">
-                                        <div className="text-[13px] font-bold text-[var(--text)] truncate">{selectedDoc.title}</div>
-                                        <div className="text-[11px] text-[var(--text3)]">{selectedDoc.size} · {new Date(selectedDoc.uploadDate).toLocaleDateString()}</div>
+                                        <div className="text-base font-bold text-text truncate">{selectedDoc.title}</div>
+                                        <div className="text-xs text-text-3">{selectedDoc.size} · {new Date(selectedDoc.uploadDate).toLocaleDateString()}</div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     {selectedDoc.url && selectedDoc.url !== "#" && (
-                                        <a
-                                            href={selectedDoc.url}
-                                            download={selectedDoc.title}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-white text-[12px] font-semibold hover:opacity-90 transition-opacity"
+                                        <Button
+                                            size="sm"
+                                            variant="primary"
+                                            leftIcon={<DownloadIcon className="w-3 h-3" />}
+                                            onClick={() => window.open(selectedDoc.url, '_blank')}
                                         >
-                                            <DownloadIcon className="w-3 h-3" /> Download
-                                        </a>
+                                            Download
+                                        </Button>
                                     )}
                                     <button
                                         onClick={() => setSelectedDoc(null)}
-                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text3)] hover:bg-[var(--bg2)] transition-colors text-[18px] leading-none"
+                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-text-3 hover:bg-bg-2 transition-colors text-[18px] leading-none"
                                     >
                                         ×
                                     </button>
@@ -505,7 +506,7 @@ export default function DocumentManagement() {
                             </div>
 
                             {/* Preview Body */}
-                            <div className="flex-1 min-h-0 overflow-auto bg-[var(--bg)]">
+                            <div className="flex-1 min-h-0 overflow-auto bg-bg">
                                 {(() => {
                                     const type = getPreviewType(selectedDoc.url)
                                     if (type === "pdf") {
@@ -529,23 +530,22 @@ export default function DocumentManagement() {
                                         )
                                     }
                                     return (
-                                        <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
-                                            <div className="text-[48px]">{CATEGORY_ICONS[selectedDoc.category]}</div>
-                                            <div className="text-[14px] font-semibold text-[var(--text2)]">{selectedDoc.title}</div>
-                                            <div className="text-[12px] text-[var(--text3)] max-w-[260px]">
-                                                Preview is not available for this file type. Use the download button to open it.
-                                            </div>
-                                            {selectedDoc.url && selectedDoc.url !== "#" && (
-                                                <a
-                                                    href={selectedDoc.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center gap-2 px-4 py-2 bg-[var(--accent)] text-white text-[13px] font-semibold rounded-lg hover:opacity-90 transition-opacity"
-                                                >
-                                                    <DownloadIcon className="w-4 h-4" /> Open / Download
-                                                </a>
-                                            )}
-                                        </div>
+                                        <EmptyState
+                                            icon={<span className="text-[48px]">{CATEGORY_ICONS[selectedDoc.category]}</span>}
+                                            title={selectedDoc.title}
+                                            description="Preview is not available for this file type. Use the download button to open it."
+                                            action={
+                                                selectedDoc.url && selectedDoc.url !== "#" ? (
+                                                    <Button
+                                                        leftIcon={<DownloadIcon className="w-4 h-4" />}
+                                                        onClick={() => window.open(selectedDoc.url, '_blank')}
+                                                    >
+                                                        Open / Download
+                                                    </Button>
+                                                ) : undefined
+                                            }
+                                            className="h-full"
+                                        />
                                     )
                                 })()}
                             </div>
@@ -563,32 +563,23 @@ export default function DocumentManagement() {
                 <div className="space-y-4">
                     {/* Title & Category */}
                     <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-[12px] font-semibold text-[var(--text2)] mb-1.5">Title *</label>
-                            <input
-                                className="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-[13px] outline-none focus:border-[var(--accent)] transition-all"
-                                value={form.title}
-                                onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-                                placeholder="e.g. Employee Handbook 2026"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-[12px] font-semibold text-[var(--text2)] mb-1.5">Category *</label>
-                            <select
-                                className="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-[13px] outline-none focus:border-[var(--accent)] transition-all"
-                                value={form.category}
-                                onChange={e => setForm(p => ({ ...p, category: e.target.value as DocCategory }))}
-                            >
-                                {(Object.keys(CATEGORY_LABELS) as DocCategory[]).map(c => (
-                                    <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-                                ))}
-                            </select>
-                        </div>
+                        <Input
+                            label="Title *"
+                            value={form.title}
+                            onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+                            placeholder="e.g. Employee Handbook 2026"
+                        />
+                        <Select
+                            label="Category *"
+                            value={form.category}
+                            onChange={e => setForm(p => ({ ...p, category: e.target.value as DocCategory }))}
+                            options={(Object.keys(CATEGORY_LABELS) as DocCategory[]).map(c => ({ value: c, label: CATEGORY_LABELS[c] }))}
+                        />
                     </div>
 
                     {/* Drag & Drop Zone */}
                     <div>
-                        <label className="block text-[12px] font-semibold text-[var(--text2)] mb-1.5">File *</label>
+                        <label className="block text-sm font-medium text-text-2 mb-1.5">File *</label>
                         <div
                             onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
                             onDragLeave={() => setIsDragging(false)}
@@ -596,88 +587,79 @@ export default function DocumentManagement() {
                             onClick={() => fileInputRef.current?.click()}
                             className={cn(
                                 "border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200",
-                                isDragging ? "border-[var(--accent)] bg-[rgba(0,122,255,0.06)]"
-                                    : droppedFileName ? "border-[rgba(52,199,89,0.5)] bg-[var(--green-dim)]"
-                                        : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[rgba(0,122,255,0.03)]"
+                                isDragging ? "border-accent bg-accent/5"
+                                    : droppedFileName ? "border-success/50 bg-success/10"
+                                        : "border-border bg-surface hover:border-accent hover:bg-accent/[0.03]"
                             )}
                         >
                             <input ref={fileInputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) processFile(f) }} />
                             {droppedFileName ? (
                                 <div className="flex flex-col items-center gap-1.5">
-                                    <div className="w-9 h-9 rounded-full bg-[var(--green-dim)] flex items-center justify-center">
-                                        <FileTextIcon className="w-4 h-4 text-[#1a9140]" />
+                                    <div className="w-9 h-9 rounded-full bg-success/10 flex items-center justify-center">
+                                        <FileTextIcon className="w-4 h-4 text-success" />
                                     </div>
-                                    <div className="text-[13px] font-semibold text-[#1a9140]">{droppedFileName}</div>
-                                    <div className="text-[11px] text-[var(--text3)]">{form.size} · Click to replace</div>
+                                    <div className="text-base font-semibold text-success">{droppedFileName}</div>
+                                    <div className="text-xs text-text-3">{form.size} · Click to replace</div>
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center gap-1.5">
-                                    <div className="w-9 h-9 rounded-full bg-[var(--bg2)] flex items-center justify-center">
-                                        <DownloadIcon className="w-4 h-4 text-[var(--text3)] rotate-180" />
+                                    <div className="w-9 h-9 rounded-full bg-bg-2 flex items-center justify-center">
+                                        <DownloadIcon className="w-4 h-4 text-text-3 rotate-180" />
                                     </div>
-                                    <div className="text-[13px] font-semibold text-[var(--text2)]">
+                                    <div className="text-base font-semibold text-text-2">
                                         {isDragging ? "Drop file here" : "Drag & drop or click to upload"}
                                     </div>
-                                    <div className="text-[11px] text-[var(--text3)]">PDF, DOCX, XLSX, PNG — any format</div>
+                                    <div className="text-xs text-text-3">PDF, DOCX, XLSX, PNG — any format</div>
                                 </div>
                             )}
                         </div>
                         {!droppedFileName && (
-                            <input
-                                className="mt-2 w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-[12px] outline-none focus:border-[var(--accent)] transition-all"
+                            <Input
+                                wrapperClassName="mt-2"
                                 value={form.url}
                                 onChange={e => setForm(p => ({ ...p, url: e.target.value }))}
                                 placeholder="Or paste a document URL"
+                                className="text-sm"
                             />
                         )}
                     </div>
 
                     {/* Recipients */}
                     <div>
-                        <label className="block text-[12px] font-semibold text-[var(--text2)] mb-2">Send To *</label>
+                        <label className="block text-sm font-medium text-text-2 mb-2">Send To *</label>
                         <div className="flex gap-2 mb-3">
-                            <button
+                            <Button
                                 type="button"
+                                variant={uploadTarget === "all" ? "primary" : "secondary"}
+                                className="flex-1"
                                 onClick={() => setUploadTarget("all")}
-                                className={cn(
-                                    "flex-1 py-2 rounded-lg text-[13px] font-semibold border transition-all",
-                                    uploadTarget === "all"
-                                        ? "bg-[var(--accent)] text-white border-[var(--accent)]"
-                                        : "border-[var(--border)] text-[var(--text2)] hover:bg-[var(--bg2)]"
-                                )}
                             >
                                 🏢 All Employees
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="button"
+                                variant={uploadTarget === "selected" ? "primary" : "secondary"}
+                                className="flex-1"
                                 onClick={() => setUploadTarget("selected")}
-                                className={cn(
-                                    "flex-1 py-2 rounded-lg text-[13px] font-semibold border transition-all",
-                                    uploadTarget === "selected"
-                                        ? "bg-[var(--accent)] text-white border-[var(--accent)]"
-                                        : "border-[var(--border)] text-[var(--text2)] hover:bg-[var(--bg2)]"
-                                )}
                             >
                                 👤 Select Employees
-                            </button>
+                            </Button>
                         </div>
 
                         {uploadTarget === "selected" && (
-                            <div className="border border-[var(--border)] rounded-xl overflow-hidden">
-                                <div className="p-2 border-b border-[var(--border)] bg-[var(--surface)]">
-                                    <div className="relative">
-                                        <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--text3)]" />
-                                        <input
-                                            value={empSearchModal}
-                                            onChange={e => setEmpSearchModal(e.target.value)}
-                                            placeholder="Search employees..."
-                                            className="w-full pl-7 pr-3 py-1.5 rounded-md bg-[var(--bg)] border border-[var(--border)] text-[12px] outline-none focus:border-[var(--accent)]"
-                                        />
-                                    </div>
+                            <div className="border border-border rounded-xl overflow-hidden">
+                                <div className="p-2 border-b border-border bg-surface">
+                                    <Input
+                                        value={empSearchModal}
+                                        onChange={e => setEmpSearchModal(e.target.value)}
+                                        placeholder="Search employees..."
+                                        leftIcon={<MagnifyingGlassIcon className="w-3 h-3" />}
+                                        className="text-sm"
+                                    />
                                 </div>
                                 <div className="max-h-[180px] overflow-y-auto">
                                     {/* Select All row */}
-                                    <label className="flex items-center gap-3 px-3 py-2 hover:bg-[var(--surface)] cursor-pointer border-b border-[var(--border)]">
+                                    <label className="flex items-center gap-3 px-3 py-2 hover:bg-surface cursor-pointer border-b border-border">
                                         <input
                                             type="checkbox"
                                             checked={selectedEmpIds.size === employees.length}
@@ -687,28 +669,26 @@ export default function DocumentManagement() {
                                             }}
                                             className="rounded"
                                         />
-                                        <span className="text-[12px] font-semibold text-[var(--text)]">Select All ({employees.length})</span>
+                                        <span className="text-sm font-semibold text-text">Select All ({employees.length})</span>
                                     </label>
                                     {filteredModalEmployees.map(emp => (
-                                        <label key={emp.id} className="flex items-center gap-3 px-3 py-2 hover:bg-[var(--surface)] cursor-pointer">
+                                        <label key={emp.id} className="flex items-center gap-3 px-3 py-2 hover:bg-surface cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedEmpIds.has(emp.id)}
                                                 onChange={() => toggleEmpId(emp.id)}
                                                 className="rounded"
                                             />
-                                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#007aff] to-[#5856d6] flex items-center justify-center text-[9px] font-bold text-white">
-                                                {emp.firstName[0]}{emp.lastName[0]}
-                                            </div>
+                                            <Avatar name={`${emp.firstName} ${emp.lastName}`} size="xs" />
                                             <div>
-                                                <div className="text-[12px] font-semibold text-[var(--text)]">{emp.firstName} {emp.lastName}</div>
-                                                <div className="text-[10px] text-[var(--text3)]">{emp.employeeCode}</div>
+                                                <div className="text-sm font-semibold text-text">{emp.firstName} {emp.lastName}</div>
+                                                <div className="text-[10px] text-text-3">{emp.employeeCode}</div>
                                             </div>
                                         </label>
                                     ))}
                                 </div>
                                 {selectedEmpIds.size > 0 && (
-                                    <div className="px-3 py-2 bg-[rgba(0,122,255,0.05)] border-t border-[var(--border)] text-[11px] font-semibold text-[var(--accent)]">
+                                    <div className="px-3 py-2 bg-accent/5 border-t border-border text-xs font-semibold text-accent">
                                         {selectedEmpIds.size} employee{selectedEmpIds.size > 1 ? "s" : ""} selected
                                     </div>
                                 )}
@@ -718,19 +698,12 @@ export default function DocumentManagement() {
 
                     {/* Actions */}
                     <div className="flex justify-end gap-2 pt-2">
-                        <button
-                            onClick={() => setIsModalOpen(false)}
-                            className="px-4 py-2 border border-[var(--border)] rounded-lg text-[13px] text-[var(--text2)] hover:bg-[var(--bg2)] transition-colors"
-                        >
+                        <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
                             Cancel
-                        </button>
-                        <button
-                            onClick={handleUpload}
-                            disabled={saving}
-                            className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg text-[13px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
-                        >
+                        </Button>
+                        <Button onClick={handleUpload} loading={saving}>
                             {saving ? "Uploading..." : "Upload Document"}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </Modal>

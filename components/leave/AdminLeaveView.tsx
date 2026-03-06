@@ -182,7 +182,7 @@ export function AdminLeaveView() {
     const rejectedCount = leaves.filter(l => l.status === "REJECTED").length
 
     return (
-        <div className="space-y-6 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)]">
+        <div className="space-y-6 animate-page-in">
             <PageHeader
                 title="Leave Management"
                 description="Review and approve employee leave requests"

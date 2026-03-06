@@ -4,8 +4,10 @@ import { ReportBuilder } from "@/components/admin/reports/ReportBuilder"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { BarChartIcon, ReloadIcon, PlusIcon } from "@radix-ui/react-icons"
+import { BarChartIcon } from "@radix-ui/react-icons"
 import { canAccessModule, Module } from "@/lib/permissions"
+import { Spinner } from "@/components/ui/Spinner"
+import { PageHeader } from "@/components/ui/PageHeader"
 
 export default function AdminReportsPage() {
     const { user, isLoading } = useAuth()
@@ -22,24 +24,22 @@ export default function AdminReportsPage() {
     if (isLoading || !user) {
         return (
             <div className="h-full flex items-center justify-center">
-                <ReloadIcon className="w-6 h-6 animate-spin text-[var(--accent)]" />
+                <Spinner size="lg" className="text-accent" />
             </div>
         )
     }
 
     return (
         <div className="p-8 max-w-[1400px] mx-auto space-y-8">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-1">
-                        <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center border border-[var(--accent)]/20">
-                            <BarChartIcon className="w-5 h-5 text-[var(--accent)]" />
-                        </div>
-                        <h1 className="text-[28px] font-bold tracking-tight">Reports & Analytics</h1>
+            <PageHeader
+                title="Reports & Analytics"
+                description="Design, save, and export custom HR and Payroll reports."
+                actions={
+                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center border border-accent/20">
+                        <BarChartIcon className="w-5 h-5 text-accent" />
                     </div>
-                    <p className="text-[14px] text-[var(--text3)]">Design, save, and export custom HR and Payroll reports.</p>
-                </div>
-            </div>
+                }
+            />
 
             <ReportBuilder />
         </div>

@@ -2,9 +2,14 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { toast, Toaster } from "react-hot-toast"
+import { toast } from "sonner"
 import { format } from "date-fns"
 import { Modal } from "@/components/ui/Modal"
+import { PageHeader } from "@/components/ui/PageHeader"
+import { Button } from "@/components/ui/Button"
+import { Badge } from "@/components/ui/Badge"
+import { Spinner } from "@/components/ui/Spinner"
+import { Card, CardContent } from "@/components/ui/Card"
 
 type Training = {
     id: string
@@ -77,91 +82,96 @@ export function EmployeeTrainingView({ employeeId }: { employeeId: string }) {
         }
     }
 
-    return (
-        <div className="space-y-6 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)]">
-            <Toaster position="top-right" />
-            <div className="mb-[26px]">
-                <h1 className="text-[26px] font-extrabold tracking-[-0.5px] text-[var(--text)]">My Learning</h1>
-                <p className="text-[13.5px] text-[var(--text3)] mt-[4px]">Access your courses and track progress</p>
-            </div>
+    const getStatusBadgeVariant = (status: string): "success" | "info" => {
+        return status === 'COMPLETED' ? "success" : "info"
+    }
 
-            <div className="grid grid-cols-[2fr_1fr] gap-[20px]">
-                <div className="flex flex-col gap-[20px]">
-                    <div className="glass p-[24px] bg-gradient-to-br from-[#10b981] to-[#059669] text-white relative overflow-hidden">
+    return (
+        <div className="space-y-6 animate-page-in">
+            <PageHeader
+                title="My Learning"
+                description="Access your courses and track progress"
+            />
+
+            <div className="grid grid-cols-[2fr_1fr] gap-5">
+                <div className="flex flex-col gap-5">
+                    <div className="glass p-6 bg-gradient-to-br from-[#10b981] to-[#059669] text-white relative overflow-hidden">
                         <div className="relative z-10 flex flex-col items-start gap-4">
                             <div>
-                                <div className="text-[11px] font-bold uppercase tracking-wider bg-white/20 inline-block px-2 py-1 rounded mb-2">Recommended</div>
+                                <div className="text-xs font-bold uppercase tracking-wider bg-white/20 inline-block px-2 py-1 rounded mb-2">Recommended</div>
                                 <h2 className="text-[20px] font-bold mb-1">Advanced Leadership Skills</h2>
-                                <p className="text-[13.5px] text-white/90 max-w-[400px]">Prepare for your next role with this comprehensive leadership track.</p>
+                                <p className="text-base text-white/90 max-w-[400px]">Prepare for your next role with this comprehensive leadership track.</p>
                             </div>
                         </div>
                         <div className="absolute right-[20px] bottom-[10px] text-[100px] opacity-20 rotate-[-12]">🚀</div>
                     </div>
 
                     <div>
-                        <div className="text-[15px] font-bold text-[var(--text)] mb-[14px]">My Active Courses</div>
-                        <div className="flex flex-col gap-[12px]">
+                        <div className="text-[15px] font-bold text-text mb-[14px]">My Active Courses</div>
+                        <div className="flex flex-col gap-3">
                             {!isLoading ? trainings.map((t, i) => {
                                 const [grad, icon, bg] = getTypeColor(t.type).split(' ')
                                 return (
-                                    <div key={t.id} className="glass p-[18px] flex items-center gap-[16px] group transition-all duration-200 hover:-translate-y-[2px] hover:shadow-md">
-                                        <div className={cn("w-[48px] h-[48px] rounded-[12px] flex items-center justify-center text-[24px] shrink-0", bg)}>
+                                    <div key={t.id} className="glass p-[18px] flex items-center gap-4 group transition-all duration-200 hover:-translate-y-[2px] hover:shadow-md">
+                                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0", bg)}>
                                             {icon.split('-')[1]}
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex justify-between items-start mb-1">
-                                                <h3 className="text-[14px] font-bold text-[var(--text)]">{t.name}</h3>
-                                                <span className={cn("text-[11px] font-bold px-[8px] py-[2px] rounded-[10px] uppercase tracking-[0.5px]",
-                                                    t.status === 'COMPLETED' ? "bg-[var(--green-dim)] text-[#1a9140]" : "bg-[var(--blue-dim)] text-[#0a7ea4]"
-                                                )}>
+                                                <h3 className="text-md font-bold text-text">{t.name}</h3>
+                                                <Badge variant={getStatusBadgeVariant(t.status)} size="sm">
                                                     {t.status.replace('_', ' ')}
-                                                </span>
+                                                </Badge>
                                             </div>
-                                            <div className="text-[12px] text-[var(--text3)] mb-[8px] flex items-center gap-[10px]">
+                                            <div className="text-sm text-text-3 mb-2 flex items-center gap-[10px]">
                                                 <span>{t.type}</span>
                                                 {t.dueDate && (
                                                     <>
-                                                        <span className="w-[3px] h-[3px] bg-[var(--text3)] rounded-full" />
+                                                        <span className="w-[3px] h-[3px] bg-text-3 rounded-full" />
                                                         <span>Due: {format(new Date(t.dueDate), "MMM d, yyyy")}</span>
                                                     </>
                                                 )}
-                                                {t.videoUrl && <span className="text-[11px] text-[var(--red)] font-bold italic">● Includes Video</span>}
+                                                {t.videoUrl && <span className="text-xs text-danger font-bold italic">● Includes Video</span>}
                                             </div>
-                                            <div className="w-full h-[6px] bg-[var(--bg2)] rounded-[3px] overflow-hidden">
+                                            <div className="w-full h-[6px] bg-bg-2 rounded-[3px] overflow-hidden">
                                                 <div className={cn("h-full rounded-[3px] bg-gradient-to-r", grad)} style={{ width: `${t.progress}%` }} />
                                             </div>
                                         </div>
-                                        <button
+                                        <Button
+                                            variant="secondary"
                                             onClick={() => setSelectedTraining(t)}
-                                            className="px-4 py-2 bg-[var(--surface2)] border border-[var(--border)] rounded-lg text-[13px] font-semibold hover:bg-[var(--bg)] transition-colors"
                                         >
                                             {t.status === 'COMPLETED' ? 'Review' : 'Start'}
-                                        </button>
+                                        </Button>
                                     </div>
                                 )
                             }) : (
-                                <div className="p-10 text-center text-[var(--text3)]">Loading courses...</div>
+                                <div className="p-10 flex justify-center">
+                                    <Spinner size="lg" />
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-[20px]">
-                    <div className="glass p-[22px]">
-                        <div className="text-[13.5px] font-bold text-[var(--text)] mb-[16px] flex items-center gap-2">
-                            <span>🏆</span> My Achievements
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="p-3 bg-[var(--surface2)] rounded-xl border border-[var(--border)] flex flex-col items-center text-center">
-                                <div className="text-2xl mb-1">🥇</div>
-                                <div className="text-[12px] font-bold">Fast Learner</div>
+                <div className="flex flex-col gap-5">
+                    <Card variant="glass">
+                        <CardContent>
+                            <div className="text-base font-bold text-text mb-4 flex items-center gap-2">
+                                <span>🏆</span> My Achievements
                             </div>
-                            <div className="p-3 bg-[var(--surface2)] rounded-xl border border-[var(--border)] flex flex-col items-center text-center">
-                                <div className="text-2xl mb-1">🔥</div>
-                                <div className="text-[12px] font-bold">3 Day Streak</div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-3 bg-surface-2 rounded-xl border border-border flex flex-col items-center text-center">
+                                    <div className="text-2xl mb-1">🥇</div>
+                                    <div className="text-sm font-bold">Fast Learner</div>
+                                </div>
+                                <div className="p-3 bg-surface-2 rounded-xl border border-border flex flex-col items-center text-center">
+                                    <div className="text-2xl mb-1">🔥</div>
+                                    <div className="text-sm font-bold">3 Day Streak</div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
 
@@ -189,37 +199,38 @@ export function EmployeeTrainingView({ employeeId }: { employeeId: string }) {
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-full text-white/60 p-10">
                                         <div className="text-4xl mb-4">📹</div>
-                                        <p className="text-[14px]">Video player unavailable</p>
-                                        <a href={selectedTraining.videoUrl} target="_blank" className="text-[var(--accent)] underline mt-2">Open Video in New Tab</a>
+                                        <p className="text-md">Video player unavailable</p>
+                                        <a href={selectedTraining.videoUrl} target="_blank" className="text-accent underline mt-2">Open Video in New Tab</a>
                                     </div>
                                 )}
                             </div>
                         ) : (
-                            <div className="p-20 bg-[var(--bg2)] rounded-xl flex flex-col items-center justify-center text-center">
+                            <div className="p-20 bg-bg-2 rounded-xl flex flex-col items-center justify-center text-center">
                                 <div className="text-4xl mb-4">📖</div>
                                 <p className="text-[15px] font-medium">This course focuses on reading materials and practical exercises.</p>
                             </div>
                         )}
 
                         <div className="space-y-3">
-                            <h3 className="text-[16px] font-bold">Course Description</h3>
-                            <p className="text-[14px] text-[var(--text3)] leading-relaxed">{selectedTraining.description || "No description provided for this course."}</p>
+                            <h3 className="text-base font-bold">Course Description</h3>
+                            <p className="text-md text-text-3 leading-relaxed">{selectedTraining.description || "No description provided for this course."}</p>
                         </div>
 
-                        <div className="flex justify-between items-center pt-6 border-t border-[var(--border)]">
-                            <button
+                        <div className="flex justify-between items-center pt-6 border-t border-border">
+                            <Button
+                                variant="secondary"
                                 onClick={() => setSelectedTraining(null)}
-                                className="px-6 py-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-[13px] font-bold hover:bg-[var(--bg2)] transition-colors"
                             >
                                 Close
-                            </button>
+                            </Button>
                             {selectedTraining.status !== 'COMPLETED' && (
-                                <button
+                                <Button
+                                    variant="success"
+                                    className="shadow-lg"
                                     onClick={() => markAsCompleted(selectedTraining.id)}
-                                    className="px-6 py-2.5 bg-[var(--green)] text-white rounded-lg text-[13px] font-extrabold shadow-lg hover:opacity-90 transition-opacity"
                                 >
                                     Mark as Completed ✓
-                                </button>
+                                </Button>
                             )}
                         </div>
                     </div>

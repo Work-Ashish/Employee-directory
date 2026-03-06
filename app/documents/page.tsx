@@ -2,6 +2,10 @@
 
 import { cn } from "@/lib/utils"
 import { FileTextIcon, DownloadIcon } from "@radix-ui/react-icons"
+import { Card, CardContent } from "@/components/ui/Card"
+import { Badge } from "@/components/ui/Badge"
+import { PageHeader } from "@/components/ui/PageHeader"
+import { Button } from "@/components/ui/Button"
 
 const documents = [
     { name: "Employment Contract.pdf", type: "Contract", date: "Jan 10, 2024", size: "2.4 MB", category: "Personal" },
@@ -15,79 +19,79 @@ const documents = [
 
 export default function Documents() {
     return (
-        <div className="space-y-6 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)]">
-            <div className="mb-[26px]">
-                <h1 className="text-[26px] font-extrabold tracking-[-0.5px] text-[var(--text)]">Documents Vault</h1>
-                <p className="text-[13.5px] text-[var(--text3)] mt-[4px]">Securely access your personal and company documents</p>
-            </div>
+        <div className="space-y-6 animate-page-in">
+            <PageHeader
+                title="Documents Vault"
+                description="Securely access your personal and company documents"
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-[250px_1fr] gap-6">
                 {/* Sidebar / Folders */}
-                <div className="glass p-4 self-start">
-                    <div className="text-[12px] font-bold text-[var(--text3)] uppercase tracking-[0.5px] mb-3 px-2">Folders</div>
-                    <ul className="space-y-1">
-                        <li className="flex items-center justify-between p-2 rounded-lg bg-[var(--surface2)] text-[var(--accent)] font-semibold text-[13.5px] cursor-pointer">
-                            <span className="flex items-center gap-2">📂 All Documents</span>
-                            <span className="text-[11px] bg-[var(--bg)] px-2 py-0.5 rounded-full text-[var(--text2)]">7</span>
-                        </li>
-                        <li className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--surface2)] text-[var(--text2)] text-[13.5px] cursor-pointer transition-colors">
-                            <span className="flex items-center gap-2">👤 Personal</span>
-                            <span className="text-[11px] bg-[var(--bg)] px-2 py-0.5 rounded-full text-[var(--text2)]">2</span>
-                        </li>
-                        <li className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--surface2)] text-[var(--text2)] text-[13.5px] cursor-pointer transition-colors">
-                            <span className="flex items-center gap-2">💰 Finance & Tax</span>
-                            <span className="text-[11px] bg-[var(--bg)] px-2 py-0.5 rounded-full text-[var(--text2)]">2</span>
-                        </li>
-                        <li className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--surface2)] text-[var(--text2)] text-[13.5px] cursor-pointer transition-colors">
-                            <span className="flex items-center gap-2">🏢 Company Policies</span>
-                            <span className="text-[11px] bg-[var(--bg)] px-2 py-0.5 rounded-full text-[var(--text2)]">3</span>
-                        </li>
-                    </ul>
-                </div>
+                <Card variant="glass" className="self-start">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-bold text-text-3 uppercase tracking-wider mb-3 px-2">Folders</div>
+                        <ul className="space-y-1">
+                            <li className="flex items-center justify-between p-2 rounded-lg bg-surface-2 text-accent font-semibold text-sm cursor-pointer">
+                                <span className="flex items-center gap-2">📂 All Documents</span>
+                                <Badge variant="neutral" size="sm">7</Badge>
+                            </li>
+                            <li className="flex items-center justify-between p-2 rounded-lg hover:bg-surface-2 text-text-2 text-sm cursor-pointer transition-colors">
+                                <span className="flex items-center gap-2">👤 Personal</span>
+                                <Badge variant="neutral" size="sm">2</Badge>
+                            </li>
+                            <li className="flex items-center justify-between p-2 rounded-lg hover:bg-surface-2 text-text-2 text-sm cursor-pointer transition-colors">
+                                <span className="flex items-center gap-2">💰 Finance & Tax</span>
+                                <Badge variant="neutral" size="sm">2</Badge>
+                            </li>
+                            <li className="flex items-center justify-between p-2 rounded-lg hover:bg-surface-2 text-text-2 text-sm cursor-pointer transition-colors">
+                                <span className="flex items-center gap-2">🏢 Company Policies</span>
+                                <Badge variant="neutral" size="sm">3</Badge>
+                            </li>
+                        </ul>
+                    </CardContent>
+                </Card>
 
                 {/* File List */}
                 <div className="space-y-4">
-                    <div className="text-[14px] font-bold text-[var(--text)] border-b border-[var(--border)] pb-2 flex justify-between items-center">
+                    <div className="text-sm font-bold text-text border-b border-border pb-2 flex justify-between items-center">
                         <span>Recent Files</span>
-                        <div className="flex gap-2 text-[var(--text3)]">
-                            <span className="cursor-pointer hover:text-[var(--text)]">Grid</span>
+                        <div className="flex gap-2 text-text-3">
+                            <span className="cursor-pointer hover:text-text">Grid</span>
                             <span>|</span>
-                            <span className="cursor-pointer hover:text-[var(--text)] text-[var(--text)]">List</span>
+                            <span className="cursor-pointer hover:text-text text-text">List</span>
                         </div>
                     </div>
 
                     {/* Desktop Table */}
-                    <div className="hidden md:block bg-[var(--surface)] border border-[var(--border)] rounded-[var(--r)] overflow-hidden shadow-sm">
+                    <Card className="hidden md:block overflow-hidden shadow-sm">
                         <table className="w-full border-collapse">
                             <thead>
-                                <tr className="border-b border-[var(--border)] bg-[var(--surface2)] backdrop-blur-md">
-                                    <th className="p-[11px_18px] text-[11.5px] font-bold text-[var(--text3)] text-left uppercase tracking-[0.5px]">Name</th>
-                                    <th className="p-[11px_18px] text-[11.5px] font-bold text-[var(--text3)] text-left uppercase tracking-[0.5px]">Category</th>
-                                    <th className="p-[11px_18px] text-[11.5px] font-bold text-[var(--text3)] text-left uppercase tracking-[0.5px]">Date Added</th>
-                                    <th className="p-[11px_18px] text-[11.5px] font-bold text-[var(--text3)] text-left uppercase tracking-[0.5px]">Size</th>
-                                    <th className="p-[11px_18px] text-[11.5px] font-bold text-[var(--text3)] text-right uppercase tracking-[0.5px]">Action</th>
+                                <tr className="border-b border-border bg-surface-2 backdrop-blur-md">
+                                    <th className="p-3 text-[11.5px] font-bold text-text-3 text-left uppercase tracking-wider">Name</th>
+                                    <th className="p-3 text-[11.5px] font-bold text-text-3 text-left uppercase tracking-wider">Category</th>
+                                    <th className="p-3 text-[11.5px] font-bold text-text-3 text-left uppercase tracking-wider">Date Added</th>
+                                    <th className="p-3 text-[11.5px] font-bold text-text-3 text-left uppercase tracking-wider">Size</th>
+                                    <th className="p-3 text-[11.5px] font-bold text-text-3 text-right uppercase tracking-wider">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {documents.map((doc, i) => (
-                                    <tr key={i} className="group hover:bg-[rgba(0,122,255,0.03)] transition-colors duration-200 border-b border-[#0000000a] last:border-0 animate-[fadeRow_0.3s_both]" style={{ animationDelay: `${i * 0.05}s` }}>
-                                        <td className="p-[13px_18px] text-[13.5px] text-[var(--text)]">
+                                    <tr key={i} className="group hover:bg-accent/[0.03] transition-colors duration-200 border-b border-[#0000000a] last:border-0 animate-page-in" style={{ animationDelay: `${i * 0.05}s` }}>
+                                        <td className="p-3 text-sm text-text">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-[rgba(255,59,48,0.1)] flex items-center justify-center text-[var(--red)]">
+                                                <div className="w-8 h-8 rounded-lg bg-danger/10 flex items-center justify-center text-danger">
                                                     <FileTextIcon className="w-4 h-4" />
                                                 </div>
                                                 <span className="font-semibold">{doc.name}</span>
                                             </div>
                                         </td>
-                                        <td className="p-[13px_18px] text-[13px] text-[var(--text2)]">
-                                            <span className="inline-block px-[8px] py-[2px] bg-[var(--surface2)] rounded-md border border-[var(--border)] text-[11px]">
-                                                {doc.category}
-                                            </span>
+                                        <td className="p-3 text-sm text-text-2">
+                                            <Badge variant="neutral" size="sm">{doc.category}</Badge>
                                         </td>
-                                        <td className="p-[13px_18px] text-[13px] text-[var(--text3)]">{doc.date}</td>
-                                        <td className="p-[13px_18px] text-[13px] text-[var(--text3)] font-mono">{doc.size}</td>
-                                        <td className="p-[13px_18px] text-right">
-                                            <button className="text-[var(--text3)] hover:text-[var(--accent)] p-2 rounded-full hover:bg-[var(--surface2)] transition-colors">
+                                        <td className="p-3 text-sm text-text-3">{doc.date}</td>
+                                        <td className="p-3 text-sm text-text-3 font-mono">{doc.size}</td>
+                                        <td className="p-3 text-right">
+                                            <button className="text-text-3 hover:text-accent p-2 rounded-full hover:bg-surface-2 transition-colors">
                                                 <DownloadIcon className="w-4 h-4" />
                                             </button>
                                         </td>
@@ -95,29 +99,29 @@ export default function Documents() {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
+                    </Card>
 
                     {/* Mobile Card Stack */}
                     <div className="md:hidden space-y-3">
                         {documents.map((doc, i) => (
-                            <div key={i} className="glass p-4 flex items-center justify-between animate-[pageIn_0.3s_both]" style={{ animationDelay: `${i * 0.05}s` }}>
+                            <Card key={i} variant="glass" className="p-4 flex items-center justify-between animate-page-in" style={{ animationDelay: `${i * 0.05}s` }}>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-[rgba(255,59,48,0.1)] flex items-center justify-center text-[var(--red)]">
+                                    <div className="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center text-danger">
                                         <FileTextIcon className="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <div className="text-[14px] font-bold text-[var(--text)] truncate max-w-[180px]">{doc.name}</div>
-                                        <div className="text-[12px] text-[var(--text3)] flex gap-2">
+                                        <div className="text-sm font-bold text-text truncate max-w-[180px]">{doc.name}</div>
+                                        <div className="text-xs text-text-3 flex gap-2">
                                             <span>{doc.date}</span>
                                             <span>•</span>
                                             <span>{doc.size}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <button className="w-9 h-9 flex items-center justify-center bg-[var(--bg2)] rounded-full text-[var(--text2)]">
+                                <Button variant="ghost" size="icon" className="rounded-full bg-bg-2 text-text-2">
                                     <DownloadIcon className="w-4 h-4" />
-                                </button>
-                            </div>
+                                </Button>
+                            </Card>
                         ))}
                     </div>
                 </div>

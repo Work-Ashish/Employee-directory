@@ -5,6 +5,7 @@ import { BellIcon, CheckIcon } from "@radix-ui/react-icons"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { ReloadIcon } from "@radix-ui/react-icons"
+import { Spinner } from "@/components/ui/Spinner"
 
 export function NotificationCenter() {
     const [isOpen, setIsOpen] = React.useState(false)
@@ -88,22 +89,22 @@ export function NotificationCenter() {
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative w-[38px] h-[38px] rounded-[10px] bg-[var(--bg)] border border-[#00000014] flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-white hover:border-[#00000021] hover:-translate-y-[1px] hover:shadow-sm group dark:border-[var(--border)] dark:bg-[var(--surface)] dark:hover:bg-[var(--bg3)]"
+                className="relative w-[38px] h-[38px] rounded-[10px] bg-bg border border-[#00000014] flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-white hover:border-[#00000021] hover:-translate-y-[1px] hover:shadow-sm group dark:border-border dark:bg-surface dark:hover:bg-bg-3"
             >
-                <BellIcon className="w-[15px] h-[15px] text-[var(--text2)]" />
+                <BellIcon className="w-[15px] h-[15px] text-text-2" />
                 {unreadCount > 0 && (
-                    <span className="absolute top-[7px] right-[7px] w-[7px] h-[7px] bg-[var(--red)] rounded-full border-2 border-white animate-[pulse-dot_2s_infinite] dark:border-[var(--surface)]" />
+                    <span className="absolute top-[7px] right-[7px] w-[7px] h-[7px] bg-danger rounded-full border-2 border-white animate-[pulse-dot_2s_infinite] dark:border-surface" />
                 )}
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 top-[48px] w-[320px] bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-2xl z-50 animate-[scaleIn_0.2s_both] flex flex-col overflow-hidden">
-                    <div className="p-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface2)] backdrop-blur-md">
-                        <div className="text-[13px] font-bold text-[var(--text)]">Notifications</div>
+                <div className="absolute right-0 top-[48px] w-[320px] bg-surface border border-border rounded-xl shadow-2xl z-50 animate-[scaleIn_0.2s_both] flex flex-col overflow-hidden">
+                    <div className="p-3 border-b border-border flex items-center justify-between bg-surface-2 backdrop-blur-md">
+                        <div className="text-base font-bold text-text">Notifications</div>
                         {unreadCount > 0 && (
                             <button
                                 onClick={markAllRead}
-                                className="text-[11px] text-[var(--accent)] hover:underline font-medium"
+                                className="text-xs text-accent hover:underline font-medium"
                             >
                                 Mark all as read
                             </button>
@@ -111,9 +112,9 @@ export function NotificationCenter() {
                     </div>
                     <div className="max-h-[300px] overflow-y-auto min-h-[100px]">
                         {loading && notifications.length === 0 ? (
-                            <div className="p-8 text-center"><ReloadIcon className="animate-spin text-[var(--accent)] mx-auto w-5 h-5" /></div>
+                            <div className="p-8 text-center"><Spinner className="text-accent mx-auto w-5 h-5" /></div>
                         ) : notifications.length === 0 ? (
-                            <div className="p-8 text-center text-[13px] text-[var(--text3)]">
+                            <div className="p-8 text-center text-base text-text-3">
                                 No notifications
                             </div>
                         ) : (
@@ -122,17 +123,17 @@ export function NotificationCenter() {
                                     key={n.id}
                                     onClick={() => markRead(n.id, n.isRead)}
                                     className={cn(
-                                        "p-3 border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg2)] transition-colors cursor-pointer flex gap-3",
+                                        "p-3 border-b border-border last:border-0 hover:bg-bg-2 transition-colors cursor-pointer flex gap-3",
                                         !n.isRead ? "bg-[rgba(0,122,255,0.03)]" : ""
                                     )}
                                 >
-                                    <div className={cn("w-2 h-2 rounded-full shrink-0 mt-1.5", !n.isRead ? "bg-[var(--accent)]" : "bg-transparent")} />
+                                    <div className={cn("w-2 h-2 rounded-full shrink-0 mt-1.5", !n.isRead ? "bg-accent" : "bg-transparent")} />
                                     <div className="flex-1">
                                         <div className="flex justify-between items-start">
-                                            <div className="text-[13px] font-semibold text-[var(--text)]">{n.title}</div>
-                                            <div className="text-[10px] text-[var(--text3)] whitespace-nowrap ml-2">{formatTime(n.createdAt)}</div>
+                                            <div className="text-base font-semibold text-text">{n.title}</div>
+                                            <div className="text-[10px] text-text-3 whitespace-nowrap ml-2">{formatTime(n.createdAt)}</div>
                                         </div>
-                                        <div className="text-[12px] text-[var(--text3)] mt-0.5 leading-snug">{n.description}</div>
+                                        <div className="text-sm text-text-3 mt-0.5 leading-snug">{n.description}</div>
                                     </div>
                                 </div>
                             ))

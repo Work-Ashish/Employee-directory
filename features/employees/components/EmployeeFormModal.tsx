@@ -4,6 +4,10 @@ import * as React from "react"
 import { Modal } from "@/components/ui/Modal"
 import { PersonIcon } from "@radix-ui/react-icons"
 import { UseFormReturn } from "react-hook-form"
+import { Input } from "@/components/ui/Input"
+import { Select } from "@/components/ui/Select"
+import { Button } from "@/components/ui/Button"
+import { Avatar } from "@/components/ui/Avatar"
 
 interface Department {
     id: string
@@ -33,6 +37,18 @@ export const EmployeeFormModal = React.memo(function EmployeeFormModal({
 }: EmployeeFormModalProps) {
     if (!isOpen) return null
 
+    const deptOptions = [
+        { value: "", label: "Select Department..." },
+        ...departments.map((d) => ({ value: d.id, label: d.name }))
+    ]
+
+    const statusOptions = [
+        { value: "ACTIVE", label: "Active" },
+        { value: "ON_LEAVE", label: "On Leave" },
+        { value: "RESIGNED", label: "Resigned" },
+        { value: "TERMINATED", label: "Terminated" },
+    ]
+
     return (
         <Modal
             isOpen={isOpen}
@@ -41,7 +57,7 @@ export const EmployeeFormModal = React.memo(function EmployeeFormModal({
         >
             <div className="flex flex-col items-center mb-6 pt-2">
                 <div className="relative group">
-                    <div className="w-24 h-24 rounded-full bg-[var(--bg2)] border-2 border-[var(--border)] flex items-center justify-center text-[var(--text3)] text-[24px] font-bold overflow-hidden">
+                    <div className="w-24 h-24 rounded-full bg-bg-2 border-2 border-border flex items-center justify-center text-text-3 text-2xl font-bold overflow-hidden">
                         {form.watch("avatarUrl") ? (
                             <img src={form.watch("avatarUrl")!} className="w-full h-full object-cover" />
                         ) : (
@@ -49,159 +65,115 @@ export const EmployeeFormModal = React.memo(function EmployeeFormModal({
                         )}
                     </div>
                     {modalMode !== "VIEW" && (
-                        <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity rounded-full">
+                        <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-xs font-bold opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity rounded-full">
                             {form.watch("avatarUrl") ? "CHANGE" : "UPLOAD"}
                             <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
                         </label>
                     )}
                 </div>
-                {modalMode !== "VIEW" && <p className="text-[11px] text-[var(--text3)] mt-2">Recommended: Square image, max 2MB</p>}
+                {modalMode !== "VIEW" && <p className="text-xs text-text-3 mt-2">Recommended: Square image, max 2MB</p>}
             </div>
 
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-[12px] font-semibold text-[var(--text2)]">First Name *</label>
-                        <input
-                            {...form.register('firstName')}
-                            disabled={modalMode === "VIEW"}
-                            className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)] disabled:opacity-50"
-                        />
-                        {form.formState.errors.firstName && <span className="text-[11px] text-red-500">{form.formState.errors.firstName?.message?.toString()}</span>}
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[12px] font-semibold text-[var(--text2)]">Last Name *</label>
-                        <input
-                            {...form.register('lastName')}
-                            disabled={modalMode === "VIEW"}
-                            className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)] disabled:opacity-50"
-                        />
-                        {form.formState.errors.lastName && <span className="text-[11px] text-red-500">{form.formState.errors.lastName?.message?.toString()}</span>}
-                    </div>
+                    <Input
+                        label="First Name *"
+                        {...form.register('firstName')}
+                        disabled={modalMode === "VIEW"}
+                        error={form.formState.errors.firstName?.message?.toString()}
+                    />
+                    <Input
+                        label="Last Name *"
+                        {...form.register('lastName')}
+                        disabled={modalMode === "VIEW"}
+                        error={form.formState.errors.lastName?.message?.toString()}
+                    />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-[12px] font-semibold text-[var(--text2)]">Employee Code *</label>
-                        <input
-                            {...form.register('employeeCode')}
-                            disabled={modalMode === "VIEW"}
-                            className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)] disabled:opacity-50"
-                        />
-                        {form.formState.errors.employeeCode && <span className="text-[11px] text-red-500">{form.formState.errors.employeeCode?.message?.toString()}</span>}
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[12px] font-semibold text-[var(--text2)]">Date Of Joining *</label>
-                        <input
-                            type="date"
-                            {...form.register('dateOfJoining')}
-                            disabled={modalMode === "VIEW"}
-                            className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)] disabled:opacity-50"
-                        />
-                        {form.formState.errors.dateOfJoining && <span className="text-[11px] text-red-500">{form.formState.errors.dateOfJoining?.message?.toString()}</span>}
-                    </div>
+                    <Input
+                        label="Employee Code *"
+                        {...form.register('employeeCode')}
+                        disabled={modalMode === "VIEW"}
+                        error={form.formState.errors.employeeCode?.message?.toString()}
+                    />
+                    <Input
+                        label="Date Of Joining *"
+                        type="date"
+                        {...form.register('dateOfJoining')}
+                        disabled={modalMode === "VIEW"}
+                        error={form.formState.errors.dateOfJoining?.message?.toString()}
+                    />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-[12px] font-semibold text-[var(--text2)]">Email *</label>
-                        <input
-                            type="email"
-                            {...form.register('email')}
-                            disabled={modalMode === "VIEW"}
-                            className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)] disabled:opacity-50"
-                        />
-                        {form.formState.errors.email && <span className="text-[11px] text-red-500">{form.formState.errors.email?.message?.toString()}</span>}
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[12px] font-semibold text-[var(--text2)]">Phone</label>
-                        <input
-                            {...form.register('phone')}
-                            disabled={modalMode === "VIEW"}
-                            className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)] disabled:opacity-50"
-                        />
-                    </div>
+                    <Input
+                        label="Email *"
+                        type="email"
+                        {...form.register('email')}
+                        disabled={modalMode === "VIEW"}
+                        error={form.formState.errors.email?.message?.toString()}
+                    />
+                    <Input
+                        label="Phone"
+                        {...form.register('phone')}
+                        disabled={modalMode === "VIEW"}
+                    />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                            <label className="text-[12px] font-semibold text-[var(--text2)]">Department *</label>
+                            <label className="text-sm font-semibold text-text-2">Department *</label>
                             {modalMode !== "VIEW" && (
                                 <button
                                     type="button"
                                     onClick={onOpenDeptModal}
-                                    className="text-[11px] font-semibold text-[var(--accent)] hover:underline"
+                                    className="text-xs font-semibold text-accent hover:underline"
                                 >
                                     + New
                                 </button>
                             )}
                         </div>
-                        <select
+                        <Select
+                            options={deptOptions}
                             {...form.register('departmentId')}
                             disabled={modalMode === "VIEW"}
-                            className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)] disabled:opacity-50"
-                        >
-                            <option value="">Select Department...</option>
-                            {departments.map((d) => (
-                                <option key={d.id} value={d.id}>{d.name}</option>
-                            ))}
-                        </select>
-                        {form.formState.errors.departmentId && <span className="text-[11px] text-red-500">{form.formState.errors.departmentId?.message?.toString()}</span>}
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[12px] font-semibold text-[var(--text2)]">Designation *</label>
-                        <input
-                            {...form.register('designation')}
-                            disabled={modalMode === "VIEW"}
-                            className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)] disabled:opacity-50"
+                            error={form.formState.errors.departmentId?.message?.toString()}
                         />
-                        {form.formState.errors.designation && <span className="text-[11px] text-red-500">{form.formState.errors.designation?.message?.toString()}</span>}
                     </div>
+                    <Input
+                        label="Designation *"
+                        {...form.register('designation')}
+                        disabled={modalMode === "VIEW"}
+                        error={form.formState.errors.designation?.message?.toString()}
+                    />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-[12px] font-semibold text-[var(--text2)]">Salary (Monthly) *</label>
-                        <input
-                            type="number"
-                            {...form.register('salary', { valueAsNumber: true })}
-                            disabled={modalMode === "VIEW"}
-                            className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)] disabled:opacity-50"
-                        />
-                        {form.formState.errors.salary && <span className="text-[11px] text-red-500">{form.formState.errors.salary?.message?.toString()}</span>}
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[12px] font-semibold text-[var(--text2)]">Status *</label>
-                        <select
-                            {...form.register('status')}
-                            disabled={modalMode === "VIEW"}
-                            className="w-full p-2 border border-[var(--border)] rounded-md text-[13px] bg-[var(--bg)] outline-none focus:border-[var(--accent)] disabled:opacity-50"
-                        >
-                            <option value="ACTIVE">Active</option>
-                            <option value="ON_LEAVE">On Leave</option>
-                            <option value="RESIGNED">Resigned</option>
-                            <option value="TERMINATED">Terminated</option>
-                        </select>
-                    </div>
+                    <Input
+                        label="Salary (Monthly) *"
+                        type="number"
+                        {...form.register('salary', { valueAsNumber: true })}
+                        disabled={modalMode === "VIEW"}
+                        error={form.formState.errors.salary?.message?.toString()}
+                    />
+                    <Select
+                        label="Status *"
+                        options={statusOptions}
+                        {...form.register('status')}
+                        disabled={modalMode === "VIEW"}
+                    />
                 </div>
 
                 {modalMode !== "VIEW" && (
-                    <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-[var(--border)]">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-4 py-2 text-[13px] font-semibold bg-[var(--surface)] border border-[var(--border)] rounded-lg hover:bg-[var(--bg2)] text-[var(--text2)] transition-colors"
-                        >
+                    <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-border">
+                        <Button variant="secondary" type="button" onClick={onClose}>
                             Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={form.formState.isSubmitting}
-                            className="px-4 py-2 text-[13px] font-semibold text-white bg-[var(--accent)] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-                        >
+                        </Button>
+                        <Button type="submit" loading={form.formState.isSubmitting}>
                             {form.formState.isSubmitting ? "Saving..." : modalMode === "CREATE" ? "Create Employee" : "Save Changes"}
-                        </button>
+                        </Button>
                     </div>
                 )}
             </form>

@@ -23,7 +23,8 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { cn } from "@/lib/utils"
-// import confetti from "canvas-confetti" 
+import { Badge } from "@/components/ui/Badge"
+// import confetti from "canvas-confetti"
 
 // Mock Data
 type Candidate = {
@@ -217,10 +218,10 @@ export function RecruitmentKanban() {
                 {columns.map((col) => (
                     <div key={col.id} className="w-[280px] shrink-0 flex flex-col">
                         <div className="flex items-center justify-between mb-3 px-1">
-                            <span className="text-[12px] font-bold text-[var(--text3)] uppercase tracking-wider">{col.title}</span>
-                            <span className="text-[11px] font-mono text-[var(--text4)] bg-[var(--surface)] px-2 py-0.5 rounded-full border border-[var(--border)]">{col.items.length}</span>
+                            <span className="text-sm font-bold text-text-3 uppercase tracking-wider">{col.title}</span>
+                            <Badge variant="neutral" size="sm" className="font-mono">{col.items.length}</Badge>
                         </div>
-                        <div className="flex-1 bg-[var(--surface3)] rounded-[12px] p-2 border border-[var(--border)]">
+                        <div className="flex-1 bg-bg-2 rounded-[12px] p-2 border border-border">
                             <SortableContext
                                 items={col.items.map((i) => i.id)}
                                 strategy={verticalListSortingStrategy}
@@ -272,25 +273,24 @@ function SortableItem({ candidate }: { candidate: Candidate }) {
 function CandidateCard({ candidate, isOverlay }: { candidate: Candidate, isOverlay?: boolean }) {
     return (
         <div className={cn(
-            "bg-[var(--surface)] p-3 rounded-[10px] border border-[var(--border)] shadow-sm cursor-grab active:cursor-grabbing group hover:border-[var(--accent)] hover:shadow-md transition-all",
+            "bg-surface p-3 rounded-[10px] border border-border shadow-sm cursor-grab active:cursor-grabbing group hover:border-accent hover:shadow-md transition-all",
             isOverlay && "cursor-grabbing scale-105 shadow-xl rotate-2"
         )}>
             <div className="flex items-center gap-3 mb-2">
-                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 bg-gradient-to-br", candidate.color)}>
+                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 bg-gradient-to-br", candidate.color)}>
                     {candidate.initials}
                 </div>
                 <div className="flex flex-col overflow-hidden">
-                    <span className="text-[13px] font-semibold text-[var(--text)] truncate">{candidate.name}</span>
-                    <span className="text-[11px] text-[var(--text3)] truncate">{candidate.role}</span>
+                    <span className="text-base font-semibold text-text truncate">{candidate.name}</span>
+                    <span className="text-xs text-text-3 truncate">{candidate.role}</span>
                 </div>
             </div>
             <div className="flex items-center justify-between mt-2">
-                <div className="text-[10px] text-[var(--text4)] flex items-center gap-1">
+                <div className="text-[10px] text-text-4 flex items-center gap-1">
                     <span>File</span>
                     <span>•</span>
                     <span>2d ago</span>
                 </div>
-                {/* <div className="text-[10px] font-medium text-[var(--accent)] bg-[rgba(0,122,255,0.08)] px-1.5 py-0.5 rounded">View</div> */}
             </div>
         </div>
     )

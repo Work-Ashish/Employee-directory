@@ -40,15 +40,15 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_both]">
             <div
                 className={cn(
-                    "bg-[var(--surface)] border border-[var(--border)] w-full max-w-md rounded-xl shadow-2xl relative animate-[scaleIn_0.3s_both] flex flex-col max-h-[90vh]",
+                    "bg-surface border border-border w-full max-w-md rounded-xl shadow-2xl relative animate-[scaleIn_0.3s_both] flex flex-col max-h-[90vh]",
                     className
                 )}
             >
-                <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
-                    <h2 className="text-[16px] font-bold text-[var(--text)]">{title}</h2>
+                <div className="flex items-center justify-between p-4 border-b border-border">
+                    <h2 className="text-lg font-bold text-text">{title}</h2>
                     <button
                         onClick={onClose}
-                        className="p-1 rounded-md hover:bg-[var(--bg2)] text-[var(--text3)] hover:text-[var(--text)] transition-colors"
+                        className="p-1 rounded-md hover:bg-bg-2 text-text-3 hover:text-text transition-colors"
                     >
                         <Cross2Icon className="w-5 h-5" />
                     </button>

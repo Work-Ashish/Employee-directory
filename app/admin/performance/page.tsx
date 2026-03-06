@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
+import { PageHeader } from "@/components/ui/PageHeader"
+import { Button } from "@/components/ui/Button"
+import { Card, CardContent } from "@/components/ui/Card"
+import { StatCard } from "@/components/ui/StatCard"
+import { Badge } from "@/components/ui/Badge"
+import { Avatar } from "@/components/ui/Avatar"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { Spinner } from "@/components/ui/Spinner"
 
 interface Alert {
     id: string
@@ -26,6 +34,13 @@ interface Score {
     burnoutRisk: boolean
     behavioralAnomaly: boolean
     weekStartDate: string
+}
+
+const SEVERITY_BADGE_VARIANT: Record<string, "info" | "warning" | "danger"> = {
+    LOW: "info",
+    MEDIUM: "warning",
+    HIGH: "danger",
+    CRITICAL: "danger",
 }
 
 const SEVERITY_COLORS = {
@@ -55,7 +70,7 @@ export default function PerformanceAdminDashboard() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="w-8 h-8 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 animate-spin" />
+                <Spinner size="lg" className="text-emerald-500" />
             </div>
         )
     }
@@ -66,39 +81,45 @@ export default function PerformanceAdminDashboard() {
     return (
         <div className="max-w-[1200px] mx-auto p-6 space-y-8 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">AI Performance Matrix</h1>
-                    <p className="text-sm text-[var(--text3)] mt-1">Autonomous oversight of organization productivity and health.</p>
-                </div>
-
-                {/* Manual Trigger (Mocked for Demo) */}
-                <button
-                    onClick={() => alert("Dispatching AI Agent Evaluation Matrix... Please wait.")}
-                    className="flex items-center gap-2 px-4 py-2 bg-[var(--accent)] text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity"
-                >
-                    <span className="text-lg">✨</span> Run AI Evaluation
-                </button>
-            </div>
+            <PageHeader
+                title="AI Performance Matrix"
+                description="Autonomous oversight of organization productivity and health."
+                actions={
+                    <Button
+                        onClick={() => alert("Dispatching AI Agent Evaluation Matrix... Please wait.")}
+                        leftIcon={<span className="text-lg">✨</span>}
+                    >
+                        Run AI Evaluation
+                    </Button>
+                }
+            />
 
             {/* Top Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:border-emerald-500/30 transition-colors">
-                    <div className="text-3xl font-black text-emerald-500">{avgScore}</div>
-                    <div className="text-[13px] font-medium text-[var(--text3)] mt-1">Org Avg Score (Last 7 Days)</div>
-                </div>
-                <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:border-red-500/30 transition-colors">
-                    <div className="text-3xl font-black text-red-500">{alerts.length}</div>
-                    <div className="text-[13px] font-medium text-[var(--text3)] mt-1">Active AI Alerts</div>
-                </div>
-                <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:border-orange-500/30 transition-colors">
-                    <div className="text-3xl font-black text-orange-500">{burnoutCount}</div>
-                    <div className="text-[13px] font-medium text-[var(--text3)] mt-1">Burnout Risks Detected</div>
-                </div>
-                <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:border-blue-500/30 transition-colors">
-                    <div className="text-3xl font-black text-blue-500">{scores.filter(s => s.finalScore >= 90).length}</div>
-                    <div className="text-[13px] font-medium text-[var(--text3)] mt-1">Top Performers ({'>'}{`90`})</div>
-                </div>
+                <Card className="hover:border-emerald-500/30 transition-colors">
+                    <CardContent>
+                        <div className="text-3xl font-black text-emerald-500">{avgScore}</div>
+                        <div className="text-base font-medium text-text-3 mt-1">Org Avg Score (Last 7 Days)</div>
+                    </CardContent>
+                </Card>
+                <Card className="hover:border-red-500/30 transition-colors">
+                    <CardContent>
+                        <div className="text-3xl font-black text-red-500">{alerts.length}</div>
+                        <div className="text-base font-medium text-text-3 mt-1">Active AI Alerts</div>
+                    </CardContent>
+                </Card>
+                <Card className="hover:border-orange-500/30 transition-colors">
+                    <CardContent>
+                        <div className="text-3xl font-black text-orange-500">{burnoutCount}</div>
+                        <div className="text-base font-medium text-text-3 mt-1">Burnout Risks Detected</div>
+                    </CardContent>
+                </Card>
+                <Card className="hover:border-blue-500/30 transition-colors">
+                    <CardContent>
+                        <div className="text-3xl font-black text-blue-500">{scores.filter(s => s.finalScore >= 90).length}</div>
+                        <div className="text-base font-medium text-text-3 mt-1">Top Performers ({'>'}{`90`})</div>
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -113,9 +134,11 @@ export default function PerformanceAdminDashboard() {
                     </div>
 
                     {alerts.length === 0 ? (
-                        <div className="p-8 text-center text-[var(--text3)] text-sm border border-dashed border-[var(--border)] rounded-2xl">
-                            All clear! No employee anomalies detected this week.
-                        </div>
+                        <EmptyState
+                            title="All clear!"
+                            description="No employee anomalies detected this week."
+                            className="border border-dashed border-border rounded-2xl"
+                        />
                     ) : (
                         <div className="space-y-3">
                             {alerts.map(alert => {
@@ -123,23 +146,26 @@ export default function PerformanceAdminDashboard() {
                                 return (
                                     <div key={alert.id} className={cn("p-4 rounded-xl border flex flex-col gap-3", sc.bg, sc.border)}>
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-[var(--bg)] flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-[var(--border)]">
-                                                {alert.avatarUrl ? <img src={alert.avatarUrl} className="w-full h-full object-cover" /> : alert.employeeName.charAt(0)}
-                                            </div>
+                                            <Avatar
+                                                src={alert.avatarUrl}
+                                                name={alert.employeeName}
+                                                size="sm"
+                                                className="border border-border"
+                                            />
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-sm font-bold text-[var(--text)] truncate">{alert.employeeName}</div>
-                                                <div className="text-xs text-[var(--text3)] truncate">{alert.designation}</div>
+                                                <div className="text-sm font-bold text-text truncate">{alert.employeeName}</div>
+                                                <div className="text-xs text-text-3 truncate">{alert.designation}</div>
                                             </div>
-                                            <div className={cn("text-[10px] font-bold px-2 py-0.5 rounded-sm", sc.text, "bg-[var(--bg)]")}>
+                                            <Badge variant={SEVERITY_BADGE_VARIANT[alert.severity]} size="sm">
                                                 {alert.severity}
-                                            </div>
+                                            </Badge>
                                         </div>
-                                        <div className="text-xs font-medium text-[var(--text2)] leading-relaxed">
+                                        <div className="text-xs font-medium text-text-2 leading-relaxed">
                                             {alert.reason}
                                         </div>
                                         <div className="flex justify-end gap-2 mt-2">
-                                            <button className="text-[10px] font-bold text-[var(--text3)] hover:text-[var(--text)] transition-colors">Dismiss</button>
-                                            <button className={cn("text-[10px] font-bold", sc.text)}>Intervene</button>
+                                            <Button variant="ghost" size="sm">Dismiss</Button>
+                                            <Button variant="danger" size="sm">Intervene</Button>
                                         </div>
                                     </div>
                                 )
@@ -150,11 +176,11 @@ export default function PerformanceAdminDashboard() {
 
                 {/* Right Col: Performance Scores */}
                 <div className="space-y-4 lg:col-span-2">
-                    <div className="text-sm font-bold text-[var(--text2)] uppercase tracking-tight">Recent Weekly Scores</div>
+                    <div className="text-sm font-bold text-text-2 uppercase tracking-tight">Recent Weekly Scores</div>
 
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+                    <Card>
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-[var(--bg2)] text-[var(--text3)] text-xs uppercase font-semibold">
+                            <thead className="bg-bg-2 text-text-3 text-xs uppercase font-semibold">
                                 <tr>
                                     <th className="px-5 py-3">Employee</th>
                                     <th className="px-5 py-3 text-right">Base</th>
@@ -163,24 +189,26 @@ export default function PerformanceAdminDashboard() {
                                     <th className="px-5 py-3">Flags</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-[var(--border)]">
+                            <tbody className="divide-y divide-border">
                                 {scores.map(score => (
-                                    <tr key={score.id} className="hover:bg-[var(--bg2)]/50 transition-colors">
+                                    <tr key={score.id} className="hover:bg-bg-2/50 transition-colors">
                                         <td className="px-5 py-4 flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
-                                                {score.avatarUrl ? <img src={score.avatarUrl} className="w-full h-full object-cover" /> : score.employeeName.charAt(0)}
-                                            </div>
+                                            <Avatar
+                                                src={score.avatarUrl}
+                                                name={score.employeeName}
+                                                size="xs"
+                                            />
                                             <div>
-                                                <div className="font-bold text-[var(--text)]">{score.employeeName}</div>
-                                                <div className="text-[11px] text-[var(--text3)]">{score.department}</div>
+                                                <div className="font-bold text-text">{score.employeeName}</div>
+                                                <div className="text-xs text-text-3">{score.department}</div>
                                             </div>
                                         </td>
-                                        <td className="px-5 py-4 text-right font-medium text-[var(--text2)]">{score.baseScore}</td>
-                                        <td className={cn("px-5 py-4 text-right font-bold", score.aiAdjustment > 0 ? "text-emerald-500" : score.aiAdjustment < 0 ? "text-red-500" : "text-[var(--text3)]")}>
+                                        <td className="px-5 py-4 text-right font-medium text-text-2">{score.baseScore}</td>
+                                        <td className={cn("px-5 py-4 text-right font-bold", score.aiAdjustment > 0 ? "text-emerald-500" : score.aiAdjustment < 0 ? "text-red-500" : "text-text-3")}>
                                             {score.aiAdjustment > 0 ? "+" : ""}{score.aiAdjustment}
                                         </td>
                                         <td className="px-5 py-4 text-right">
-                                            <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--bg)] border border-[var(--border)] font-bold text-[var(--text)] shadow-sm">
+                                            <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-bg border border-border font-bold text-text shadow-sm">
                                                 {score.finalScore}
                                             </div>
                                         </td>
@@ -188,7 +216,7 @@ export default function PerformanceAdminDashboard() {
                                             <div className="flex gap-2">
                                                 {score.burnoutRisk && <span title="Burnout Risk" className="text-orange-500 cursor-help">🔥</span>}
                                                 {score.behavioralAnomaly && <span title="Behavioral Anomaly" className="text-red-500 cursor-help">⚠️</span>}
-                                                {!score.burnoutRisk && !score.behavioralAnomaly && <span className="text-[var(--text3)]">-</span>}
+                                                {!score.burnoutRisk && !score.behavioralAnomaly && <span className="text-text-3">-</span>}
                                             </div>
                                         </td>
                                     </tr>
@@ -196,11 +224,13 @@ export default function PerformanceAdminDashboard() {
                             </tbody>
                         </table>
                         {scores.length === 0 && (
-                            <div className="p-12 text-center text-[var(--text3)] text-sm">
-                                No evaluations generated for this week yet.
-                            </div>
+                            <EmptyState
+                                title="No evaluations yet"
+                                description="No evaluations generated for this week yet."
+                                className="py-12"
+                            />
                         )}
-                    </div>
+                    </Card>
                 </div>
             </div>
         </div>

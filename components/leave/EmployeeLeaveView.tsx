@@ -143,7 +143,7 @@ export function EmployeeLeaveView() {
     const earnedBal = computeBalance("EARNED", 15)
 
     return (
-        <div className="space-y-6 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)]">
+        <div className="space-y-6 animate-page-in">
             <PageHeader
                 title="My Leave"
                 description="Manage your leave balance and requests"

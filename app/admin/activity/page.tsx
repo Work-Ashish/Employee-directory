@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
+import { PageHeader } from "@/components/ui/PageHeader"
+import { Spinner } from "@/components/ui/Spinner"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { Badge } from "@/components/ui/Badge"
+import { Avatar } from "@/components/ui/Avatar"
 
 interface EmployeeStatus {
     id: string
@@ -57,32 +62,32 @@ export default function ActivityDashboardPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[60vh]">
-                <div className="animate-spin w-8 h-8 border-[3px] border-[var(--accent)] border-t-transparent rounded-full" />
+                <Spinner size="lg" className="text-accent" />
             </div>
         )
     }
 
     if (!data || !data.employees) {
-        return <p className="text-center text-[var(--text3)] py-12">No activity data available.</p>
+        return <EmptyState title="No activity data available" className="py-12" />
     }
 
     const filtered = filter === "all" ? data.employees : data.employees.filter(e => e.currentStatus === filter)
 
     return (
         <div className="p-6 space-y-6 max-w-[1200px] mx-auto">
-            {/* ═══ Header ═══ */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-[22px] font-extrabold text-[var(--text)] tracking-tight">Activity Monitor</h1>
-                    <p className="text-[13px] text-[var(--text3)] mt-0.5">Real-time employee tracking dashboard</p>
-                </div>
-                <div className="flex items-center gap-2 text-[11px] text-[var(--text4)]">
-                    <span className="w-2 h-2 rounded-full bg-[var(--green)] animate-pulse" />
-                    Live · Refreshes every 30s
-                </div>
-            </div>
+            {/* Header */}
+            <PageHeader
+                title="Activity Monitor"
+                description="Real-time employee tracking dashboard"
+                actions={
+                    <div className="flex items-center gap-2 text-xs text-text-4">
+                        <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                        Live · Refreshes every 30s
+                    </div>
+                }
+            />
 
-            {/* ═══ Summary Cards ═══ */}
+            {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {[
                     { key: "all", label: "Total", count: data.summary.total, color: "var(--accent)" },
@@ -97,41 +102,38 @@ export default function ActivityDashboardPage() {
                         className={cn(
                             "p-4 rounded-xl border text-left transition-all",
                             filter === card.key
-                                ? "border-[var(--accent)] bg-[var(--accent)]/5"
-                                : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--bg2)]"
+                                ? "border-accent bg-accent/5"
+                                : "border-border bg-surface hover:bg-bg-2"
                         )}
                     >
-                        <div className="text-[24px] font-extrabold" style={{ color: card.color }}>{card.count}</div>
-                        <div className="text-[12px] text-[var(--text3)] font-medium mt-1">{card.label}</div>
+                        <div className="text-2xl font-extrabold" style={{ color: card.color }}>{card.count}</div>
+                        <div className="text-sm text-text-3 font-medium mt-1">{card.label}</div>
                     </button>
                 ))}
             </div>
 
-            {/* ═══ Employee Grid ═══ */}
+            {/* Employee Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filtered.map(emp => {
                     const sc = STATUS_CONFIG[emp.currentStatus]
-                    const initials = emp.name.split(" ").map(n => n[0]).join("").toUpperCase()
 
                     return (
-                        <div key={emp.id} className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4 hover:border-[var(--accent)]/30 transition-colors">
+                        <div key={emp.id} className="bg-surface rounded-xl border border-border p-4 hover:border-accent/30 transition-colors">
                             <div className="flex items-center gap-3">
                                 {/* Avatar */}
                                 <div className="relative">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--accent)] to-[#5856d6] flex items-center justify-center text-[13px] font-bold text-white">
-                                        {emp.avatarUrl ? <img src={emp.avatarUrl} className="w-full h-full object-cover rounded-full" /> : initials}
-                                    </div>
+                                    <Avatar src={emp.avatarUrl} name={emp.name} size="lg" />
                                     {/* Status dot */}
                                     <span
-                                        className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--surface)]"
+                                        className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-surface"
                                         style={{ backgroundColor: sc.color }}
                                     />
                                 </div>
 
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">
-                                    <div className="text-[13px] font-semibold text-[var(--text)] truncate">{emp.name}</div>
-                                    <div className="text-[11px] text-[var(--text3)]">{emp.designation} · {emp.department}</div>
+                                    <div className="text-base font-semibold text-text truncate">{emp.name}</div>
+                                    <div className="text-xs text-text-3">{emp.designation} · {emp.department}</div>
                                 </div>
 
                                 {/* Status badge */}
@@ -145,13 +147,13 @@ export default function ActivityDashboardPage() {
 
                             {/* Details */}
                             {emp.currentStatus !== "offline" && (
-                                <div className="mt-3 pt-3 border-t border-[var(--border)] flex items-center justify-between text-[11px]">
-                                    <div className="text-[var(--text3)]">
+                                <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-xs">
+                                    <div className="text-text-3">
                                         {emp.currentApp && (
-                                            <span className="font-medium text-[var(--text)]">📱 {emp.currentApp}</span>
+                                            <span className="font-medium text-text">📱 {emp.currentApp}</span>
                                         )}
                                     </div>
-                                    <div className="text-[var(--text4)]">
+                                    <div className="text-text-4">
                                         Since {emp.checkInTime ? fmtTime(emp.checkInTime) : "—"}
                                     </div>
                                 </div>
@@ -162,9 +164,7 @@ export default function ActivityDashboardPage() {
             </div>
 
             {filtered.length === 0 && (
-                <div className="text-center py-12 text-[var(--text3)]">
-                    No employees match the selected filter.
-                </div>
+                <EmptyState title="No employees match the selected filter" className="py-12" />
             )}
         </div>
     )

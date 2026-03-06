@@ -4,6 +4,12 @@ import * as React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { canAccessModule, hasPermission, Module, Action } from "@/lib/permissions"
+import { PageHeader } from "@/components/ui/PageHeader"
+import { Card } from "@/components/ui/Card"
+import { Badge } from "@/components/ui/Badge"
+import { Avatar } from "@/components/ui/Avatar"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { Spinner } from "@/components/ui/Spinner"
 
 interface Team {
   id: string
@@ -37,47 +43,47 @@ export default function TeamsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (isLoading || loading) return <div className="p-6 text-[var(--text3)]">Loading...</div>
+  if (isLoading || loading) return <div className="p-6 text-text-3 flex items-center gap-2"><Spinner /> Loading...</div>
 
   const canCreate = hasPermission(user?.role ?? "", Module.TEAMS, Action.CREATE)
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text)]">Teams</h1>
-          <p className="text-[var(--text3)] text-sm mt-1">Manage teams and their members</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Teams"
+        description="Manage teams and their members"
+      />
 
       {teams.length === 0 ? (
-        <div className="text-center py-12 text-[var(--text3)]">
-          <p>No teams found.</p>
-          {canCreate && <p className="text-sm mt-2">Create a team to get started.</p>}
-        </div>
+        <EmptyState
+          title="No teams found."
+          description={canCreate ? "Create a team to get started." : undefined}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {teams.map(team => (
-            <div key={team.id} className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 hover:shadow-md transition-shadow">
+            <Card key={team.id} className="p-5 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-[var(--text)]">{team.name}</h3>
-                <span className="text-xs text-[var(--text3)] bg-[var(--bg2)] px-2 py-1 rounded-full">
+                <h3 className="font-semibold text-text">{team.name}</h3>
+                <Badge variant="neutral" size="sm">
                   {team._count.members} member{team._count.members !== 1 ? "s" : ""}
-                </span>
+                </Badge>
               </div>
               {team.description && (
-                <p className="text-sm text-[var(--text3)] mb-3">{team.description}</p>
+                <p className="text-sm text-text-3 mb-3">{team.description}</p>
               )}
               <div className="flex items-center gap-2 text-sm">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[var(--accent)] to-[#5856d6] flex items-center justify-center text-white text-[10px] font-bold">
-                  {team.lead.firstName[0]}{team.lead.lastName[0]}
-                </div>
-                <span className="text-[var(--text2)]">
+                <Avatar
+                  src={team.lead.avatarUrl}
+                  name={`${team.lead.firstName} ${team.lead.lastName}`}
+                  size="xs"
+                />
+                <span className="text-text-2">
                   {team.lead.firstName} {team.lead.lastName}
                 </span>
-                <span className="text-[var(--text4)] text-xs">Lead</span>
+                <span className="text-text-4 text-xs">Lead</span>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}

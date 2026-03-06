@@ -9,6 +9,15 @@ import {
     EyeOpenIcon, EyeClosedIcon, Pencil1Icon, CheckIcon, Cross2Icon,
     ReaderIcon, PlusIcon, TrashIcon
 } from "@radix-ui/react-icons"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { Select } from "@/components/ui/Select"
+import { Textarea } from "@/components/ui/Textarea"
+import { Card, CardContent } from "@/components/ui/Card"
+import { Badge } from "@/components/ui/Badge"
+import { Avatar } from "@/components/ui/Avatar"
+import { Spinner } from "@/components/ui/Spinner"
+import { EmptyState } from "@/components/ui/EmptyState"
 
 /* ─────────────────── Types ─────────────────── */
 interface Education { id: string; degree: string; institute: string; duration?: string; grade?: string }
@@ -60,11 +69,11 @@ function FormField({ label, name, value, editing, onChange, type = "text", optio
 
         return (
             <div className={cn("flex flex-col gap-1.5", span === 2 && "md:col-span-2")}>
-                <span className="text-[11px] font-semibold text-[var(--text3)] uppercase tracking-[0.08em]">{label}</span>
+                <span className="text-[11px] font-semibold text-text-3 uppercase tracking-wider">{label}</span>
                 <div className="flex items-center gap-2">
-                    <span className="text-[14px] font-medium text-[var(--text)]">{display}</span>
+                    <span className="text-sm font-medium text-text">{display}</span>
                     {masked && value && (
-                        <button onClick={() => setShowMasked(!showMasked)} className="text-[var(--text4)] hover:text-[var(--text)] transition-colors">
+                        <button onClick={() => setShowMasked(!showMasked)} className="text-text-4 hover:text-text transition-colors">
                             {showMasked ? <EyeClosedIcon className="w-3.5 h-3.5" /> : <EyeOpenIcon className="w-3.5 h-3.5" />}
                         </button>
                     )}
@@ -74,11 +83,11 @@ function FormField({ label, name, value, editing, onChange, type = "text", optio
     }
 
     // ─── Edit mode ───
-    const inputCls = "w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[13px] text-[var(--text)] placeholder-[var(--text4)] outline-none transition-all focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--glow)]"
+    const inputCls = "w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm text-text placeholder-text-4 outline-none transition-all focus:border-accent focus:shadow-[0_0_0_2px_var(--glow)]"
 
     return (
         <div className={cn("flex flex-col gap-1.5", span === 2 && "md:col-span-2")}>
-            <label className="text-[11px] font-semibold text-[var(--text3)] uppercase tracking-[0.08em]">{label}</label>
+            <label className="text-[11px] font-semibold text-text-3 uppercase tracking-wider">{label}</label>
             {type === "select" ? (
                 <select value={value ?? ""} onChange={e => onChange?.(name, e.target.value)} className={inputCls}>
                     <option value="">Select...</option>
@@ -89,7 +98,7 @@ function FormField({ label, name, value, editing, onChange, type = "text", optio
             ) : type === "toggle" ? (
                 <button
                     onClick={() => onChange?.(name, !value)}
-                    className={cn("w-11 h-6 rounded-full transition-colors relative", value ? "bg-[var(--accent)]" : "bg-[var(--border)]")}
+                    className={cn("w-11 h-6 rounded-full transition-colors relative", value ? "bg-accent" : "bg-border")}
                 >
                     <span className={cn("absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform", value ? "left-[22px]" : "left-0.5")} />
                 </button>
@@ -106,7 +115,7 @@ function FormField({ label, name, value, editing, onChange, type = "text", optio
 function FormSection({ title, children, columns = 3 }: { title: string; children: React.ReactNode; columns?: number }) {
     return (
         <div className="mb-6">
-            <h4 className="text-[12px] font-bold text-[var(--accent)] uppercase tracking-[0.1em] mb-4 pb-2 border-b border-[var(--border)]">{title}</h4>
+            <h4 className="text-xs font-bold text-accent uppercase tracking-widest mb-4 pb-2 border-b border-border">{title}</h4>
             <div className={cn("grid gap-x-8 gap-y-5", columns === 3 ? "grid-cols-1 md:grid-cols-3" : columns === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1")}>
                 {children}
             </div>
@@ -176,57 +185,55 @@ export default function ProfilePage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[60vh]">
-                <div className="animate-spin w-8 h-8 border-[3px] border-[var(--accent)] border-t-transparent rounded-full" />
+                <Spinner size="lg" className="w-8 h-8 text-accent" />
             </div>
         )
     }
 
     if (!profile) {
         return (
-            <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-                <div className="text-[60px]">🔒</div>
-                <h2 className="text-[18px] font-bold text-[var(--text)]">Profile Not Found</h2>
-                <p className="text-[13px] text-[var(--text3)]">Your employee profile is not linked. Contact your administrator.</p>
-            </div>
+            <EmptyState
+                icon={<span className="text-[60px]">🔒</span>}
+                title="Profile Not Found"
+                description="Your employee profile is not linked. Contact your administrator."
+                className="h-[60vh]"
+            />
         )
     }
 
     const fullName = `${profile.firstName} ${profile.lastName}`
-    const initials = `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
 
     return (
         <div className="max-w-[1000px] mx-auto p-6 space-y-6">
-            {/* ═══ Header Card ═══ */}
-            <div className="bg-[var(--surface)] rounded-2xl border border-[var(--border)] p-6">
-                <div className="flex items-center gap-5">
-                    <div className="w-[72px] h-[72px] rounded-full bg-gradient-to-br from-[var(--accent)] to-[#5856d6] flex items-center justify-center text-[22px] font-bold text-white shrink-0 overflow-hidden shadow-lg">
-                        {profile.avatarUrl ? (
-                            <img src={profile.avatarUrl} className="w-full h-full object-cover" alt="avatar" />
-                        ) : initials}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-[22px] font-extrabold text-[var(--text)] tracking-tight">{fullName}</h1>
-                        <p className="text-[13px] text-[var(--text3)] mt-0.5">{profile.designation} · {profile.department.name}</p>
-                        <div className="flex items-center gap-3 mt-1.5">
-                            <span className="text-[11px] font-mono text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded-md">{profile.employeeCode}</span>
-                            <span className="text-[11px] text-[var(--text4)]">Joined {fmtDate(profile.dateOfJoining)}</span>
+            {/* Header Card */}
+            <Card>
+                <CardContent className="p-6">
+                    <div className="flex items-center gap-5">
+                        <Avatar src={profile.avatarUrl} name={fullName} size="xl" className="w-[72px] h-[72px] text-[22px] shadow-lg" />
+                        <div className="flex-1 min-w-0">
+                            <h1 className="text-xl font-extrabold text-text tracking-tight">{fullName}</h1>
+                            <p className="text-sm text-text-3 mt-0.5">{profile.designation} · {profile.department.name}</p>
+                            <div className="flex items-center gap-3 mt-1.5">
+                                <Badge size="sm" className="font-mono">{profile.employeeCode}</Badge>
+                                <span className="text-[11px] text-text-4">Joined {fmtDate(profile.dateOfJoining)}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
-            {/* ═══ Tab Bar + Edit Button ═══ */}
-            <div className="flex items-center justify-between border-b border-[var(--border)]">
+            {/* Tab Bar + Edit Button */}
+            <div className="flex items-center justify-between border-b border-border">
                 <div className="flex gap-0 overflow-x-auto">
                     {TABS.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => { setActiveTab(tab.id); setEditing(false); setFormData(profile as any) }}
                             className={cn(
-                                "flex items-center gap-2 px-4 py-3 text-[13px] font-medium border-b-2 transition-all whitespace-nowrap",
+                                "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
                                 activeTab === tab.id
-                                    ? "text-[var(--accent)] border-[var(--accent)]"
-                                    : "text-[var(--text3)] border-transparent hover:text-[var(--text)] hover:border-[var(--border)]"
+                                    ? "text-accent border-accent"
+                                    : "text-text-3 border-transparent hover:text-text hover:border-border"
                             )}
                         >
                             {tab.icon}
@@ -238,40 +245,42 @@ export default function ProfilePage() {
                     <div className="flex items-center gap-2 pb-1">
                         {editing ? (
                             <>
-                                <button onClick={handleCancel} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-[var(--text3)] bg-[var(--bg2)] rounded-lg hover:bg-[var(--border)] transition-colors">
-                                    <Cross2Icon className="w-3.5 h-3.5" /> Cancel
-                                </button>
-                                <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-white bg-[var(--accent)] rounded-lg hover:brightness-110 transition-all disabled:opacity-50">
-                                    <CheckIcon className="w-3.5 h-3.5" /> {saving ? "Saving..." : "Save"}
-                                </button>
+                                <Button variant="secondary" size="sm" onClick={handleCancel} leftIcon={<Cross2Icon className="w-3.5 h-3.5" />}>
+                                    Cancel
+                                </Button>
+                                <Button size="sm" onClick={handleSave} loading={saving} leftIcon={<CheckIcon className="w-3.5 h-3.5" />}>
+                                    {saving ? "Saving..." : "Save"}
+                                </Button>
                             </>
                         ) : (
-                            <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-[var(--accent)] bg-[var(--accent)]/10 rounded-lg hover:bg-[var(--accent)]/20 transition-colors">
-                                <Pencil1Icon className="w-3.5 h-3.5" /> Edit
-                            </button>
+                            <Button variant="ghost" size="sm" onClick={() => setEditing(true)} leftIcon={<Pencil1Icon className="w-3.5 h-3.5" />} className="text-accent bg-accent/10 hover:bg-accent/20">
+                                Edit
+                            </Button>
                         )}
                     </div>
                 )}
             </div>
 
-            {/* ═══ Tab Content ═══ */}
-            <div className="bg-[var(--surface)] rounded-2xl border border-[var(--border)] p-6">
-                {activeTab === "personal" && (
-                    <TabPersonal profile={profile} formData={formData} editing={editing} onChange={handleChange} />
-                )}
-                {activeTab === "accounts" && (
-                    <TabAccounts profile={profile} formData={formData} editing={editing} onChange={handleChange} />
-                )}
-                {activeTab === "family" && (
-                    <TabFamily profile={profile} formData={formData} editing={editing} onChange={handleChange} />
-                )}
-                {activeTab === "employment" && (
-                    <TabEmployment profile={profile} />
-                )}
-                {activeTab === "assets" && (
-                    <TabAssets profile={profile} />
-                )}
-            </div>
+            {/* Tab Content */}
+            <Card>
+                <CardContent className="p-6">
+                    {activeTab === "personal" && (
+                        <TabPersonal profile={profile} formData={formData} editing={editing} onChange={handleChange} />
+                    )}
+                    {activeTab === "accounts" && (
+                        <TabAccounts profile={profile} formData={formData} editing={editing} onChange={handleChange} />
+                    )}
+                    {activeTab === "family" && (
+                        <TabFamily profile={profile} formData={formData} editing={editing} onChange={handleChange} />
+                    )}
+                    {activeTab === "employment" && (
+                        <TabEmployment profile={profile} />
+                    )}
+                    {activeTab === "assets" && (
+                        <TabAssets profile={profile} />
+                    )}
+                </CardContent>
+            </Card>
         </div>
     )
 }
@@ -327,11 +336,11 @@ function TabPersonal({ profile, formData, editing, onChange }: { profile: Profil
 
             <FormSection title="Education" columns={1}>
                 {profile.educations.length === 0 ? (
-                    <p className="text-[13px] text-[var(--text3)]">No education records found.</p>
+                    <p className="text-sm text-text-3">No education records found.</p>
                 ) : (
                     <div className="space-y-4">
                         {profile.educations.map(edu => (
-                            <div key={edu.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-xl bg-[var(--bg2)] border border-[var(--border)]">
+                            <div key={edu.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-xl bg-bg-2 border border-border">
                                 <FormField label="Degree" name="_" value={edu.degree} editing={false} readOnly />
                                 <FormField label="Institute" name="_" value={edu.institute} editing={false} readOnly />
                                 <FormField label="Duration" name="_" value={edu.duration} editing={false} readOnly />
@@ -368,29 +377,29 @@ function DocUploadField({ label, docType, doc, onUpload, onDelete, mandatory }: 
 
     return (
         <div className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold text-[var(--text3)] uppercase tracking-[0.08em] flex items-center gap-1">
+            <span className="text-[11px] font-semibold text-text-3 uppercase tracking-wider flex items-center gap-1">
                 {label}
-                {mandatory && <span className="text-[var(--red)] text-[13px]">*</span>}
+                {mandatory && <span className="text-danger text-sm">*</span>}
             </span>
 
             {doc ? (
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--bg2)]">
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-[18px]" style={{
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-bg-2">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg" style={{
                         background: doc.url?.endsWith('.pdf') ? 'rgba(255,59,48,0.1)' : 'rgba(52,199,89,0.1)'
                     }}>
                         {doc.url?.endsWith('.pdf') ? '📄' : '🖼️'}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-medium text-[var(--text)] truncate">{doc.title}</div>
-                        <div className="text-[11px] text-[var(--text4)]">{doc.size} · Uploaded {new Date(doc.uploadDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
+                        <div className="text-sm font-medium text-text truncate">{doc.title}</div>
+                        <div className="text-[11px] text-text-4">{doc.size} · Uploaded {new Date(doc.uploadDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <a href={doc.url} target="_blank" rel="noopener noreferrer"
-                            className="p-1.5 rounded-md hover:bg-[var(--bg)] transition-colors text-[var(--accent)]" title="View">
+                            className="p-1.5 rounded-md hover:bg-bg transition-colors text-accent" title="View">
                             <EyeOpenIcon className="w-4 h-4" />
                         </a>
                         <button onClick={() => onDelete(doc.id)}
-                            className="p-1.5 rounded-md hover:bg-[rgba(255,59,48,0.1)] transition-colors text-[var(--red)]" title="Remove">
+                            className="p-1.5 rounded-md hover:bg-danger/10 transition-colors text-danger" title="Remove">
                             <TrashIcon className="w-4 h-4" />
                         </button>
                     </div>
@@ -400,15 +409,15 @@ function DocUploadField({ label, docType, doc, onUpload, onDelete, mandatory }: 
                     onClick={() => inputRef.current?.click()}
                     disabled={uploading}
                     className={cn(
-                        "flex items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed transition-colors text-[13px] font-medium",
+                        "flex items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed transition-colors text-sm font-medium",
                         uploading
-                            ? "border-[var(--accent)] bg-[var(--accent)]/5 text-[var(--accent)] cursor-wait"
-                            : "border-[var(--border)] hover:border-[var(--accent)] text-[var(--text3)] hover:text-[var(--accent)] cursor-pointer"
+                            ? "border-accent bg-accent/5 text-accent cursor-wait"
+                            : "border-border hover:border-accent text-text-3 hover:text-accent cursor-pointer"
                     )}
                 >
                     {uploading ? (
                         <>
-                            <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                            <Spinner size="sm" className="text-accent" />
                             Uploading...
                         </>
                     ) : (
@@ -427,7 +436,7 @@ function DocUploadField({ label, docType, doc, onUpload, onDelete, mandatory }: 
                 onChange={handleFile}
                 className="hidden"
             />
-            {!doc && <span className="text-[10px] text-[var(--text4)]">PDF, JPG, or PNG · Max 5MB</span>}
+            {!doc && <span className="text-[10px] text-text-4">PDF, JPG, or PNG · Max 5MB</span>}
         </div>
     )
 }
@@ -547,8 +556,8 @@ function TabFamily({ profile, formData, editing, onChange }: { profile: Profile;
 function TabEmployment({ profile }: { profile: Profile }) {
     return (
         <>
-            <div className="rounded-xl bg-[var(--accent)]/5 border border-[var(--accent)]/15 p-5 mb-6">
-                <h4 className="text-[12px] font-bold text-[var(--accent)] uppercase tracking-[0.1em] mb-4">Current Position</h4>
+            <div className="rounded-xl bg-accent/5 border border-accent/15 p-5 mb-6">
+                <h4 className="text-xs font-bold text-accent uppercase tracking-widest mb-4">Current Position</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
                     <FormField label="Category" name="_" value={profile.category} editing={false} readOnly />
                     <FormField label="Cost Center" name="_" value={profile.costCenter} editing={false} readOnly />
@@ -563,18 +572,18 @@ function TabEmployment({ profile }: { profile: Profile }) {
 
                 {profile.manager && (
                     <>
-                        <hr className="border-[var(--accent)]/15 my-5" />
-                        <h4 className="text-[12px] font-bold text-[var(--text3)] uppercase tracking-[0.1em] mb-3">Reporting Manager</h4>
-                        <p className="text-[14px] font-semibold text-[var(--text)]">
+                        <hr className="border-accent/15 my-5" />
+                        <h4 className="text-xs font-bold text-text-3 uppercase tracking-widest mb-3">Reporting Manager</h4>
+                        <p className="text-sm font-semibold text-text">
                             {profile.manager.firstName} {profile.manager.lastName}
-                            <span className="text-[12px] text-[var(--text3)] font-normal ml-2">({profile.manager.designation})</span>
+                            <span className="text-xs text-text-3 font-normal ml-2">({profile.manager.designation})</span>
                         </p>
                     </>
                 )}
             </div>
 
             <FormSection title="Previous Employment" columns={1}>
-                <p className="text-[14px] text-[var(--text)]">{profile.previousEmployment || "N/A"}</p>
+                <p className="text-sm text-text">{profile.previousEmployment || "N/A"}</p>
             </FormSection>
         </>
     )
@@ -585,27 +594,28 @@ function TabEmployment({ profile }: { profile: Profile }) {
    ══════════════════════════════════════════════════════════════ */
 function TabAssets({ profile }: { profile: Profile }) {
     if (profile.assets.length === 0) {
-        return <p className="text-[13px] text-[var(--text3)] py-4">No assets assigned.</p>
+        return <EmptyState title="No assets assigned" className="py-4" />
     }
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {profile.assets.map(asset => (
-                <div key={asset.id} className="flex items-center gap-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--bg2)] hover:bg-[var(--bg)] transition-colors">
-                    <div className="w-11 h-11 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center text-[20px] shrink-0">
+                <div key={asset.id} className="flex items-center gap-4 p-4 rounded-xl border border-border bg-bg-2 hover:bg-bg transition-colors">
+                    <div className="w-11 h-11 rounded-lg bg-accent/10 flex items-center justify-center text-xl shrink-0">
                         {asset.type === "HARDWARE" ? "💻" : asset.type === "SOFTWARE" ? "📦" : "🔌"}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-semibold text-[var(--text)] truncate">{asset.name}</div>
-                        <div className="text-[11px] text-[var(--text3)]">S/N: {asset.serialNumber}</div>
-                        {asset.assignedDate && <div className="text-[10px] text-[var(--text4)] mt-0.5">Assigned {fmtDate(asset.assignedDate)}</div>}
+                        <div className="text-sm font-semibold text-text truncate">{asset.name}</div>
+                        <div className="text-[11px] text-text-3">S/N: {asset.serialNumber}</div>
+                        {asset.assignedDate && <div className="text-[10px] text-text-4 mt-0.5">Assigned {fmtDate(asset.assignedDate)}</div>}
                     </div>
-                    <span className={cn(
-                        "text-[10px] font-bold px-2.5 py-1 rounded-full uppercase shrink-0",
-                        asset.status === "ASSIGNED" ? "bg-[var(--green)]/10 text-[var(--green)]" : "bg-[var(--amber)]/10 text-[var(--amber)]"
-                    )}>
+                    <Badge
+                        variant={asset.status === "ASSIGNED" ? "success" : "warning"}
+                        size="sm"
+                        className="uppercase shrink-0"
+                    >
                         {asset.status}
-                    </span>
+                    </Badge>
                 </div>
             ))}
         </div>

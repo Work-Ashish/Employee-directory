@@ -30,7 +30,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body
-        className={`antialiased flex h-screen overflow-hidden bg-[var(--bg)]`}
+        className={`antialiased flex h-screen overflow-hidden bg-bg`}
         suppressHydrationWarning
       >
         <ThemeProvider

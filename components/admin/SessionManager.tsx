@@ -4,6 +4,10 @@ import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { ReloadIcon, LockClosedIcon, PersonIcon, DesktopIcon, DiscIcon } from "@radix-ui/react-icons"
 import { format } from "date-fns"
+import { Button } from "@/components/ui/Button"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card"
+import { Badge } from "@/components/ui/Badge"
+import { Spinner } from "@/components/ui/Spinner"
 
 interface Session {
     id: string
@@ -65,51 +69,52 @@ export function SessionManager() {
     }
 
     return (
-        <div className="glass p-6 animate-[pageIn_0.3s_ease-out]">
+        <Card variant="glass" className="p-6 animate-page-in">
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h2 className="text-[18px] font-bold text-[var(--text)]">Active Sessions</h2>
-                    <p className="text-[12px] text-[var(--text3)]">Monitor and manage connected devices/sessions across the organization</p>
+                    <h2 className="text-lg font-bold text-text">Active Sessions</h2>
+                    <p className="text-sm text-text-3">Monitor and manage connected devices/sessions across the organization</p>
                 </div>
-                <button
+                <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => { setLoading(true); fetchSessions() }}
-                    className="p-2 rounded-lg hover:bg-[var(--surface)] transition-colors"
                 >
                     <ReloadIcon className={loading ? "animate-spin" : ""} />
-                </button>
+                </Button>
             </div>
 
             <div className="space-y-3">
                 {loading && sessions.length === 0 ? (
                     Array(3).fill(0).map((_, i) => (
-                        <div key={i} className="h-16 w-full bg-[var(--surface)] rounded-xl animate-pulse" />
+                        <div key={i} className="h-16 w-full bg-surface rounded-xl animate-pulse" />
                     ))
                 ) : sessions.length > 0 ? (
                     sessions.map((session) => (
-                        <div key={session.id} className="flex items-center justify-between p-4 bg-[var(--surface2)] border border-[var(--border)] rounded-xl hover:border-[var(--accent)]/30 transition-all group">
+                        <div key={session.id} className="flex items-center justify-between p-4 bg-surface-2 border border-border rounded-xl hover:border-accent/30 transition-all group">
                             <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--surface)] to-[var(--bg2)] flex items-center justify-center border border-[var(--border)] overflow-hidden">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-surface to-bg-2 flex items-center justify-center border border-border overflow-hidden">
                                     {session.avatar ? (
                                         <img src={session.avatar} alt={session.userName} className="w-full h-full object-cover" />
                                     ) : (
-                                        <PersonIcon className="w-5 h-5 text-[var(--text3)]" />
+                                        <PersonIcon className="w-5 h-5 text-text-3" />
                                     )}
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[14px] font-bold text-[var(--text)]">{session.userName}</span>
+                                        <span className="text-md font-bold text-text">{session.userName}</span>
                                         {session.isActive ? (
                                             <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
                                         ) : (
-                                            <span className="text-[10px] text-red-500 font-bold uppercase tracking-tighter">Revoked</span>
+                                            <Badge variant="danger" size="sm">Revoked</Badge>
                                         )}
                                     </div>
                                     <div className="flex items-center gap-3 mt-0.5">
-                                        <div className="flex items-center gap-1 text-[11px] text-[var(--text3)]">
+                                        <div className="flex items-center gap-1 text-xs text-text-3">
                                             <DesktopIcon className="w-3 h-3" />
                                             <span className="max-w-[150px] truncate">{session.userAgent}</span>
                                         </div>
-                                        <div className="flex items-center gap-1 text-[11px] text-[var(--text3)]">
+                                        <div className="flex items-center gap-1 text-xs text-text-3">
                                             <DiscIcon className="w-3 h-3" />
                                             <span>{session.ipAddress}</span>
                                         </div>
@@ -119,26 +124,27 @@ export function SessionManager() {
 
                             <div className="flex items-center gap-4">
                                 <div className="text-right">
-                                    <div className="text-[11px] font-bold text-[var(--text2)] uppercase tracking-tight">Last Active</div>
-                                    <div className="text-[12px] text-[var(--text3)]">{format(new Date(session.lastActive), "MMM d, HH:mm")}</div>
+                                    <div className="text-xs font-bold text-text-2 uppercase tracking-tight">Last Active</div>
+                                    <div className="text-sm text-text-3">{format(new Date(session.lastActive), "MMM d, HH:mm")}</div>
                                 </div>
-                                <button
+                                <Button
+                                    variant="danger"
+                                    size="icon"
                                     onClick={() => handleRevoke(session.id, session.userName)}
                                     disabled={session.isRevoked || revoking === session.id}
-                                    className="p-2.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all disabled:opacity-30 disabled:hover:bg-red-500/10 disabled:hover:text-red-500"
                                     title="Revoke Session"
                                 >
-                                    {revoking === session.id ? <ReloadIcon className="animate-spin w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
-                                </button>
+                                    {revoking === session.id ? <Spinner size="sm" /> : <LockClosedIcon className="w-4 h-4" />}
+                                </Button>
                             </div>
                         </div>
                     ))
                 ) : (
-                    <div className="text-center py-12 text-[var(--text3)] italic">
+                    <div className="text-center py-12 text-text-3 italic">
                         No active sessions found.
                     </div>
                 )}
             </div>
-        </div>
+        </Card>
     )
 }
