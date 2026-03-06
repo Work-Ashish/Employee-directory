@@ -14,8 +14,8 @@ const prisma = new PrismaClient({ adapter });
 
 async function createAdmin() {
     try {
-        const email = "newadmin@emspro.com";
-        const password = "newadminpassword";
+        const email = "superadmin@emspro.com";
+        const password = "Super@dmin2026!";
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Get an organization, or create one if it doesn't exist
@@ -33,13 +33,13 @@ async function createAdmin() {
             where: { email },
             update: {
                 hashedPassword,
-                role: "ADMIN"
+                role: "CEO"
             },
             create: {
                 email,
-                name: "New Admin",
+                name: "Super Admin",
                 hashedPassword,
-                role: "ADMIN",
+                role: "CEO",
                 organizationId: org.id
             }
         });

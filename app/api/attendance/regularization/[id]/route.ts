@@ -1,7 +1,7 @@
-import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
+import { Module, Action } from "@/lib/permissions"
 import { z } from "zod"
 
 const approveSchema = z.object({
@@ -9,20 +9,16 @@ const approveSchema = z.object({
     notes: z.string().optional(),
 })
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+// PATCH /api/attendance/regularization/:id – Approve or reject a regularization request
+export const PATCH = withAuth({ module: Module.ATTENDANCE, action: Action.UPDATE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.id || session.user.role !== "ADMIN") {
-            return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
-        }
-
-        const { id } = await params
+        const { id } = await ctx.params
         const body = await req.json()
         const { status, notes } = approveSchema.parse(body)
 
         const result = await prisma.$transaction(async (tx) => {
             const request = await tx.attendanceRegularization.findUnique({
-                where: { id, organizationId: session.user.organizationId! },
+                where: { id, organizationId: ctx.organizationId },
                 include: { attendance: true }
             })
 
@@ -46,8 +42,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
                 if (request.type === "MISSING_PUNCH" && request.requestedTime) {
                     // Logic depends on if we're fixing checkIn or checkOut
-                    // For now, let's assume MISSING_PUNCH can correct both if provided?
-                    // Actually, the schema had requestedTime. Let's assume it fixes what was null.
                     if (!request.attendance.checkIn) {
                         updateData.checkIn = request.requestedTime
                     } else if (!request.attendance.checkOut) {
@@ -80,4 +74,4 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (error.name === "ZodError") return apiError(error.errors[0].message, ApiErrorCode.BAD_REQUEST, 400)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

@@ -1,22 +1,12 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth, orgFilter } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiError, ApiErrorCode } from "@/lib/api-response"
-import { getSessionEmployee } from "@/lib/session-employee"
 import { generateExport } from "@/lib/export/accounting"
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth({ module: Module.REPORTS, action: Action.EXPORT }, async (req, ctx) => {
     try {
-        const session = await auth()
-        const employee = await getSessionEmployee()
-        if (!session?.user?.id || !employee) {
-            return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
-        }
-
-        if (session.user.role !== "ADMIN" && session.user.role !== "HR_MANAGER") {
-            return apiError("Forbidden", ApiErrorCode.FORBIDDEN, 403)
-        }
-
         const { searchParams } = new URL(req.url)
         const platform = searchParams.get("platform")?.toUpperCase() as "QUICKBOOKS" | "XERO"
         const month = searchParams.get("month") // e.g., "2024-03"
@@ -31,7 +21,7 @@ export async function GET(req: NextRequest) {
 
         const payrolls = await prisma.payroll.findMany({
             where: {
-                organizationId: employee.organizationId,
+                ...orgFilter(ctx),
                 month,
                 status: "PAID"
             },
@@ -63,4 +53,4 @@ export async function GET(req: NextRequest) {
         console.error("[EXPORT_GET]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

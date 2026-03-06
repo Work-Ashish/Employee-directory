@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { apiError, ApiErrorCode } from "@/lib/api-response"
+import { Roles } from "@/lib/permissions"
 import bcrypt from "bcryptjs"
 
 // SCIM Authentication Helper
@@ -102,7 +103,7 @@ export async function POST(req: Request) {
                 name: `${firstName} ${lastName}`,
                 hashedPassword,
                 organizationId: org.id,
-                role: "EMPLOYEE",
+                role: Roles.EMPLOYEE,
                 mustChangePassword: true,
                 employee: {
                     create: {

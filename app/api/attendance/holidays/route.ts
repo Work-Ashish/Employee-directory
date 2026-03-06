@@ -1,18 +1,14 @@
-import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { holidaySchema } from "@/lib/schemas/attendance"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET(req: NextRequest) {
+// GET /api/attendance/holidays – List all holidays
+export const GET = withAuth({ module: Module.ATTENDANCE, action: Action.VIEW }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.id) {
-            return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
-        }
-
         const holidays = await prisma.holiday.findMany({
-            where: { organizationId: session.user.organizationId! },
+            where: { organizationId: ctx.organizationId },
             orderBy: { date: "asc" }
         })
 
@@ -21,22 +17,18 @@ export async function GET(req: NextRequest) {
         console.error("[HOLIDAYS_GET]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})
 
-export async function POST(req: NextRequest) {
+// POST /api/attendance/holidays – Create a new holiday
+export const POST = withAuth({ module: Module.ATTENDANCE, action: Action.CREATE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.id || session.user.role !== "ADMIN") {
-            return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
-        }
-
         const body = await req.json()
         const validatedData = holidaySchema.parse(body)
 
         const holiday = await prisma.holiday.create({
             data: {
                 ...validatedData,
-                organizationId: session.user.organizationId!
+                organizationId: ctx.organizationId
             }
         })
 
@@ -48,4 +40,4 @@ export async function POST(req: NextRequest) {
         }
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

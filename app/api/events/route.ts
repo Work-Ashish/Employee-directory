@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { eventSchema } from "@/lib/schemas"
 
 // GET /api/events – List calendar events (scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.ANNOUNCEMENTS, action: Action.VIEW }, async (req, ctx) => {
     try {
         const events = await prisma.calendarEvent.findMany({
             where: { organizationId: ctx.organizationId },
@@ -22,7 +23,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/events – Create a calendar event
-export const POST = withAuth("ADMIN", async (req, ctx) => {
+export const POST = withAuth({ module: Module.ANNOUNCEMENTS, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = eventSchema.safeParse(body)
@@ -49,7 +50,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
 })
 
 // DELETE /api/events – Delete an event
-export const DELETE = withAuth("ADMIN", async (req, ctx) => {
+export const DELETE = withAuth({ module: Module.ANNOUNCEMENTS, action: Action.DELETE }, async (req, ctx) => {
     try {
         const { searchParams } = new URL(req.url)
         const id = searchParams.get("id")

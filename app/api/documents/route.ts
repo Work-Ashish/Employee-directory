@@ -2,11 +2,12 @@ import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { documentSchema } from "@/lib/schemas"
+import { Module, Action, hasPermission } from "@/lib/permissions"
 
 // GET /api/documents – List documents (scoped by role and organization)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.DOCUMENTS, action: Action.VIEW }, async (req, ctx) => {
     try {
-        const isAdmin = ctx.role === "ADMIN"
+        const isAdmin = hasPermission(ctx.role, Module.DOCUMENTS, Action.DELETE)
 
         let where: any = { organizationId: ctx.organizationId }
 
@@ -41,9 +42,9 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/documents – Upload document metadata
-export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const POST = withAuth({ module: Module.DOCUMENTS, action: Action.CREATE }, async (req, ctx) => {
     try {
-        const isAdmin = ctx.role === "ADMIN"
+        const isAdmin = hasPermission(ctx.role, Module.DOCUMENTS, Action.DELETE)
         const body = await req.json()
 
         // Bulk mode: admin only

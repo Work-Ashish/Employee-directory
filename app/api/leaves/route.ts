@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { leaveSchema, updateLeaveSchema } from "@/lib/schemas"
 import { WorkflowEngine } from "@/lib/workflow-engine"
+import { Module, Action, hasPermission } from "@/lib/permissions"
 
 // Safe employee select — no salary, bank, Aadhaar, PAN etc.
 const SAFE_EMPLOYEE_SELECT = {
@@ -15,7 +16,7 @@ const SAFE_EMPLOYEE_SELECT = {
 } as const
 
 // GET /api/leaves – List leave requests (scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.LEAVES, action: Action.VIEW }, async (req, ctx) => {
     try {
         const { searchParams } = new URL(req.url)
         const status = searchParams.get("status")
@@ -29,7 +30,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
         if (employeeId) where.employeeId = employeeId
 
         // Non-admin: only own leaves
-        if (ctx.role !== "ADMIN") {
+        if (!hasPermission(ctx.role, Module.LEAVES, Action.UPDATE)) {
             const emp = await prisma.employee.findFirst({
                 where: { userId: ctx.userId, organizationId: ctx.organizationId },
                 select: { id: true },
@@ -57,7 +58,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/leaves – Submit a leave request
-export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const POST = withAuth({ module: Module.LEAVES, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = leaveSchema.safeParse(body)
@@ -74,7 +75,7 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
                 return apiError("No employee profile linked to your account", ApiErrorCode.BAD_REQUEST, 400)
             }
             employeeId = employee.id
-        } else if (ctx.role !== "ADMIN") {
+        } else if (!hasPermission(ctx.role, Module.LEAVES, Action.UPDATE)) {
             return apiError("Only admins can create leave for other employees", ApiErrorCode.FORBIDDEN, 403)
         }
 
@@ -123,7 +124,7 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // PUT /api/leaves – Approve/Reject a leave
-export const PUT = withAuth("ADMIN", async (req, ctx) => {
+export const PUT = withAuth({ module: Module.LEAVES, action: Action.UPDATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = updateLeaveSchema.safeParse(body)

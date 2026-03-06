@@ -1,20 +1,17 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth, orgFilter } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { performanceReviewSchema } from "@/lib/schemas"
+import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
 // GET /api/performance – List performance reviews
-export async function GET(req: Request) {
+export const GET = withAuth({ module: Module.PERFORMANCE, action: Action.VIEW }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
         const { searchParams } = new URL(req.url)
         const employeeId = searchParams.get("employeeId")
 
-        const where: Record<string, unknown> = {}
+        const where: Record<string, unknown> = orgFilter(ctx)
         if (employeeId) where.employeeId = employeeId
 
         const reviews = await prisma.performanceReview.findMany({
@@ -24,28 +21,20 @@ export async function GET(req: Request) {
             take: 200,
         })
 
-        return NextResponse.json(reviews)
+        return apiSuccess(reviews)
     } catch (error) {
         console.error("[PERFORMANCE_GET]", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})
 
 // POST /api/performance – Create a performance review
-export async function POST(req: Request) {
+export const POST = withAuth({ module: Module.PERFORMANCE, action: Action.CREATE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.organizationId || session.user.role !== "ADMIN") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        }
-
         const body = await req.json()
         const parsed = performanceReviewSchema.safeParse(body)
         if (!parsed.success) {
-            return NextResponse.json(
-                { error: "Validation Error", details: parsed.error.format() },
-                { status: 400 }
-            )
+            return apiError("Validation Error", ApiErrorCode.VALIDATION_ERROR, 400, parsed.error.format())
         }
 
         const review = await prisma.performanceReview.create({
@@ -56,14 +45,14 @@ export async function POST(req: Request) {
                 reviewDate: parsed.data.reviewDate || new Date(),
                 status: parsed.data.status,
                 employeeId: parsed.data.employeeId,
-                organizationId: session.user.organizationId,
+                organizationId: ctx.organizationId,
             },
             include: { employee: { include: { department: true } } },
         })
 
-        return NextResponse.json(review, { status: 201 })
+        return apiSuccess(review, undefined, 201)
     } catch (error) {
         console.error("[PERFORMANCE_POST]", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

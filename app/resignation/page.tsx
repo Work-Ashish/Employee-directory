@@ -4,6 +4,7 @@ import * as React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { AdminResignationView } from "@/components/resignation/AdminResignationView"
 import { EmployeeResignationView } from "@/components/resignation/EmployeeResignationView"
+import { hasPermission, Module, Action } from "@/lib/permissions"
 
 export default function ResignationPage() {
     const { user, isLoading } = useAuth()
@@ -18,7 +19,7 @@ export default function ResignationPage() {
 
     return (
         <div className="p-6">
-            {user.role === "ADMIN" ? (
+            {hasPermission(user.role, Module.RESIGNATION, Action.UPDATE) ? (
                 <AdminResignationView />
             ) : (
                 <EmployeeResignationView employeeId={user.id} />

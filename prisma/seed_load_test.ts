@@ -39,7 +39,7 @@ async function main() {
             name: "Load Test Admin",
             email: "admin@loadtest.emspro.com",
             hashedPassword,
-            role: Role.ADMIN,
+            role: Role.CEO,
             organizationId
         }
     })

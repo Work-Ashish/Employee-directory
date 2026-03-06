@@ -4,9 +4,10 @@ import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import crypto from "crypto"
 import { ticketSchema, updateTicketSchema } from "@/lib/schemas"
 import { WorkflowEngine } from "@/lib/workflow-engine"
+import { Module, Action, hasPermission } from "@/lib/permissions"
 
 // GET /api/tickets – List help desk tickets (scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.TICKETS, action: Action.VIEW }, async (req, ctx) => {
     try {
         const { searchParams } = new URL(req.url)
         const status = searchParams.get("status")
@@ -16,7 +17,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
         if (status) where.status = status
 
         // Non-admins can only see their own tickets
-        if (ctx.role !== "ADMIN") {
+        if (!hasPermission(ctx.role, Module.TICKETS, Action.DELETE)) {
             const employee = await prisma.employee.findFirst({
                 where: { userId: ctx.userId, organizationId: ctx.organizationId },
                 select: { id: true }
@@ -42,7 +43,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/tickets – Create a ticket
-export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const POST = withAuth({ module: Module.TICKETS, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = ticketSchema.safeParse(body)
@@ -51,7 +52,7 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
         }
 
         let employeeId = parsed.data.employeeId
-        if (ctx.role !== "ADMIN" || !employeeId) {
+        if (!hasPermission(ctx.role, Module.TICKETS, Action.DELETE) || !employeeId) {
             const employee = await prisma.employee.findFirst({
                 where: { userId: ctx.userId, organizationId: ctx.organizationId },
                 select: { id: true }
@@ -93,7 +94,7 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // PUT /api/tickets – Update ticket status
-export const PUT = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const PUT = withAuth({ module: Module.TICKETS, action: Action.UPDATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = updateTicketSchema.safeParse(body)
@@ -105,7 +106,7 @@ export const PUT = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
         const where: any = { id: parsed.data.id, organizationId: ctx.organizationId }
 
         // Non-admin can only update their own tickets (e.g. closing them)
-        if (ctx.role !== "ADMIN") {
+        if (!hasPermission(ctx.role, Module.TICKETS, Action.DELETE)) {
             const employee = await prisma.employee.findFirst({
                 where: { userId: ctx.userId, organizationId: ctx.organizationId }
             })

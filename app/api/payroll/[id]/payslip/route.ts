@@ -1,17 +1,14 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/security"
+import { Module, Action, hasPermission } from "@/lib/permissions"
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withAuth({ module: Module.PAYROLL, action: Action.VIEW }, async (req, ctx) => {
     try {
-        const { id } = await params
-        const session = await auth()
-        if (!session?.user?.id) {
-            return new NextResponse("Unauthorized", { status: 401 })
-        }
+        const { id } = await ctx.params
 
         const payroll = (await prisma.payroll.findUnique({
-            where: { id, organizationId: session.user.organizationId! },
+            where: { id, organizationId: ctx.organizationId },
             include: { employee: true, organization: true }
         })) as any
 
@@ -19,8 +16,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             return new NextResponse("Payslip Not Found", { status: 404 })
         }
 
-        // Access Control: Admins, or specifically the employee who owns it
-        if (session.user.role !== "ADMIN" && payroll.employee.userId !== session.user.id) {
+        // Access Control: Users with UPDATE permission (admin-level) can see all,
+        // others can only see their own payslip
+        if (!hasPermission(ctx.role, Module.PAYROLL, Action.UPDATE) && payroll.employee.userId !== ctx.userId) {
             return new NextResponse("Forbidden", { status: 403 })
         }
 
@@ -63,7 +61,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             <div class="no-print" style="margin-bottom: 20px; text-align: right;">
                 <button onclick="window.print()" style="padding: 8px 16px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Download PDF / Print</button>
             </div>
-            
+
             <div class="payslip-container">
                 <div class="header">
                     <h1>${payroll.organization.name}</h1>
@@ -133,7 +131,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 <div class="net-pay">
                     Net Pay: ₹${payroll.netSalary.toFixed(2)}
                 </div>
-                
+
                 <div style="margin-top: 50px; font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px dashed #e2e8f0; padding-top: 20px;">
                     This is a system generated payslip and does not require a physical signature.<br/>
                     Generated on ${new Date().toLocaleString()} | ID: ${payroll.id}
@@ -150,4 +148,4 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     } catch (err: any) {
         return new NextResponse("Internal Server Error", { status: 500 })
     }
-}
+})

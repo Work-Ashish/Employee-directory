@@ -92,9 +92,7 @@ export function EmployeeDashboard() {
                         </div>
                     </div>
 
-                    <div className="relative z-10 hidden lg:flex items-center">
-                        {/* Placeholder for future dynamic widget or leave empty for cleaner look */}
-                    </div>
+                    <div className="relative z-10 hidden lg:flex items-center" />
                 </div>
 
                 {/* Stat Grid */}

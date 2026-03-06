@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { prisma } from "@/lib/prisma"
 import { google } from "@ai-sdk/google"
 import { generateText } from "ai"
 import { subDays } from "date-fns"
 
-export const GET = withAuth("ADMIN", async (req, ctx) => {
+export const GET = withAuth({ module: Module.PERFORMANCE, action: Action.VIEW }, async (req, ctx) => {
     try {
         const apiKey = process.env.GEMINI_API_KEY
         if (!apiKey) {

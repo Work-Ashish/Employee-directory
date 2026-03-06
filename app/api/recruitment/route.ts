@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { candidateSchema } from "@/lib/schemas"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
 // GET /api/recruitment – List candidates (scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.RECRUITMENT, action: Action.VIEW }, async (req, ctx) => {
     try {
         const { searchParams } = new URL(req.url)
         const stage = searchParams.get("stage")
@@ -27,7 +28,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/recruitment – Add a candidate
-export const POST = withAuth("ADMIN", async (req, ctx) => {
+export const POST = withAuth({ module: Module.RECRUITMENT, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = candidateSchema.safeParse(body)
@@ -59,7 +60,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
 })
 
 // PUT /api/recruitment – Update candidate stage/status
-export const PUT = withAuth("ADMIN", async (req, ctx) => {
+export const PUT = withAuth({ module: Module.RECRUITMENT, action: Action.UPDATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         if (!body.id) return apiError("Candidate ID is required", ApiErrorCode.BAD_REQUEST, 400)

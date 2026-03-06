@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiError, ApiErrorCode } from "@/lib/api-response"
 import { NextResponse } from "next/server"
 
 // POST /api/reports/export
 // Generates a CSV export for a given report configuration or saved report ID
-export const POST = withAuth(["ADMIN", "HR_MANAGER"], async (req, ctx) => {
+export const POST = withAuth({ module: Module.REPORTS, action: Action.EXPORT }, async (req, ctx) => {
     try {
         const body = await req.json()
         const { reportId, format = "CSV" } = body

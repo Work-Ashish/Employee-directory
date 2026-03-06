@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
 // GET /api/admin/sessions - List active sessions for the organization
-export const GET = withAuth("ADMIN", async (req, ctx) => {
+export const GET = withAuth({ module: Module.SETTINGS, action: Action.VIEW }, async (req, ctx) => {
     try {
         const sessions = await prisma.userSession.findMany({
             where: { organizationId: ctx.organizationId },

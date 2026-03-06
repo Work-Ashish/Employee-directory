@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { BarChartIcon, ReloadIcon, PlusIcon } from "@radix-ui/react-icons"
+import { canAccessModule, Module } from "@/lib/permissions"
 
 export default function AdminReportsPage() {
     const { user, isLoading } = useAuth()
@@ -13,7 +14,7 @@ export default function AdminReportsPage() {
     useEffect(() => {
         if (!isLoading && !user) {
             router.push("/login")
-        } else if (!isLoading && user?.role !== "ADMIN" && user?.role !== "HR_MANAGER") {
+        } else if (!isLoading && !canAccessModule(user?.role ?? "", Module.REPORTS)) {
             router.push("/")
         }
     }, [user, isLoading, router])

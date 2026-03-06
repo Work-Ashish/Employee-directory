@@ -1,26 +1,20 @@
-import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { regularizationSchema } from "@/lib/schemas/attendance"
-import { getSessionEmployee } from "@/lib/session-employee"
+import { Module, Action, hasPermission } from "@/lib/permissions"
 
-export async function GET(req: NextRequest) {
+// GET /api/attendance/regularization – List regularization requests
+export const GET = withAuth({ module: Module.ATTENDANCE, action: Action.VIEW }, async (req, ctx) => {
     try {
-        const session = await auth()
-        const employee = await getSessionEmployee()
-        if (!session?.user || !employee) {
-            return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
-        }
-
         const { searchParams } = new URL(req.url)
         const employeeId = searchParams.get("employeeId")
 
-        const where: any = { organizationId: employee.organizationId }
+        const where: any = { organizationId: ctx.organizationId }
 
-        // If not ADMIN, can only see own requests
-        if (session.user.role !== "ADMIN") {
-            where.employeeId = employee.id
+        // If user doesn't have UPDATE permission, they can only see their own requests
+        if (!hasPermission(ctx.role, Module.ATTENDANCE, Action.UPDATE)) {
+            where.employeeId = ctx.employeeId
         } else if (employeeId) {
             where.employeeId = employeeId
         }
@@ -36,30 +30,25 @@ export async function GET(req: NextRequest) {
         console.error("[REGULARIZATION_GET]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})
 
-export async function POST(req: NextRequest) {
+// POST /api/attendance/regularization – Submit a regularization request
+export const POST = withAuth({ module: Module.ATTENDANCE, action: Action.CREATE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        const employee = await getSessionEmployee()
-        if (!session?.user || !employee) {
-            return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
-        }
-
         const body = await req.json()
         const validatedData = regularizationSchema.parse(body)
 
-        // Verify attendance record exists and belongs to the employee or org
+        // Verify attendance record exists and belongs to the organization
         const attendance = await prisma.attendance.findFirst({
-            where: { id: validatedData.attendanceId, organizationId: employee.organizationId }
+            where: { id: validatedData.attendanceId, organizationId: ctx.organizationId }
         })
 
         if (!attendance) {
             return apiError("Attendance record not found", ApiErrorCode.NOT_FOUND, 404)
         }
 
-        // Only the employee who owns the record (or an ADMIN) can request regularization
-        if (session.user.role !== "ADMIN" && attendance.employeeId !== employee.id) {
+        // Only the employee who owns the record (or a user with UPDATE permission) can request regularization
+        if (!hasPermission(ctx.role, Module.ATTENDANCE, Action.UPDATE) && attendance.employeeId !== ctx.employeeId) {
             return apiError("Forbidden", ApiErrorCode.FORBIDDEN, 403)
         }
 
@@ -67,7 +56,7 @@ export async function POST(req: NextRequest) {
             data: {
                 ...validatedData,
                 employeeId: attendance.employeeId,
-                organizationId: employee.organizationId
+                organizationId: ctx.organizationId
             }
         })
 
@@ -79,4 +68,4 @@ export async function POST(req: NextRequest) {
         }
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { PlusIcon, TrashIcon, ArrowRightIcon } from '@radix-ui/react-icons'
+import { ROLES } from '@/lib/permissions'
 
 export default function BuilderPage() {
     const router = useRouter()
@@ -117,9 +118,9 @@ export default function BuilderPage() {
                                             setSteps(newSteps)
                                         }}>
                                             <option value="">Select Role</option>
-                                            <option value="ADMIN">System Admin</option>
-                                            <option value="HR">HR Dept</option>
-                                            <option value="FINANCE">Finance</option>
+                                            {ROLES.map(role => (
+                                                <option key={role} value={role}>{role.replace("_", " ")}</option>
+                                            ))}
                                         </select>
                                     </div>
                                 )}

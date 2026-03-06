@@ -1,11 +1,12 @@
 import { withAuth } from "@/lib/security"
+import { Module, Action, Roles } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
 export const dynamic = "force-dynamic"
 
 // GET /api/dashboard/logins
 // Returns employees who have logged in today + recent login history
-export const GET = withAuth(["ADMIN", "HR_MANAGER", "PAYROLL_ADMIN", "IT_ADMIN", "RECRUITER", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, async (req, ctx) => {
     try {
         const startOfDay = new Date()
         startOfDay.setHours(0, 0, 0, 0)
@@ -14,7 +15,7 @@ export const GET = withAuth(["ADMIN", "HR_MANAGER", "PAYROLL_ADMIN", "IT_ADMIN",
         const activeTodayUsers = await prisma.user.findMany({
             where: {
                 lastLoginAt: { gte: startOfDay },
-                role: "EMPLOYEE",
+                role: Roles.EMPLOYEE,
                 organizationId: ctx.organizationId
             },
             select: {
@@ -41,7 +42,7 @@ export const GET = withAuth(["ADMIN", "HR_MANAGER", "PAYROLL_ADMIN", "IT_ADMIN",
         const recentLogins = await prisma.user.findMany({
             where: {
                 lastLoginAt: { gte: since7Days },
-                role: "EMPLOYEE",
+                role: Roles.EMPLOYEE,
                 organizationId: ctx.organizationId
             },
             select: {

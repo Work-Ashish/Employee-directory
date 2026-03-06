@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
+import { canAccessModule, Module } from "@/lib/permissions"
 import { exportToCSV, exportToPDF } from "@/lib/exportUtils"
 import { read, utils } from 'xlsx'
 import { useForm } from "react-hook-form"
@@ -158,7 +159,7 @@ function EmployeesContent() {
 
     // Auth protection
     React.useEffect(() => {
-        if (!authLoading && user?.role === 'EMPLOYEE') router.push('/')
+        if (!authLoading && !canAccessModule(user?.role ?? '', Module.EMPLOYEES)) router.push('/')
     }, [user, authLoading, router])
 
     const fetchData = React.useCallback(async () => {
@@ -283,7 +284,7 @@ function EmployeesContent() {
         }
     }
 
-    if (authLoading || user?.role === 'EMPLOYEE') return null
+    if (authLoading || !canAccessModule(user?.role ?? '', Module.EMPLOYEES)) return null
 
     return (
         <div className="space-y-6 animate-[pageIn_0.3s_cubic-bezier(0.4,0,0.2,1)]">

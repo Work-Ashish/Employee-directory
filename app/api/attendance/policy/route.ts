@@ -1,18 +1,14 @@
-import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { attendancePolicySchema } from "@/lib/schemas/attendance"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET(req: NextRequest) {
+// GET /api/attendance/policy – Get the organization's attendance policy
+export const GET = withAuth({ module: Module.ATTENDANCE, action: Action.VIEW }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.id) {
-            return apiError(ApiErrorCode.UNAUTHORIZED, "Unauthorized", 401)
-        }
-
         const policy = await prisma.attendancePolicy.findUnique({
-            where: { organizationId: session.user.organizationId! }
+            where: { organizationId: ctx.organizationId }
         })
 
         if (!policy) {
@@ -28,26 +24,22 @@ export async function GET(req: NextRequest) {
         return apiSuccess(policy)
     } catch (error) {
         console.error("[POLICY_GET]", error)
-        return apiError(ApiErrorCode.INTERNAL_ERROR, "Internal Server Error", 500)
+        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})
 
-export async function POST(req: NextRequest) {
+// POST /api/attendance/policy – Create or update the attendance policy
+export const POST = withAuth({ module: Module.ATTENDANCE, action: Action.UPDATE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.id || session.user.role !== "ADMIN") {
-            return apiError(ApiErrorCode.UNAUTHORIZED, "Unauthorized", 401)
-        }
-
         const body = await req.json()
         const validatedData = attendancePolicySchema.parse(body)
 
         const policy = await prisma.attendancePolicy.upsert({
-            where: { organizationId: session.user.organizationId! },
+            where: { organizationId: ctx.organizationId },
             update: validatedData,
             create: {
                 ...validatedData,
-                organizationId: session.user.organizationId!
+                organizationId: ctx.organizationId
             }
         })
 
@@ -55,8 +47,8 @@ export async function POST(req: NextRequest) {
     } catch (error: any) {
         console.error("[POLICY_POST]", error)
         if (error.name === "ZodError") {
-            return apiError(ApiErrorCode.BAD_REQUEST, error.errors[0].message, 400)
+            return apiError(error.errors[0].message, ApiErrorCode.BAD_REQUEST, 400)
         }
-        return apiError(ApiErrorCode.INTERNAL_ERROR, "Internal Server Error", 500)
+        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { withAuth } from './security'
+import { Roles } from '@/lib/permissions'
 
 // Mocking Next.js and Prisma
 vi.mock('./prisma', () => ({
@@ -15,7 +16,7 @@ describe('Tenant Isolation Guard (HRMS-402)', () => {
             user: {
                 id: 'user123',
                 organizationId: 'org_abc',
-                role: 'ADMIN'
+                role: Roles.CEO
             }
         }
 

@@ -2,21 +2,19 @@ import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { providentFundSchema } from "@/lib/schemas"
+import { Module, Action, hasPermission } from "@/lib/permissions"
 
 // GET /api/pf – List provident fund records (scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.PAYROLL, action: Action.VIEW }, async (req, ctx) => {
     try {
         const { searchParams } = new URL(req.url)
         const employeeId = searchParams.get("employeeId")
 
         const where: Record<string, any> = { organizationId: ctx.organizationId }
 
-        if (ctx.role !== "ADMIN") {
-            const employee = await prisma.employee.findFirst({
-                where: { userId: ctx.userId, organizationId: ctx.organizationId },
-                select: { id: true }
-            })
-            if (employee) where.employeeId = employee.id
+        if (!hasPermission(ctx.role, Module.PAYROLL, Action.CREATE)) {
+            // Users without CREATE permission only see their own PF records
+            if (ctx.employeeId) where.employeeId = ctx.employeeId
             else return apiError("No employee profile found", ApiErrorCode.BAD_REQUEST, 400)
         } else if (employeeId) {
             where.employeeId = employeeId
@@ -37,7 +35,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/pf – Create PF record
-export const POST = withAuth("ADMIN", async (req, ctx) => {
+export const POST = withAuth({ module: Module.PAYROLL, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = providentFundSchema.safeParse(body)

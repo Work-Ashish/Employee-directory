@@ -1,25 +1,13 @@
-import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth, orgFilter } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { webhookSchema } from "@/lib/schemas/integrations"
-import { getSessionEmployee } from "@/lib/session-employee"
 
-export async function GET() {
+export const GET = withAuth({ module: Module.SETTINGS, action: Action.VIEW }, async (req, ctx) => {
     try {
-        const session = await auth()
-        const employee = await getSessionEmployee()
-        if (!session?.user?.id || !employee) {
-            return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
-        }
-
-        // Only ADMIN/HR can manage webhooks
-        if (session.user.role !== "ADMIN" && session.user.role !== "HR_MANAGER") {
-            return apiError("Forbidden", ApiErrorCode.FORBIDDEN, 403)
-        }
-
         const webhooks = await prisma.webhook.findMany({
-            where: { organizationId: employee.organizationId },
+            where: orgFilter(ctx),
             orderBy: { createdAt: "desc" }
         })
 
@@ -28,27 +16,17 @@ export async function GET() {
         console.error("[WEBHOOKS_GET]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth({ module: Module.SETTINGS, action: Action.UPDATE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        const employee = await getSessionEmployee()
-        if (!session?.user?.id || !employee) {
-            return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
-        }
-
-        if (session.user.role !== "ADMIN" && session.user.role !== "HR_MANAGER") {
-            return apiError("Forbidden", ApiErrorCode.FORBIDDEN, 403)
-        }
-
         const body = await req.json()
         const validatedData = webhookSchema.parse(body)
 
         const webhook = await prisma.webhook.create({
             data: {
                 ...validatedData,
-                organizationId: employee.organizationId
+                organizationId: ctx.organizationId
             }
         })
 
@@ -60,4 +38,4 @@ export async function POST(req: NextRequest) {
         }
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

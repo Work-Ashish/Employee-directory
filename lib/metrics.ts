@@ -1,6 +1,7 @@
 import { redis } from './redis'
 import { prisma } from './prisma'
 import { logger } from './logger'
+import { Roles } from '@/lib/permissions'
 
 export interface ApiMetrics {
     path: string
@@ -55,7 +56,7 @@ export class MetricsCollector {
                             const admin = await prisma.employee.findFirst({
                                 where: {
                                     organizationId,
-                                    user: { role: 'ADMIN' }
+                                    user: { role: Roles.CEO }
                                 }
                             })
 

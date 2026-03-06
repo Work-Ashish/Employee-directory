@@ -1,22 +1,18 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 // POST /api/payroll/import
 // Body: { rows: Array<{ employeeCode|employeeName, month, basicSalary, allowances, arrears, reimbursements, loansAdvances, pfDeduction, tax, otherDed, netSalary, status }> }
-export async function POST(req: Request) {
+export const POST = withAuth({ module: Module.PAYROLL, action: Action.IMPORT }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.id || !session.user.organizationId || session.user.role !== "ADMIN") {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
         const { rows } = await req.json()
         if (!Array.isArray(rows) || rows.length === 0) {
             return NextResponse.json({ error: "No rows provided" }, { status: 400 })
         }
 
-        const orgId = session.user.organizationId
+        const orgId = ctx.organizationId
         let inserted = 0
         let skipped = 0
 
@@ -80,4 +76,4 @@ export async function POST(req: Request) {
         console.error("[PAYROLL_IMPORT]", error)
         return NextResponse.json({ error: "Import failed" }, { status: 500 })
     }
-}
+})

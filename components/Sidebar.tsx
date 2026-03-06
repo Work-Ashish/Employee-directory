@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
+import { canAccessModule, Module, hasPermission, Action } from '@/lib/permissions'
+import type { Role } from '@/lib/permissions'
 import {
   DashboardIcon,
   PersonIcon,
@@ -19,45 +21,57 @@ import {
   GearIcon,
   MixIcon,
   LaptopIcon,
-  FileTextIcon
+  FileTextIcon,
+  ChatBubbleIcon,
+  GroupIcon,
 } from '@radix-ui/react-icons'
 
 interface NavItem {
   name: string
   href: string
   icon: any
-  hrefEmployee?: string
+  module: Module
+  /** Override href per role */
+  hrefByRole?: Partial<Record<Role, string>>
   badge?: string | number
   badgeColor?: string
 }
 
 const navItems: NavItem[] = [
-  { name: 'Dashboard', href: '/', icon: DashboardIcon },
-  { name: 'Employees', href: '/employees', icon: PersonIcon },
-  { name: 'Organization', href: '/organization', icon: MixIcon },
-  { name: 'Assets', href: '/admin/assets', hrefEmployee: '/employee/assets', icon: LaptopIcon },
-  { name: 'Documents', href: '/admin/documents', hrefEmployee: '/employee/documents', icon: FileTextIcon },
-  { name: 'Leave', href: '/leave', icon: CalendarIcon },
-  { name: 'Attendance', href: '/attendance', icon: ClockIcon },
-  { name: 'Payroll', href: '/payroll', icon: ReaderIcon },
-  { name: 'Reports', href: '/admin/reports', icon: BarChartIcon },
-  { name: 'Performance', href: '/performance', icon: BarChartIcon },
-  { name: 'Resignation', href: '/resignation', icon: ExitIcon },
-  { name: 'Training', href: '/training', icon: BackpackIcon },
-  { name: 'Announcements', href: '/announcements', icon: SpeakerLoudIcon },
-  { name: 'Workflows', href: '/admin/workflows', icon: MixIcon },
-  { name: 'Settings', href: '/settings', icon: GearIcon },
+  { name: 'Dashboard', href: '/', icon: DashboardIcon, module: Module.DASHBOARD },
+  { name: 'Employees', href: '/employees', icon: PersonIcon, module: Module.EMPLOYEES },
+  { name: 'Teams', href: '/teams', icon: GroupIcon, module: Module.TEAMS },
+  { name: 'Organization', href: '/organization', icon: MixIcon, module: Module.ORGANIZATION },
+  {
+    name: 'Assets', href: '/admin/assets', icon: LaptopIcon, module: Module.ASSETS,
+    hrefByRole: { EMPLOYEE: '/employee/assets', TEAM_LEAD: '/employee/assets' },
+  },
+  {
+    name: 'Documents', href: '/admin/documents', icon: FileTextIcon, module: Module.DOCUMENTS,
+    hrefByRole: { EMPLOYEE: '/employee/documents', TEAM_LEAD: '/employee/documents' },
+  },
+  { name: 'Leave', href: '/leave', icon: CalendarIcon, module: Module.LEAVES },
+  { name: 'Attendance', href: '/attendance', icon: ClockIcon, module: Module.ATTENDANCE },
+  { name: 'Payroll', href: '/payroll', icon: ReaderIcon, module: Module.PAYROLL },
+  { name: 'Reports', href: '/admin/reports', icon: BarChartIcon, module: Module.REPORTS },
+  { name: 'Performance', href: '/performance', icon: BarChartIcon, module: Module.PERFORMANCE },
+  { name: 'Resignation', href: '/resignation', icon: ExitIcon, module: Module.RESIGNATION },
+  { name: 'Training', href: '/training', icon: BackpackIcon, module: Module.TRAINING },
+  { name: 'Announcements', href: '/announcements', icon: SpeakerLoudIcon, module: Module.ANNOUNCEMENTS },
+  { name: 'Recruitment', href: '/recruitment', icon: IdCardIcon, module: Module.RECRUITMENT },
+  { name: 'Feedback', href: '/feedback', icon: ChatBubbleIcon, module: Module.FEEDBACK },
+  { name: 'Help Desk', href: '/help-desk', icon: ArchiveIcon, module: Module.TICKETS },
+  { name: 'Workflows', href: '/admin/workflows', icon: MixIcon, module: Module.WORKFLOWS },
+  { name: 'Settings', href: '/settings', icon: GearIcon, module: Module.SETTINGS },
 ]
 
 export function NavContent({ pathname, user, logout, onItemClick }: { pathname: string, user: any, logout: () => void, onItemClick?: () => void }) {
-  // Filter items based on role
+  const role = user?.role as Role
+
+  // Filter items based on the permission matrix
   const filteredNavItems = navItems.filter(item => {
     if (!user) return false
-    if (user.role === 'ADMIN') return true
-
-    // Employee restrictions
-    const restrictedItems = ['Settings', 'Recruitment', 'Employees', 'Organization']
-    return !restrictedItems.includes(item.name)
+    return canAccessModule(role, item.module)
   })
 
   return (
@@ -77,7 +91,7 @@ export function NavContent({ pathname, user, logout, onItemClick }: { pathname: 
       <nav className="flex-1 p-[14px_10px] flex flex-col gap-[2px] overflow-y-auto scrollbar-hide">
         {filteredNavItems.map((item) => {
           // Determine href based on role
-          const href = (user.role === 'EMPLOYEE' && item.hrefEmployee) ? item.hrefEmployee : item.href
+          const href = item.hrefByRole?.[role] || item.href
           const isActive = pathname === href
 
           return (
@@ -124,7 +138,7 @@ export function NavContent({ pathname, user, logout, onItemClick }: { pathname: 
 
       <div className="p-[14px_16px] border-t border-[#00000014] bg-white/50 dark:bg-white/5 dark:border-[var(--border)]">
         <div className="flex items-center gap-[10px] group">
-          <Link href={user.role === 'ADMIN' ? "/settings" : "#"} className={cn("flex items-center gap-[10px] flex-1 cursor-pointer hover:bg-black/5 p-1 -m-1 rounded-lg transition-colors", user.role !== 'ADMIN' && "cursor-default hover:bg-transparent")}>
+          <Link href={hasPermission(role, Module.SETTINGS, Action.VIEW) ? "/settings" : "#"} className={cn("flex items-center gap-[10px] flex-1 cursor-pointer hover:bg-black/5 p-1 -m-1 rounded-lg transition-colors", !hasPermission(role, Module.SETTINGS, Action.VIEW) && "cursor-default hover:bg-transparent")}>
             <div className="w-[34px] h-[34px] rounded-full bg-gradient-to-br from-[var(--accent)] to-[#5856d6] flex items-center justify-center text-white text-[12px] font-bold shrink-0 transition-shadow duration-200 group-hover:shadow-[0_2px_10px_var(--glow)]">
               {user.avatar || 'US'}
             </div>

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { orgFilter, withAuth, AuthContext } from './security'
 import { auth } from './auth'
 import { NextResponse } from 'next/server'
+import { Roles } from '@/lib/permissions'
 
 vi.mock('./auth', () => ({
     auth: vi.fn()
@@ -24,7 +25,7 @@ describe('Security Utilities', () => {
                 requestId: 'req-1',
                 userId: 'user-1',
                 organizationId: 'org-1',
-                role: 'ADMIN',
+                role: Roles.CEO,
                 params: {},
             }
             const result = orgFilter(mockAdminCtx)
@@ -36,7 +37,7 @@ describe('Security Utilities', () => {
                 requestId: 'req-2',
                 userId: 'user-2',
                 organizationId: 'org-2',
-                role: 'EMPLOYEE',
+                role: Roles.EMPLOYEE,
                 params: {},
             }
             const existing: Record<string, unknown> = { status: 'ACTIVE' }
@@ -52,7 +53,7 @@ describe('Security Utilities', () => {
         it('should return 401 if unauthenticated', async () => {
             ; (auth as any).mockResolvedValue(null)
             const handler = async () => NextResponse.json({ ok: true })
-            const wrapped = withAuth('ADMIN', handler)
+            const wrapped = withAuth(Roles.CEO, handler)
 
             const res = await wrapped(mockReq)
             expect(res.status).toBe(401)
@@ -61,9 +62,9 @@ describe('Security Utilities', () => {
         })
 
         it('should return 403 if no organizationId', async () => {
-            ; (auth as any).mockResolvedValue({ user: { id: 'u1', role: 'ADMIN' } }) // missing org
+            ; (auth as any).mockResolvedValue({ user: { id: 'u1', role: Roles.CEO } }) // missing org
             const handler = async () => NextResponse.json({ ok: true })
-            const wrapped = withAuth('ADMIN', handler)
+            const wrapped = withAuth(Roles.CEO, handler)
 
             const res = await wrapped(mockReq)
             expect(res.status).toBe(403)
@@ -72,20 +73,21 @@ describe('Security Utilities', () => {
         })
 
         it('should return 403 if role is forbidden', async () => {
-            ; (auth as any).mockResolvedValue({ user: { id: 'u1', role: 'EMPLOYEE', organizationId: 'org-1' } })
+            ; (auth as any).mockResolvedValue({ user: { id: 'u1', role: Roles.EMPLOYEE, organizationId: 'org-1' } })
             const handler = async () => NextResponse.json({ ok: true })
-            const wrapped = withAuth('ADMIN', handler)
+            const wrapped = withAuth(Roles.CEO, handler)
 
             const res = await wrapped(mockReq)
             expect(res.status).toBe(403)
             const json = await res.json()
-            expect(json.error.message).toContain('ADMIN access required')
+            expect(json.error.code).toBe('FORBIDDEN')
+            expect(json.error.message).toContain('does not have access')
         })
 
         it('should succeed on happy path', async () => {
-            ; (auth as any).mockResolvedValue({ user: { id: 'u1', role: 'ADMIN', organizationId: 'org-1' } })
+            ; (auth as any).mockResolvedValue({ user: { id: 'u1', role: Roles.CEO, organizationId: 'org-1' } })
             const handler = async () => NextResponse.json({ ok: true }, { status: 200 })
-            const wrapped = withAuth('ADMIN', handler)
+            const wrapped = withAuth(Roles.CEO, handler)
 
             const res = await wrapped(mockReq)
             expect(res.status).toBe(200)
@@ -94,9 +96,9 @@ describe('Security Utilities', () => {
         })
 
         it('should handle internal handler errors gracefully', async () => {
-            ; (auth as any).mockResolvedValue({ user: { id: 'u1', role: 'ADMIN', organizationId: 'org-1' } })
+            ; (auth as any).mockResolvedValue({ user: { id: 'u1', role: Roles.CEO, organizationId: 'org-1' } })
             const handler = async () => { throw new Error('Simulated failure') }
-            const wrapped = withAuth('ADMIN', handler)
+            const wrapped = withAuth(Roles.CEO, handler)
 
             const res = await wrapped(mockReq)
             expect(res.status).toBe(500)

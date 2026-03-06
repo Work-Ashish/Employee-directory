@@ -4,6 +4,7 @@ import Google from "next-auth/providers/google"
 import Auth0 from "next-auth/providers/auth0"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { Roles, type Role } from "@/lib/permissions"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     session: { strategy: "jwt" },
@@ -99,7 +100,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                             name: user.name || "SSO User",
                             email: user.email,
                             hashedPassword: hashedRandom,
-                            role: "EMPLOYEE",
+                            role: Roles.EMPLOYEE,
                             organizationId: org.id,
                             avatar: user.image || null,
                         },
@@ -162,7 +163,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (session.user) {
                 const u = session.user as any
                 u.id = token.sub ?? ""
-                u.role = token.role ?? "EMPLOYEE"
+                u.role = token.role ?? Roles.EMPLOYEE
                 u.organizationId = token.organizationId as string | null
                 u.avatar = token.avatar
                 u.mustChangePassword = (token.mustChangePassword as boolean) ?? false
@@ -178,7 +179,7 @@ declare module "next-auth" {
     interface Session {
         user: {
             id: string
-            role?: string
+            role?: Role
             organizationId?: string | null
             avatar?: string | null
             mustChangePassword?: boolean
@@ -187,6 +188,7 @@ declare module "next-auth" {
     }
 
     interface User {
+        role: Role
         organizationId?: string | null
         avatar?: string | null
         mustChangePassword?: boolean

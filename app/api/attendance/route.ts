@@ -2,9 +2,10 @@ import { prisma } from "@/lib/prisma"
 import { withAuth, orgFilter } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { attendanceSchema } from "@/lib/schemas"
+import { Module, Action, hasPermission } from "@/lib/permissions"
 
 // GET /api/attendance – List attendance records (scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.ATTENDANCE, action: Action.VIEW }, async (req, ctx) => {
     try {
         const { searchParams } = new URL(req.url)
         const date = searchParams.get("date")
@@ -29,7 +30,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/attendance – Check in / Create record
-export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const POST = withAuth({ module: Module.ATTENDANCE, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = attendanceSchema.safeParse(body)
@@ -46,7 +47,7 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
                 return apiError("No employee profile linked to your account", ApiErrorCode.BAD_REQUEST, 400)
             }
             employeeId = employee.id
-        } else if (ctx.role !== "ADMIN") {
+        } else if (!hasPermission(ctx.role, Module.ATTENDANCE, Action.UPDATE)) {
             return apiError("Only admins can create attendance for other employees", ApiErrorCode.FORBIDDEN, 403)
         }
 

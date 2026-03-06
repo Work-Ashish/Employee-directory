@@ -10,7 +10,7 @@ export const employeeSchema = z.object({
     departmentId: z.string().min(1, "Department is required"),
     dateOfJoining: z.coerce.date(),
     salary: z.coerce.number().positive("Salary must be positive"),
-    status: z.enum(["ACTIVE", "ON_LEAVE", "RESIGNED", "TERMINATED"]).default("ACTIVE"),
+    status: z.enum(["ACTIVE", "ON_LEAVE", "RESIGNED", "TERMINATED", "INACTIVE", "ARCHIVED"]).default("ACTIVE"),
     address: z.string().optional().nullable(),
     managerId: z.string().optional().nullable(),
     avatarUrl: z.string().url().optional().nullable(),
@@ -115,6 +115,28 @@ export const performanceReviewSchema = z.object({
     reviewDate: z.coerce.date().optional(),
     status: z.enum(["PENDING", "COMPLETED", "EXCELLENT", "GOOD", "NEEDS_IMPROVEMENT"]).default("PENDING"),
     employeeId: z.string().min(1, "Employee ID is required"),
+    reviewerId: z.string().optional().nullable(),
+    reviewType: z.enum(["MANAGER", "SELF", "PEER"]).default("MANAGER"),
+    reviewPeriod: z.string().optional().nullable(),
+})
+
+export const teamSchema = z.object({
+    name: z.string().min(2, "Team name must be at least 2 characters"),
+    description: z.string().optional().nullable(),
+    leadId: z.string().min(1, "Team lead is required"),
+})
+
+export const teamMemberSchema = z.object({
+    teamId: z.string().min(1, "Team ID is required"),
+    employeeId: z.string().min(1, "Employee ID is required"),
+})
+
+export const feedbackSchema = z.object({
+    toEmployeeId: z.string().min(1, "Target employee is required"),
+    content: z.string().min(10, "Feedback must be at least 10 characters"),
+    rating: z.coerce.number().int().min(1).max(5),
+    isAnonymous: z.boolean().default(false),
+    period: z.string().min(1, "Period is required"), // e.g. "2026-Q1"
 })
 
 export const candidateSchema = z.object({

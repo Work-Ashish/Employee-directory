@@ -4,11 +4,12 @@ import React, { Suspense } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { AdminLeaveView } from "@/components/leave/AdminLeaveView"
 import { EmployeeLeaveView } from "@/components/leave/EmployeeLeaveView"
+import { hasPermission, Module, Action } from "@/lib/permissions"
 
 function LeaveContent() {
     const { user } = useAuth()
 
-    if (user?.role === 'EMPLOYEE') {
+    if (!hasPermission(user?.role ?? '', Module.LEAVES, Action.UPDATE)) {
         return <EmployeeLeaveView />
     }
 

@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import bcrypt from "bcryptjs"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
 // PUT /api/user/password (Self/Admin, scoped)
-export const PUT = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const PUT = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, async (req, ctx) => {
     try {
         const body = await req.json()
         const { currentPassword, newPassword, isFirstLogin } = body

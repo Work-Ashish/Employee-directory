@@ -1,51 +1,40 @@
-import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
-
-interface RouteParams {
-    params: Promise<{ id: string }>
-}
+import { withAuth } from "@/lib/security"
+import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
+import { Module, Action } from "@/lib/permissions"
 
 // GET /api/attendance/:id
-export async function GET(_req: Request, { params }: RouteParams) {
+export const GET = withAuth({ module: Module.ATTENDANCE, action: Action.VIEW }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const { id } = await params
+        const { id } = await ctx.params
 
         const record = await prisma.attendance.findUnique({
-            where: { id },
+            where: { id, organizationId: ctx.organizationId },
             include: { employee: true },
         })
 
         if (!record) {
-            return NextResponse.json({ error: "Record not found" }, { status: 404 })
+            return apiError("Record not found", ApiErrorCode.NOT_FOUND, 404)
         }
 
-        return NextResponse.json(record)
+        return apiSuccess(record)
     } catch (error) {
         console.error("[ATTENDANCE_GET]", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})
 
 // PUT /api/attendance/:id – Update (check-out, edit record)
-export async function PUT(req: Request, { params }: RouteParams) {
+export const PUT = withAuth({ module: Module.ATTENDANCE, action: Action.UPDATE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const { id } = await params
+        const { id } = await ctx.params
         const body = await req.json()
 
-        const existing = await prisma.attendance.findUnique({ where: { id } })
+        const existing = await prisma.attendance.findUnique({
+            where: { id, organizationId: ctx.organizationId },
+        })
         if (!existing) {
-            return NextResponse.json({ error: "Record not found" }, { status: 404 })
+            return apiError("Record not found", ApiErrorCode.NOT_FOUND, 404)
         }
 
         const data: Record<string, unknown> = {}
@@ -60,33 +49,30 @@ export async function PUT(req: Request, { params }: RouteParams) {
             include: { employee: true },
         })
 
-        return NextResponse.json(record)
+        return apiSuccess(record)
     } catch (error) {
         console.error("[ATTENDANCE_PUT]", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})
 
 // DELETE /api/attendance/:id
-export async function DELETE(_req: Request, { params }: RouteParams) {
+export const DELETE = withAuth({ module: Module.ATTENDANCE, action: Action.DELETE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session || session.user?.role !== "ADMIN") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        }
+        const { id } = await ctx.params
 
-        const { id } = await params
-
-        const existing = await prisma.attendance.findUnique({ where: { id } })
+        const existing = await prisma.attendance.findUnique({
+            where: { id, organizationId: ctx.organizationId },
+        })
         if (!existing) {
-            return NextResponse.json({ error: "Record not found" }, { status: 404 })
+            return apiError("Record not found", ApiErrorCode.NOT_FOUND, 404)
         }
 
         await prisma.attendance.delete({ where: { id } })
 
-        return NextResponse.json({ message: "Record deleted" })
+        return apiSuccess({ message: "Record deleted" })
     } catch (error) {
         console.error("[ATTENDANCE_DELETE]", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

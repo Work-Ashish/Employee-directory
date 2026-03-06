@@ -85,7 +85,8 @@ export default function IntegrationsPage() {
     }
 
     const handleExport = async (platform: string) => {
-        const month = "2024-03" // Placeholder - in a real app would use a picker
+        const now = new Date()
+        const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
         try {
             setExportLoading(true)
             const res = await fetch(`/api/integrations/export?platform=${platform}&month=${month}`)
@@ -229,7 +230,7 @@ export default function IntegrationsPage() {
                         <label className="text-[13px] font-bold text-[var(--text2)]">Payload URL</label>
                         <input
                             {...form.register("url")}
-                            placeholder="https://your-api.com/webhook"
+                            placeholder="Enter your webhook endpoint URL"
                             className="w-full p-3 bg-[var(--bg2)] border border-[var(--border)] rounded-xl text-sm focus:border-[var(--accent)] outline-none"
                         />
                         {form.formState.errors.url && <p className="text-[11px] text-[var(--red)]">{form.formState.errors.url.message as string}</p>}

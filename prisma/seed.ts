@@ -47,7 +47,7 @@ async function main() {
             name: "Admin User",
             email: "admin@emspro.com",
             hashedPassword,
-            role: "ADMIN",
+            role: "CEO",
             avatar: "AU",
             organizationId
         },

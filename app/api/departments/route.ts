@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { departmentSchema } from "@/lib/schemas"
 
 // GET /api/departments – List all departments (scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.EMPLOYEES, action: Action.VIEW }, async (req, ctx) => {
     try {
         const departments = await prisma.department.findMany({
             where: { organizationId: ctx.organizationId },
@@ -22,7 +23,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/departments – Create a department
-export const POST = withAuth("ADMIN", async (req, ctx) => {
+export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = departmentSchema.safeParse(body)

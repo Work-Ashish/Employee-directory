@@ -41,6 +41,11 @@ model Organization {
   workflowTemplates  WorkflowTemplate[]
   workflowInstances  WorkflowInstance[]
 
+  // RBAC Redesign
+  teams              Team[]
+  employeeFeedback   EmployeeFeedback[]
+  auditLogs          AuditLog[]
+
   // Attendance Policy (Week 7)
   shifts             Shift[]
   shiftAssignments   ShiftAssignment[]
@@ -120,6 +125,10 @@ model Employee {
   userId         String?        @unique
   managerId      String?
 
+  // Soft delete (RBAC Redesign)
+  deletedAt      DateTime?
+  isArchived     Boolean        @default(false)
+
   // Sub-profiles
   profile     EmployeeProfile?
   addressInfo EmployeeAddress?
@@ -137,6 +146,7 @@ model Employee {
   leaves             Leave[]
   payrollRecords     Payroll[]
   performanceReviews PerformanceReview[]
+  reviewsConducted   PerformanceReview[]  @relation("ReviewedBy")
   pfRecords          ProvidentFund[]
   resignations       Resignation[]
   tickets            Ticket[]
@@ -148,6 +158,12 @@ model Employee {
   adminAlerts        AdminAlerts[]
   shiftAssignments   ShiftAssignment[]
   regularizations    AttendanceRegularization[]
+
+  // Teams & Feedback (RBAC Redesign)
+  teamMemberships    TeamMember[]
+  teamsLed           Team[]               @relation("TeamLead")
+  feedbackGiven      EmployeeFeedback[]   @relation("FeedbackGiven")
+  feedbackReceived   EmployeeFeedback[]   @relation("FeedbackReceived")
 
   // Workflows
   requestedWorkflows WorkflowInstance[] @relation("WorkflowRequester")
@@ -515,11 +531,19 @@ model PerformanceReview {
   organizationId String
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
+
+  // RBAC Redesign: reviewer tracking
+  reviewerId     String?
+  reviewType     ReviewType        @default(MANAGER)
+  reviewPeriod   String?           // e.g. "2026-Q1", "2026-H1", "2026"
+
   employee       Employee          @relation(fields: [employeeId], references: [id])
+  reviewer       Employee?         @relation("ReviewedBy", fields: [reviewerId], references: [id])
   organization   Organization      @relation(fields: [organizationId], references: [id])
 
   @@index([employeeId])
   @@index([organizationId])
+  @@index([reviewerId])
 }
 
 model Training {
@@ -821,15 +845,93 @@ model UserSession {
   @@index([organizationId])
 }
 
+// ─── RBAC Redesign: Teams, Feedback, AuditLog ───
+
+model Team {
+  id             String       @id @default(cuid())
+  name           String
+  description    String?
+  leadId         String
+  createdById    String?
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  lead           Employee     @relation("TeamLead", fields: [leadId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  members        TeamMember[]
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+  @@index([leadId])
+}
+
+model TeamMember {
+  id         String   @id @default(cuid())
+  teamId     String
+  employeeId String
+  joinedAt   DateTime @default(now())
+
+  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([teamId, employeeId])
+  @@index([employeeId])
+}
+
+model EmployeeFeedback {
+  id             String       @id @default(cuid())
+  fromEmployeeId String?
+  toEmployeeId   String
+  content        String       @db.Text
+  rating         Int          // 1-5
+  isAnonymous    Boolean      @default(false)
+  period         String       // e.g. "2026-Q1"
+  organizationId String
+  createdAt      DateTime     @default(now())
+
+  fromEmployee   Employee?    @relation("FeedbackGiven", fields: [fromEmployeeId], references: [id])
+  toEmployee     Employee     @relation("FeedbackReceived", fields: [toEmployeeId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([fromEmployeeId, toEmployeeId, period])
+  @@index([toEmployeeId])
+  @@index([organizationId])
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  userId         String
+  action         String       // e.g. "CREATE", "UPDATE", "DELETE"
+  entityType     String       // e.g. "Employee", "Payroll", "Leave"
+  entityId       String?
+  changes        Json?
+  ipAddress      String?
+  userAgent      String?
+  organizationId String
+  createdAt      DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([userId])
+  @@index([entityType, entityId])
+}
+
+enum ReviewType {
+  MANAGER
+  SELF
+  PEER
+}
+
 // ─── Enums ───
 
 enum Role {
-  ADMIN
+  CEO
+  HR
+  PAYROLL
+  TEAM_LEAD
   EMPLOYEE
-  HR_MANAGER
-  PAYROLL_ADMIN
-  RECRUITER
-  IT_ADMIN
 }
 
 enum EmployeeStatus {
@@ -837,6 +939,8 @@ enum EmployeeStatus {
   ON_LEAVE
   RESIGNED
   TERMINATED
+  INACTIVE
+  ARCHIVED
 }
 
 enum AssetType {

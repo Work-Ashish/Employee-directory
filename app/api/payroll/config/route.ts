@@ -1,19 +1,15 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError } from "@/lib/api-response"
 import { payrollConfigSchema } from "@/lib/schemas/payroll"
+import { Module, Action } from "@/lib/permissions"
 
 // GET /api/payroll/config - Get active compliance configuration
-export async function GET(req: NextRequest) {
+export const GET = withAuth({ module: Module.PAYROLL, action: Action.VIEW }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.organizationId || session.user.role !== "ADMIN") {
-            return NextResponse.json(apiError("Unauthorized", "UNAUTHORIZED", 401), { status: 401 })
-        }
-
         const config = await prisma.payrollComplianceConfig.findFirst({
-            where: { organizationId: session.user.organizationId, isActive: true },
+            where: { organizationId: ctx.organizationId, isActive: true },
             include: { taxSlabs: { orderBy: { minIncome: 'asc' } } }
         })
 
@@ -21,16 +17,11 @@ export async function GET(req: NextRequest) {
     } catch (err: any) {
         return NextResponse.json(apiError("Internal Server Error", "INTERNAL_ERROR", 500), { status: 500 })
     }
-}
+})
 
 // POST /api/payroll/config - Update or create compliance configuration
-export async function POST(req: NextRequest) {
+export const POST = withAuth({ module: Module.PAYROLL, action: Action.UPDATE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.organizationId || session.user.role !== "ADMIN") {
-            return NextResponse.json(apiError("Unauthorized", "UNAUTHORIZED", 401), { status: 401 })
-        }
-
         const body = await req.json()
         const parsed = payrollConfigSchema.safeParse(body)
 
@@ -43,7 +34,7 @@ export async function POST(req: NextRequest) {
         const result = await prisma.$transaction(async (tx) => {
             // Deactivate existing
             await tx.payrollComplianceConfig.updateMany({
-                where: { organizationId: session.user.organizationId! },
+                where: { organizationId: ctx.organizationId },
                 data: { isActive: false }
             })
 
@@ -51,7 +42,7 @@ export async function POST(req: NextRequest) {
             return tx.payrollComplianceConfig.create({
                 data: {
                     ...configData,
-                    organizationId: session.user.organizationId!,
+                    organizationId: ctx.organizationId,
                     taxSlabs: taxSlabs?.length ? {
                         create: taxSlabs.map(s => ({
                             minIncome: s.minIncome,
@@ -69,4 +60,4 @@ export async function POST(req: NextRequest) {
     } catch (err: any) {
         return NextResponse.json(apiError("Internal Server Error", "INTERNAL_ERROR", 500, err), { status: 500 })
     }
-}
+})

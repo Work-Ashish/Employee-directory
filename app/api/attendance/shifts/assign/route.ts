@@ -1,22 +1,18 @@
-import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { shiftAssignmentSchema } from "@/lib/schemas/attendance"
+import { Module, Action } from "@/lib/permissions"
 
-export async function POST(req: NextRequest) {
+// POST /api/attendance/shifts/assign – Assign a shift to an employee
+export const POST = withAuth({ module: Module.ATTENDANCE, action: Action.UPDATE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.id || session.user.role !== "ADMIN") {
-            return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
-        }
-
         const body = await req.json()
         const validatedData = shiftAssignmentSchema.parse(body)
 
         // Check if shift exists in the organization
         const shift = await prisma.shift.findFirst({
-            where: { id: validatedData.shiftId, organizationId: session.user.organizationId! }
+            where: { id: validatedData.shiftId, organizationId: ctx.organizationId }
         })
 
         if (!shift) {
@@ -26,7 +22,7 @@ export async function POST(req: NextRequest) {
         const assignment = await prisma.shiftAssignment.create({
             data: {
                 ...validatedData,
-                organizationId: session.user.organizationId!
+                organizationId: ctx.organizationId
             }
         })
 
@@ -38,4 +34,4 @@ export async function POST(req: NextRequest) {
         }
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

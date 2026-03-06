@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action, hasPermission } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { NextResponse } from "next/server"
 
@@ -7,7 +8,7 @@ import { NextResponse } from "next/server"
  * POST /api/reports/query
  * Dynamically queries the database based on a report configuration.
  */
-export const POST = withAuth(["ADMIN", "HR_MANAGER", "PAYROLL_ADMIN"], async (req, ctx) => {
+export const POST = withAuth({ module: Module.REPORTS, action: Action.VIEW }, async (req, ctx) => {
     try {
         const body = await req.json()
         const { entityType, columns, filters, sortBy, sortOrder = "desc", limit = 100 } = body
@@ -55,8 +56,8 @@ export const POST = withAuth(["ADMIN", "HR_MANAGER", "PAYROLL_ADMIN"], async (re
 
             case "PAYROLL":
                 // Strict check for Payroll
-                if (ctx.role !== "ADMIN" && ctx.role !== "PAYROLL_ADMIN") {
-                    return apiError("Insufficient permissions for Payroll reports", ApiErrorCode.UNAUTHORIZED, 403)
+                if (!hasPermission(ctx.role, Module.PAYROLL, Action.VIEW)) {
+                    return apiError("Insufficient permissions for Payroll reports", ApiErrorCode.FORBIDDEN, 403)
                 }
                 [result, total] = await Promise.all([
                     prisma.payroll.findMany({
@@ -71,8 +72,8 @@ export const POST = withAuth(["ADMIN", "HR_MANAGER", "PAYROLL_ADMIN"], async (re
 
             case "ATTENDANCE":
                 // HR and Admins can see attendance
-                if (ctx.role !== "ADMIN" && ctx.role !== "HR_MANAGER" && ctx.role !== "PAYROLL_ADMIN") {
-                    return apiError("Insufficient permissions for Attendance reports", ApiErrorCode.UNAUTHORIZED, 403)
+                if (!hasPermission(ctx.role, Module.ATTENDANCE, Action.VIEW)) {
+                    return apiError("Insufficient permissions for Attendance reports", ApiErrorCode.FORBIDDEN, 403)
                 }
                 [result, total] = await Promise.all([
                     prisma.attendance.findMany({

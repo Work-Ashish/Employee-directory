@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { EmployeeStatus, AttendanceStatus, PayrollStatus } from "@prisma/client"
+import { Roles } from "@/lib/permissions"
 import bcrypt from "bcryptjs"
 
 export const runtime = "nodejs"
@@ -42,7 +43,7 @@ export async function POST() {
                 name: "Load Test Admin",
                 email: "admin@loadtest.emspro.com",
                 hashedPassword,
-                role: "ADMIN",
+                role: Roles.CEO,
                 organizationId
             }
         })

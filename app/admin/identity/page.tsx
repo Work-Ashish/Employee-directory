@@ -5,18 +5,19 @@ import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { CheckCircledIcon, LockClosedIcon, PersonIcon, GlobeIcon } from "@radix-ui/react-icons"
+import { canAccessModule, Module } from "@/lib/permissions"
 
 export default function IdentityPage() {
     const { user, isLoading } = useAuth()
     const router = useRouter()
 
     useEffect(() => {
-        if (!isLoading && user?.role !== "ADMIN") {
+        if (!isLoading && !canAccessModule(user?.role ?? "", Module.SETTINGS)) {
             router.push("/")
         }
     }, [user, isLoading, router])
 
-    if (isLoading || user?.role !== "ADMIN") return null
+    if (isLoading || !canAccessModule(user?.role ?? "", Module.SETTINGS)) return null
 
     return (
         <div className="space-y-8 animate-[pageIn_0.3s_ease-out]">

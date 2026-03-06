@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node scripts/create_admin.js)",
+      "Bash(npx prisma db push)",
+      "Bash(npx prisma db push --accept-data-loss)",
+      "Bash(xargs wc -l)",
+      "Bash(npx vitest run __tests__/lib/permissions.test.ts)",
+      "Bash(npx vitest run)",
+      "Bash(npm run build)"
+    ]
+  }
+}

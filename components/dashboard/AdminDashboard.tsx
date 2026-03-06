@@ -1,40 +1,9 @@
+import * as React from "react"
 import { extractArray, cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Modal } from "@/components/ui/Modal"
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from "recharts"
 import { StatCard, DeptRow, HireRow } from "./DashboardComponents"
-
-const deptData = [
-    { name: "Engineering", value: 30, color: "#007aff", count: 3 },
-    { name: "Sales", value: 20, color: "#38bdf8", count: 2 },
-    { name: "Marketing", value: 20, color: "#ec4899", count: 2 },
-    { name: "Finance", value: 10, color: "#f59e0b", count: 1 },
-    { name: "HR", value: 10, color: "#10b981", count: 1 }
-]
-
-const hiringData = [
-    { month: 'Jan', hires: 2, details: [{ name: 'Alex M.', role: 'Intern' }, { name: 'Sarah J.', role: 'Jr Dev' }] },
-    { month: 'Feb', hires: 4, details: [{ name: 'Mike T.', role: 'Sales' }, { name: 'Jenny L.', role: 'HR' }, { name: 'Rob S.', role: 'Marketing' }, { name: 'Kate W.', role: 'Finance' }] },
-    { month: 'Mar', hires: 3, details: [{ name: 'Tom B.', role: 'DevOps' }, { name: 'Jerry C.', role: 'QA' }, { name: 'Ben G.', role: 'Design' }] },
-    { month: 'Apr', hires: 7, details: Array(7).fill({ name: 'New Hire', role: 'Expansion Team' }) },
-    { month: 'May', hires: 5, details: Array(5).fill({ name: 'New Hire', role: 'Support' }) },
-    { month: 'Jun', hires: 9, details: Array(9).fill({ name: 'New Hire', role: 'Engineering' }) },
-]
-
-const salaryData = [
-    { range: '30-50k', count: 5 },
-    { range: '50-80k', count: 12 },
-    { range: '80-120k', count: 8 },
-    { range: '120k+', count: 3 },
-]
-
-const recentHires = [
-    { initials: "MJ", name: "Michael Johnson", role: "Sales Representative", dept: "Sales", date: "Mar 10", color: "bg-gradient-to-br from-[#007aff] to-[#5856d6]" },
-    { initials: "LA", name: "Lisa Anderson", role: "Content Strategist", dept: "Marketing", date: "Jan 8", color: "bg-gradient-to-br from-[#ec4899] to-[#f43f5e]" },
-    { initials: "DW", name: "David Wilson", role: "Financial Analyst", dept: "Finance", date: "Nov 15", color: "bg-gradient-to-br from-[#38bdf8] to-[#0ea5e9]" },
-    { initials: "JD", name: "John Doe", role: "Senior Software Engineer", dept: "Engineering", date: "Jan 15", color: "bg-gradient-to-br from-[#3395ff] to-[#007aff]" },
-    { initials: "JT", name: "James Taylor", role: "DevOps Engineer", dept: "Engineering", date: "Oct 30", color: "bg-gradient-to-br from-[#10b981] to-[#059669]" },
-]
 
 export function AdminDashboard() {
     const [loading, setLoading] = React.useState(true)
@@ -137,7 +106,7 @@ export function AdminDashboard() {
         ? recentHires.filter((h: any) => h.dept === selectedDept)
         : recentHires
 
-    const selectedMonthData = selectedMonth ? hiringData.find((d: any) => d.month === selectedMonth) : null
+    const selectedMonthData: any = selectedMonth ? hiringData.find((d: any) => d.month === selectedMonth) : null
 
     return (
         <div className="space-y-5">

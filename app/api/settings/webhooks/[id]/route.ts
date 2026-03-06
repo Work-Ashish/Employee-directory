@@ -1,32 +1,20 @@
 import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth, orgFilter } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { webhookUpdateSchema } from "@/lib/schemas/integrations"
-import { getSessionEmployee } from "@/lib/session-employee"
 
-export async function PATCH(
-    req: NextRequest,
-    props: { params: Promise<{ id: string }> }
-) {
+export const PATCH = withAuth({ module: Module.SETTINGS, action: Action.UPDATE }, async (req, ctx) => {
     try {
-        const params = await props.params
-        const { id } = params
-        const session = await auth()
-        const employee = await getSessionEmployee()
-        if (!session?.user?.id || !employee) {
-            return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
-        }
-
-        if (session.user.role !== "ADMIN" && session.user.role !== "HR_MANAGER") {
-            return apiError("Forbidden", ApiErrorCode.FORBIDDEN, 403)
-        }
+        const resolvedParams = await ctx.params
+        const { id } = resolvedParams
 
         const body = await req.json()
         const validatedData = webhookUpdateSchema.parse(body)
 
         const webhook = await prisma.webhook.update({
-            where: { id, organizationId: employee.organizationId },
+            where: { id, ...orgFilter(ctx) },
             data: validatedData
         })
 
@@ -38,27 +26,15 @@ export async function PATCH(
         }
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})
 
-export async function DELETE(
-    req: NextRequest,
-    props: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withAuth({ module: Module.SETTINGS, action: Action.DELETE }, async (req, ctx) => {
     try {
-        const params = await props.params
-        const { id } = params
-        const session = await auth()
-        const employee = await getSessionEmployee()
-        if (!session?.user?.id || !employee) {
-            return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
-        }
-
-        if (session.user.role !== "ADMIN" && session.user.role !== "HR_MANAGER") {
-            return apiError("Forbidden", ApiErrorCode.FORBIDDEN, 403)
-        }
+        const resolvedParams = await ctx.params
+        const { id } = resolvedParams
 
         await prisma.webhook.delete({
-            where: { id, organizationId: employee.organizationId }
+            where: { id, ...orgFilter(ctx) }
         })
 
         return apiSuccess(null, { message: "Webhook deleted successfully" })
@@ -66,4 +42,4 @@ export async function DELETE(
         console.error("[WEBHOOK_DELETE]", error)
         return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

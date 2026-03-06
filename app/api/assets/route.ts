@@ -2,9 +2,10 @@ import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { assetSchema } from "@/lib/schemas"
+import { Module, Action } from "@/lib/permissions"
 
 // GET /api/assets – List all assets (scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.ASSETS, action: Action.VIEW }, async (req, ctx) => {
     try {
         const assets = await prisma.asset.findMany({
             where: { organizationId: ctx.organizationId },
@@ -19,7 +20,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/assets – Create a new asset
-export const POST = withAuth("ADMIN", async (req, ctx) => {
+export const POST = withAuth({ module: Module.ASSETS, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = assetSchema.safeParse(body)

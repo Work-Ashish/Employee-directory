@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action, Roles } from "@/lib/permissions"
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns"
 import { redis } from "@/lib/redis"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
@@ -7,11 +8,11 @@ import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 export const dynamic = "force-dynamic"
 export const fetchCache = "force-no-store"
 
-export const GET = withAuth(["ADMIN", "EMPLOYEE", "HR_MANAGER", "PAYROLL_ADMIN", "RECRUITER", "IT_ADMIN"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, async (req, ctx) => {
     try {
         let payload: any = { role: ctx.role }
 
-        if (ctx.role !== "EMPLOYEE") {
+        if (ctx.role !== Roles.EMPLOYEE) {
             // --- ADMINISTRATIVE VIEW (Universal for Admin/Management) ---
             const [totalEmployees, activeEmployees, onLeaveEmployees, resignedEmployees, payroll] = await Promise.all([
                 prisma.employee.count({ where: { organizationId: ctx.organizationId } }),
@@ -156,21 +157,38 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE", "HR_MANAGER", "PAYROLL_ADMIN",
                 take: 5
             })
 
+            // Derive team status from today's attendance records
+            const today = new Date()
+            today.setHours(0, 0, 0, 0)
+            const teamAttendance = await prisma.attendance.findMany({
+                where: {
+                    employeeId: { in: teamMembers.map(tm => tm.id) },
+                    date: { gte: today },
+                },
+                select: { employeeId: true },
+            })
+            const presentIds = new Set(teamAttendance.map(a => a.employeeId))
+
+            // Derive review status from latest performance review
+            const latestReview = await prisma.performanceReview.findFirst({
+                where: { employeeId: employee.id },
+                orderBy: { createdAt: "desc" },
+                select: { status: true, reviewPeriod: true },
+            })
+
             payload = {
                 ...payload,
                 stats: {
                     attendanceCount: employee.attendanceRecords.length,
-                    leaveBalance: 15 - employee.leaves.length, // Simple mock balance for now
+                    leavesUsed: employee.leaves.length,
                     pendingTrainingCount: employee.trainings.length,
-                    reviewStatus: "Upcoming (Q2)",
+                    reviewStatus: latestReview
+                        ? `${latestReview.status}${latestReview.reviewPeriod ? ` (${latestReview.reviewPeriod})` : ""}`
+                        : "No reviews yet",
                 },
-                schedule: [
-                    { title: "Daily Sync", time: "10:00 AM", type: "Meeting", color: "bg-blue-500" },
-                    { title: "Project Review", time: "02:00 PM", type: "Internal", color: "bg-purple-500" }
-                ],
                 teamStatus: teamMembers.map(tm => ({
                     name: `${tm.firstName} ${tm.lastName}`,
-                    status: Math.random() > 0.3 ? "Active" : "Away",
+                    status: presentIds.has(tm.id) ? "Active" : "Away",
                     initials: `${tm.firstName[0]}${tm.lastName[0]}`.toUpperCase()
                 }))
             }

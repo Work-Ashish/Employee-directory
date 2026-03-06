@@ -1,38 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { workflowTemplateSchema } from '@/lib/schemas/workflow'
+import { withAuth, orgFilter } from '@/lib/security'
+import { Module, Action } from '@/lib/permissions'
 import { apiError, apiSuccess } from '@/lib/api-response'
-import { auth } from '@/lib/auth'
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth({ module: Module.WORKFLOWS, action: Action.VIEW }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.organizationId) {
-            return NextResponse.json(apiError('Unauthorized', 'UNAUTHORIZED', 401), { status: 401 })
-        }
-
         const templates = await prisma.workflowTemplate.findMany({
-            where: { organizationId: session.user.organizationId },
+            where: orgFilter(ctx),
             include: { steps: { orderBy: { stepOrder: 'asc' } } }
         })
-        return NextResponse.json(apiSuccess(templates))
+        return apiSuccess(templates)
     } catch (err) {
-        return NextResponse.json(apiError('Internal Server Error', 'INTERNAL_ERROR', 500), { status: 500 })
+        return apiError('Internal Server Error', 'INTERNAL_ERROR', 500)
     }
-}
+})
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth({ module: Module.WORKFLOWS, action: Action.CREATE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.organizationId || session.user.role !== 'ADMIN') {
-            return NextResponse.json(apiError('Forbidden', 'FORBIDDEN', 403), { status: 403 })
-        }
-
         const body = await req.json()
         const validated = workflowTemplateSchema.safeParse(body)
 
         if (!validated.success) {
-            return NextResponse.json(apiError('Validation Error', 'VALIDATION_ERROR', 400, validated.error), { status: 400 })
+            return apiError('Validation Error', 'VALIDATION_ERROR', 400, validated.error)
         }
 
         const template = await prisma.workflowTemplate.create({
@@ -41,7 +31,7 @@ export async function POST(req: NextRequest) {
                 description: validated.data.description,
                 entityType: validated.data.entityType,
                 status: 'PUBLISHED',
-                organizationId: session.user.organizationId,
+                organizationId: ctx.organizationId,
                 steps: {
                     create: validated.data.steps.map((s) => ({
                         stepOrder: s.stepOrder,
@@ -56,8 +46,8 @@ export async function POST(req: NextRequest) {
             include: { steps: true }
         })
 
-        return NextResponse.json(apiSuccess(template), { status: 201 })
+        return apiSuccess(template, undefined, 201)
     } catch (err) {
-        return NextResponse.json(apiError('Internal Server Error', 'INTERNAL_ERROR', 500), { status: 500 })
+        return apiError('Internal Server Error', 'INTERNAL_ERROR', 500)
     }
-}
+})

@@ -1,22 +1,15 @@
-import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth, orgFilter } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
+import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
 // GET /api/employees/[id] – Get single employee
-export async function GET(
-    _req: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const GET = withAuth({ module: Module.EMPLOYEES, action: Action.VIEW }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
+        const { id } = await ctx.params
 
-        const { id } = await params
-
-        const employee = await prisma.employee.findUnique({
-            where: { id },
+        const employee = await prisma.employee.findFirst({
+            where: orgFilter(ctx, { id, deletedAt: null }),
             include: {
                 department: true,
                 assets: true,
@@ -27,33 +20,27 @@ export async function GET(
         })
 
         if (!employee) {
-            return NextResponse.json({ error: "Not found" }, { status: 404 })
+            return apiError("Not found", ApiErrorCode.NOT_FOUND, 404)
         }
 
-        return NextResponse.json(employee)
+        return apiSuccess(employee)
     } catch (error) {
         console.error("[EMPLOYEE_GET]", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})
 
 // PUT /api/employees/[id] – Update employee
-export async function PUT(
-    req: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const PUT = withAuth({ module: Module.EMPLOYEES, action: Action.UPDATE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session || session.user?.role !== "ADMIN") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        }
-
-        const { id } = await params
+        const { id } = await ctx.params
         const body = await req.json()
 
-        const existing = await prisma.employee.findUnique({ where: { id } })
+        const existing = await prisma.employee.findFirst({
+            where: orgFilter(ctx, { id }),
+        })
         if (!existing) {
-            return NextResponse.json({ error: "Employee not found" }, { status: 404 })
+            return apiError("Employee not found", ApiErrorCode.NOT_FOUND, 404)
         }
 
         const employee = await prisma.employee.update({
@@ -75,49 +62,50 @@ export async function PUT(
             include: { department: true },
         })
 
-        return NextResponse.json(employee)
+        return apiSuccess(employee)
     } catch (error) {
         console.error("[EMPLOYEE_PUT]", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})
 
-// DELETE /api/employees/[id] – Delete employee and related records
-export async function DELETE(
-    _req: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
+// DELETE /api/employees/[id] – Soft-delete employee (archive)
+export const DELETE = withAuth({ module: Module.EMPLOYEES, action: Action.DELETE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session || session.user?.role !== "ADMIN") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        }
+        const { id } = await ctx.params
 
-        const { id } = await params
-
-        const existing = await prisma.employee.findUnique({ where: { id } })
+        const existing = await prisma.employee.findFirst({
+            where: orgFilter(ctx, { id, deletedAt: null }),
+        })
         if (!existing) {
-            return NextResponse.json({ error: "Employee not found" }, { status: 404 })
+            return apiError("Employee not found", ApiErrorCode.NOT_FOUND, 404)
         }
 
         await prisma.$transaction([
-            prisma.attendance.deleteMany({ where: { employeeId: id } }),
-            prisma.leave.deleteMany({ where: { employeeId: id } }),
-            prisma.payroll.deleteMany({ where: { employeeId: id } }),
-            prisma.providentFund.deleteMany({ where: { employeeId: id } }),
-            prisma.performanceReview.deleteMany({ where: { employeeId: id } }),
-            prisma.trainingEnrollment.deleteMany({ where: { employeeId: id } }),
-            prisma.ticket.deleteMany({ where: { employeeId: id } }),
-            prisma.resignation.deleteMany({ where: { employeeId: id } }),
-            prisma.document.deleteMany({ where: { employeeId: id } }),
-            prisma.asset.updateMany({ where: { assignedToId: id }, data: { assignedToId: null, assignedDate: null, status: "AVAILABLE" } }),
-            prisma.employee.updateMany({ where: { managerId: id }, data: { managerId: null } }),
-            prisma.employee.delete({ where: { id } }),
+            // Soft-delete the employee — preserve all historical data
+            prisma.employee.update({
+                where: { id },
+                data: {
+                    deletedAt: new Date(),
+                    isArchived: true,
+                    status: "ARCHIVED",
+                },
+            }),
+            // Unassign assets
+            prisma.asset.updateMany({
+                where: { assignedToId: id },
+                data: { assignedToId: null, assignedDate: null, status: "AVAILABLE" },
+            }),
+            // Remove as manager from other employees
+            prisma.employee.updateMany({
+                where: { managerId: id },
+                data: { managerId: null },
+            }),
         ])
 
-        return NextResponse.json({ message: "Deleted" })
+        return apiSuccess({ message: "Employee archived successfully" })
     } catch (error) {
         console.error("[EMPLOYEE_DELETE]", error)
-        return NextResponse.json({ error: "Failed to delete employee. They may have linked records." }, { status: 500 })
+        return apiError("Failed to archive employee", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

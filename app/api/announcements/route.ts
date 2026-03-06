@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { announcementSchema } from "@/lib/schemas"
 
 // GET /api/announcements – List announcements (scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.ANNOUNCEMENTS, action: Action.VIEW }, async (req, ctx) => {
     try {
         const announcements = await prisma.announcement.findMany({
             where: { organizationId: ctx.organizationId },
@@ -22,7 +23,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/announcements – Create an announcement
-export const POST = withAuth("ADMIN", async (req, ctx) => {
+export const POST = withAuth({ module: Module.ANNOUNCEMENTS, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = announcementSchema.safeParse(body)
@@ -50,7 +51,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
 })
 
 // DELETE /api/announcements – Delete an announcement
-export const DELETE = withAuth("ADMIN", async (req, ctx) => {
+export const DELETE = withAuth({ module: Module.ANNOUNCEMENTS, action: Action.DELETE }, async (req, ctx) => {
     try {
         const { searchParams } = new URL(req.url)
         const id = searchParams.get("id")
@@ -74,7 +75,7 @@ export const DELETE = withAuth("ADMIN", async (req, ctx) => {
 })
 
 // PUT /api/announcements – Update an announcement
-export const status = withAuth("ADMIN", async (req, ctx) => {
+export const status = withAuth({ module: Module.ANNOUNCEMENTS, action: Action.UPDATE }, async (req, ctx) => {
     // Note: Renovating to use PUT export correctly
     try {
         const body = await req.json()

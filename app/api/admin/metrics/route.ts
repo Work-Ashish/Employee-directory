@@ -1,8 +1,9 @@
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { MetricsCollector } from "@/lib/metrics"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
-export const GET = withAuth("ADMIN", async (req) => {
+export const GET = withAuth({ module: Module.SETTINGS, action: Action.VIEW }, async (req) => {
     try {
         const url = new URL(req.url)
         const dateParam = url.searchParams.get("date") || new Date().toISOString().split('T')[0]

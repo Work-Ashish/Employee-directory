@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MetricsCollector } from './metrics'
 import { redis } from './redis'
 import { prisma } from './prisma'
+import { Roles } from '@/lib/permissions'
 
 vi.mock('./redis', () => ({
     redis: {
@@ -64,7 +65,7 @@ describe('MetricsCollector', () => {
             })
 
             expect(prisma.employee.findFirst).toHaveBeenCalledWith({
-                where: { organizationId: 'org-1', user: { role: 'ADMIN' } }
+                where: { organizationId: 'org-1', user: { role: Roles.CEO } }
             })
             expect(prisma.adminAlerts.create).toHaveBeenCalled()
             expect(redis.set).toHaveBeenCalledWith(expect.stringContaining('alert_inhibited'), true, { ex: 14400 })

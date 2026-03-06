@@ -1,26 +1,16 @@
-import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth, orgFilter } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
+import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
-export async function GET() {
+export const GET = withAuth({ module: Module.SETTINGS, action: Action.VIEW }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-        // Check if user is admin
-        const user = await prisma.user.findUnique({
-            where: { id: session.user.id },
-            select: { role: true }
-        })
-        if (user?.role !== "ADMIN") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        }
-
         const today = new Date()
         today.setHours(0, 0, 0, 0)
 
         // Get employees with their active sessions (paginated)
         const employees = await prisma.employee.findMany({
+            where: orgFilter(ctx),
             take: 100, // K3: Bounded — prevents OOM with 50K employees
             select: {
                 id: true,
@@ -93,12 +83,12 @@ export async function GET() {
         const onBreak = dashboard.filter(d => d.currentStatus === "break").length
         const offline = dashboard.filter(d => d.currentStatus === "offline").length
 
-        return NextResponse.json({
+        return apiSuccess({
             employees: dashboard,
             summary: { online, idle, onBreak, offline, total: dashboard.length }
         })
     } catch (error: any) {
         console.error("[ADMIN_TIME_TRACKER]", error?.message)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

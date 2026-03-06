@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
 // POST /api/admin/sessions/[id]/revoke - Revoke a specific user session
-export const POST = withAuth("ADMIN", async (req, ctx) => {
+export const POST = withAuth({ module: Module.SETTINGS, action: Action.UPDATE }, async (req, ctx) => {
     try {
         const session = await prisma.userSession.findFirst({
             where: {

@@ -3,14 +3,13 @@
 import * as React from "react"
 import { useSession, signOut } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
-
-type UserRole = "ADMIN" | "EMPLOYEE" | "HR_MANAGER" | "PAYROLL_ADMIN" | "RECRUITER" | "IT_ADMIN"
+import type { Role } from "@/lib/permissions"
 
 interface User {
     id: string
     name: string
     email: string
-    role: UserRole
+    role: Role
     avatar?: string
 }
 
@@ -37,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: session.user.id || "",
             name: session.user.name || "",
             email: session.user.email || "",
-            role: (session.user.role as UserRole) || "EMPLOYEE",
+            role: (session.user.role as Role) || "EMPLOYEE",
             avatar: session.user.avatar || session.user.image || undefined
         }
     }, [session])

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { z } from "zod"
 
@@ -9,7 +10,7 @@ const kudosSchema = z.object({
 })
 
 // GET /api/kudos - Get recent kudos for the organization
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.FEEDBACK, action: Action.VIEW }, async (req, ctx) => {
     try {
         const kudos = await prisma.kudos.findMany({
             where: { organizationId: ctx.organizationId },
@@ -38,7 +39,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/kudos - Send a kudos to a colleague
-export const POST = withAuth(["EMPLOYEE", "ADMIN"], async (req, ctx) => {
+export const POST = withAuth({ module: Module.FEEDBACK, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const validated = kudosSchema.parse(body)

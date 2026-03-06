@@ -33,14 +33,14 @@ async function createAdmin() {
             where: { email },
             update: {
                 hashedPassword,
-                role: "ADMIN",
+                role: "CEO",
                 mustChangePassword: false // So they can log right in
             },
             create: {
                 email,
                 name: "System Admin",
                 hashedPassword,
-                role: "ADMIN",
+                role: "CEO",
                 organizationId: org.id,
                 mustChangePassword: false
             }

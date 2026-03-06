@@ -18,6 +18,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { cn } from '@/lib/utils';
 import { useAuth } from "@/context/AuthContext"
+import { Roles } from "@/lib/permissions"
 import { useRouter } from "next/navigation"
 import dagre from 'dagre';
 import { toast, Toaster } from 'react-hot-toast';
@@ -332,7 +333,7 @@ export default function Organization() {
     }, [setNodes, setEdges]);
 
     useEffect(() => {
-        if (!authLoading && user?.role === 'EMPLOYEE') {
+        if (!authLoading && user?.role === Roles.EMPLOYEE) {
             router.push('/')
         } else if (!authLoading) {
             fetchData();
@@ -356,7 +357,7 @@ export default function Organization() {
         }
     }, [setEdges, fetchData]);
 
-    if (authLoading || isLoading || user?.role === 'EMPLOYEE') {
+    if (authLoading || isLoading || user?.role === Roles.EMPLOYEE) {
         return <div className="p-8 text-center text-[var(--text3)]">Loading Chart...</div>
     }
 

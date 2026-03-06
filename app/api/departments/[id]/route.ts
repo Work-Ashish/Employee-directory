@@ -1,19 +1,12 @@
-import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/security"
+import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
+import { Module, Action } from "@/lib/permissions"
 
 // DELETE /api/departments/[id] – Delete a department
-export async function DELETE(
-    req: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withAuth({ module: Module.EMPLOYEES, action: Action.DELETE }, async (_req, ctx) => {
     try {
-        const session = await auth()
-        if (!session || session.user?.role !== "ADMIN") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        }
-
-        const { id } = await params
+        const { id } = await ctx.params
 
         // Check if any employees are still assigned to this department
         const employeeCount = await prisma.employee.count({
@@ -21,20 +14,22 @@ export async function DELETE(
         })
 
         if (employeeCount > 0) {
-            return NextResponse.json(
-                { error: "Cannot delete department", details: `${employeeCount} employee(s) are still assigned to this department. Reassign them first.` },
-                { status: 409 }
+            return apiError(
+                "Cannot delete department",
+                ApiErrorCode.CONFLICT,
+                409,
+                { details: `${employeeCount} employee(s) are still assigned to this department. Reassign them first.` }
             )
         }
 
         await prisma.department.delete({ where: { id } })
 
-        return NextResponse.json({ success: true })
+        return apiSuccess({ success: true })
     } catch (error: any) {
         console.error("[DEPARTMENT_DELETE]", error)
         if (error.code === "P2025") {
-            return NextResponse.json({ error: "Department not found" }, { status: 404 })
+            return apiError("Department not found", ApiErrorCode.NOT_FOUND, 404)
         }
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
     }
-}
+})

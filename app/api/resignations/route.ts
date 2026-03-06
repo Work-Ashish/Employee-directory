@@ -3,9 +3,10 @@ import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { resignationSchema } from "@/lib/schemas"
 import { WorkflowEngine } from "@/lib/workflow-engine"
+import { Module, Action, hasPermission } from "@/lib/permissions"
 
 // GET /api/resignations – List resignations (scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.RESIGNATION, action: Action.VIEW }, async (req, ctx) => {
     try {
         const { searchParams } = new URL(req.url)
         const status = searchParams.get("status")
@@ -14,7 +15,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
         const where: Record<string, any> = { organizationId: ctx.organizationId }
         if (status) where.status = status
 
-        if (ctx.role !== "ADMIN") {
+        if (!hasPermission(ctx.role, Module.RESIGNATION, Action.UPDATE)) {
             const employee = await prisma.employee.findFirst({
                 where: { userId: ctx.userId, organizationId: ctx.organizationId },
                 select: { id: true }
@@ -40,7 +41,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/resignations – Submit resignation
-export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const POST = withAuth({ module: Module.RESIGNATION, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = resignationSchema.safeParse(body)
@@ -49,7 +50,7 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
         }
 
         let employeeId = parsed.data.employeeId
-        if (ctx.role !== "ADMIN" || !employeeId) {
+        if (!hasPermission(ctx.role, Module.RESIGNATION, Action.UPDATE) || !employeeId) {
             const employee = await prisma.employee.findFirst({
                 where: { userId: ctx.userId, organizationId: ctx.organizationId },
                 select: { id: true }
@@ -84,7 +85,7 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // PUT /api/resignations – Update resignation status
-export const PUT = withAuth("ADMIN", async (req, ctx) => {
+export const PUT = withAuth({ module: Module.RESIGNATION, action: Action.UPDATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         if (!body.id) return apiError("ID required", ApiErrorCode.BAD_REQUEST, 400)

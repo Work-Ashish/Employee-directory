@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { trainingSchema } from "@/lib/schemas"
 
 // GET /api/training – List all trainings (scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.TRAINING, action: Action.VIEW }, async (req, ctx) => {
     try {
         const { searchParams } = new URL(req.url)
         const employeeId = searchParams.get("employeeId")
@@ -35,7 +36,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/training – Create a training
-export const POST = withAuth("ADMIN", async (req, ctx) => {
+export const POST = withAuth({ module: Module.TRAINING, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const parsed = trainingSchema.safeParse(body)
@@ -97,7 +98,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
 })
 
 // PUT /api/training – Update a training
-export const PUT = withAuth("ADMIN", async (req, ctx) => {
+export const PUT = withAuth({ module: Module.TRAINING, action: Action.UPDATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const { id, assignedEmployeeIds, assignToAll, ...data } = body
@@ -157,7 +158,7 @@ export const PUT = withAuth("ADMIN", async (req, ctx) => {
 })
 
 // DELETE /api/training – Delete a training
-export const DELETE = withAuth("ADMIN", async (req, ctx) => {
+export const DELETE = withAuth({ module: Module.TRAINING, action: Action.DELETE }, async (req, ctx) => {
     try {
         const { searchParams } = new URL(req.url)
         const id = searchParams.get("id")

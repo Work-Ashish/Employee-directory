@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth, orgFilter } from "@/lib/security"
+import { Module, Action, Roles } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import bcrypt from "bcryptjs"
 import { employeeSchema } from "@/lib/schemas"
 import { redis } from "@/lib/redis"
 
 // GET /api/employees – List all employees (paginated and scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.EMPLOYEES, action: Action.VIEW }, async (req, ctx) => {
     try {
         const { searchParams } = new URL(req.url)
         const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
@@ -14,16 +15,19 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
         const search = searchParams.get("search") || ""
         const skip = (page - 1) * limit
 
-        const where = orgFilter(ctx, search
-            ? {
+        const includeArchived = searchParams.get("includeArchived") === "true"
+
+        const where = orgFilter(ctx, {
+            ...(includeArchived ? {} : { deletedAt: null }),
+            ...(search ? {
                 OR: [
                     { firstName: { contains: search, mode: "insensitive" as const } },
                     { lastName: { contains: search, mode: "insensitive" as const } },
                     { email: { contains: search, mode: "insensitive" as const } },
                     { employeeCode: { contains: search, mode: "insensitive" as const } },
                 ],
-            }
-            : {})
+            } : {}),
+        })
 
         const [employees, total] = await prisma.$transaction([
             prisma.employee.findMany({
@@ -47,7 +51,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 })
 
 // POST /api/employees – Create a new employee + auto-create login credentials
-export const POST = withAuth("ADMIN", async (req, ctx) => {
+export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
 
@@ -86,7 +90,7 @@ export const POST = withAuth("ADMIN", async (req, ctx) => {
                     name: `${firstName} ${lastName}`,
                     email,
                     hashedPassword,
-                    role: "EMPLOYEE",
+                    role: Roles.EMPLOYEE,
                     organizationId: ctx.organizationId,
                     mustChangePassword: true,
                     avatar: avatarUrl || null,

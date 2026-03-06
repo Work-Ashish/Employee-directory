@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { z } from "zod"
 
@@ -11,7 +12,7 @@ const savedReportSchema = z.object({
 })
 
 // GET /api/reports/saved - List saved reports
-export const GET = withAuth(["ADMIN", "HR_MANAGER"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.REPORTS, action: Action.VIEW }, async (req, ctx) => {
     try {
         const reports = await prisma.savedReport.findMany({
             where: { organizationId: ctx.organizationId },
@@ -24,7 +25,7 @@ export const GET = withAuth(["ADMIN", "HR_MANAGER"], async (req, ctx) => {
 })
 
 // POST /api/reports/saved - Save a new report
-export const POST = withAuth(["ADMIN", "HR_MANAGER"], async (req, ctx) => {
+export const POST = withAuth({ module: Module.REPORTS, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
         const validated = savedReportSchema.parse(body)

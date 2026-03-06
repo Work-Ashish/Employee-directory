@@ -1,19 +1,16 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError } from "@/lib/api-response"
 import { calculateNetSalary } from "@/lib/payroll-engine"
+import { Module, Action } from "@/lib/permissions"
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PUT = withAuth({ module: Module.PAYROLL, action: Action.UPDATE }, async (req, ctx) => {
     try {
-        const { id } = await params
-        const session = await auth()
-        if (!session?.user?.id || session.user.role !== "ADMIN") {
-            return NextResponse.json(apiError("Unauthorized", "UNAUTHORIZED", 401), { status: 401 })
-        }
+        const { id } = await ctx.params
 
         const payrollRecord = await prisma.payroll.findUnique({
-            where: { id, organizationId: session.user.organizationId! }
+            where: { id, organizationId: ctx.organizationId }
         })
 
         if (!payrollRecord) {
@@ -38,9 +35,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
                     data: {
                         payrollId: id,
                         action: "FINALIZED",
-                        actorId: session.user.id,
+                        actorId: ctx.userId,
                         details: "Payroll run marked as finalized and locked.",
-                        organizationId: session.user.organizationId!
+                        organizationId: ctx.organizationId
                     }
                 })
 
@@ -81,9 +78,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
                     data: {
                         payrollId: id,
                         action: "MANUAL_OVERRIDE",
-                        actorId: session.user.id,
+                        actorId: ctx.userId,
                         details: JSON.stringify(manualOverride),
-                        organizationId: session.user.organizationId!
+                        organizationId: ctx.organizationId
                     }
                 })
 
@@ -96,4 +93,4 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     } catch (err: any) {
         return NextResponse.json(apiError("Internal Server Error", "INTERNAL_ERROR", 500, err), { status: 500 })
     }
-}
+})

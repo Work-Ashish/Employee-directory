@@ -18,16 +18,21 @@ function runCommand(command, name) {
     }
 }
 
-// 1. Lint Check
-// Bypassed for RC Drill due to non-fatal rapid-prototyping strictness
-// runCommand('npm run lint', 'Linting');
+// Optional checks can be enabled in stricter environments:
+//   QUALITY_GATE_LINT=1
+//   QUALITY_GATE_TYPES=1
+const runLint = process.env.QUALITY_GATE_LINT === '1';
+const runTypes = process.env.QUALITY_GATE_TYPES === '1';
 
-// 2. Type Check
-// Bypassed for RC Drill due to unmaintained mocks
-// runCommand('npx tsc --noEmit', 'Type Check');
+if (runLint) {
+    runCommand('npm run lint', 'Linting');
+}
 
-// 3. Tests with Coverage (HRMS-405)
-// Bypassed for RC Drill due to unmaintained mocks
-// runCommand('npx vitest run --coverage', 'Automated Tests');
+if (runTypes) {
+    runCommand('npx tsc --noEmit', 'Type Check');
+}
+
+// Always run tests; this is the minimum quality bar.
+runCommand('npx vitest run', 'Automated Tests');
 
 console.log('\n✨ ALL QUALITY GATES PASSED! READY FOR MERGE. ✨');

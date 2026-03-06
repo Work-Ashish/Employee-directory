@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action, Roles } from "@/lib/permissions"
 import { google } from "@ai-sdk/google"
 import { generateText, tool, embed } from "ai"
 import { z } from "zod"
@@ -7,7 +8,7 @@ import crypto from "crypto"
 import { redis } from "@/lib/redis"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
-export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const POST = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, async (req, ctx) => {
     try {
         const { messages } = await req.json()
 
@@ -25,7 +26,7 @@ export const POST = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
         }
 
         const userName = ctx.name || "User"
-        const userRole = ctx.role || "EMPLOYEE"
+        const userRole = ctx.role || Roles.EMPLOYEE
 
         let systemInstruction = `You are **EMS Pro Assistant**, the built-in AI helper for an Employee Management System.
         

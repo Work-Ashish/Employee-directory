@@ -2,14 +2,18 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { apiError, ApiErrorCode } from "@/lib/api-response"
+import { logger, logContext } from "@/lib/logger"
+import { MetricsCollector } from "@/lib/metrics"
+import { Role, Module, Action, hasPermission } from "@/lib/permissions"
 
-export type Role = "ADMIN" | "EMPLOYEE" | "HR_MANAGER" | "PAYROLL_ADMIN" | "RECRUITER" | "IT_ADMIN"
+export type { Role }
 
 export interface AuthContext {
     requestId: string
     userId: string
     organizationId: string
     role: Role
+    employeeId?: string
     name?: string | null
     sessionToken?: string
     params: any
@@ -17,14 +21,42 @@ export interface AuthContext {
 
 type AuthHandler = (req: Request, context: AuthContext) => Promise<NextResponse>
 
-import { logger, logContext } from "@/lib/logger"
-import { MetricsCollector } from "@/lib/metrics"
+// ── Auth requirement types ─────────────────────────────────
+
+/** New permission-based auth: { module, action } */
+interface PermissionRequirement {
+    module: Module
+    action: Action
+}
+
+/** Legacy role-based auth: string or string[] (for backwards compatibility) */
+type LegacyRoleAuth = string | string[]
+
+type AuthRequirement = PermissionRequirement | PermissionRequirement[] | LegacyRoleAuth
+
+function isPermissionRequirement(req: unknown): req is PermissionRequirement {
+    return typeof req === "object" && req !== null && "module" in req && "action" in req
+}
+
+function isPermissionArray(req: unknown): req is PermissionRequirement[] {
+    return Array.isArray(req) && req.length > 0 && isPermissionRequirement(req[0])
+}
+
+function isLegacyAuth(req: AuthRequirement): req is LegacyRoleAuth {
+    if (typeof req === "string") return true
+    if (Array.isArray(req) && req.length > 0 && typeof req[0] === "string") return true
+    return false
+}
 
 /**
- * withAuth: High-order function to wrap API routes with mandatory authentication,
- * RBAC checks, and organization context.
+ * withAuth: Higher-order function to wrap API routes with authentication,
+ * RBAC/permission checks, and organization context.
+ *
+ * Supports both:
+ *   - New: withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }, handler)
+ *   - Legacy: withAuth("CEO", handler) or withAuth(["CEO", "HR"], handler)
  */
-export function withAuth(requiredRole: Role | Role[], handler: AuthHandler) {
+export function withAuth(requirement: AuthRequirement, handler: AuthHandler) {
     return async (req: Request, { params }: { params: any } = { params: {} }) => {
         const requestId = crypto.randomUUID()
         const startTime = Date.now()
@@ -44,7 +76,7 @@ export function withAuth(requiredRole: Role | Role[], handler: AuthHandler) {
                 return apiError("Organization account required. Please log in again.", ApiErrorCode.FORBIDDEN, 403)
             }
 
-            // Session Revocation Check (Week 9)
+            // Session Revocation Check
             if (sessionToken) {
                 const dbSession = await prisma.userSession.findUnique({
                     where: { sessionToken }
@@ -60,22 +92,63 @@ export function withAuth(requiredRole: Role | Role[], handler: AuthHandler) {
                 }).catch(() => { })
             }
 
-            // RBAC Check
-            const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
-            if (!roles.includes(role as Role)) {
-                logger.warn("Forbidden role access", { userId, role, requiredRole, path, requestId })
-                return apiError(`Forbidden. Your role (${role}) does not have access to this resource. Required: ${roles.join("/")}`, ApiErrorCode.FORBIDDEN, 403)
+            // ── Permission / RBAC Check ──────────────────────────
+            if (isLegacyAuth(requirement)) {
+                // Legacy path: check role inclusion
+                const roles = Array.isArray(requirement) ? requirement : [requirement]
+                if (!roles.includes(role)) {
+                    logger.warn("Forbidden role access", { userId, role, requiredRoles: roles, path, requestId })
+                    return apiError(
+                        `Forbidden. Your role (${role}) does not have access to this resource.`,
+                        ApiErrorCode.FORBIDDEN,
+                        403
+                    )
+                }
+            } else {
+                // New permission path: check permission matrix
+                const perms = isPermissionArray(requirement) ? requirement : [requirement as PermissionRequirement]
+                const denied = perms.find(p => !hasPermission(role, p.module, p.action))
+                if (denied) {
+                    logger.warn("Forbidden permission", {
+                        userId, role, module: denied.module, action: denied.action, path, requestId
+                    })
+                    return apiError(
+                        `Forbidden. Your role (${role}) does not have ${denied.action} permission on ${denied.module}.`,
+                        ApiErrorCode.FORBIDDEN,
+                        403
+                    )
+                }
             }
 
-            // Run within log context for downstream tracing
+            // ── Resolve employeeId eagerly ───────────────────────
+            let employeeId: string | undefined
+            try {
+                const emp = await prisma.employee.findFirst({
+                    where: { userId, organizationId },
+                    select: { id: true },
+                })
+                employeeId = emp?.id
+            } catch {
+                // Non-critical — some users (e.g. superadmin) may not have employee records
+            }
+
+            // ── Run handler within log context ───────────────────
             return await logContext.run({ requestId, organizationId, userId }, async () => {
                 logger.info("API Request Started", { path, method: req.method, userId, organizationId })
 
-                const response = await handler(req, { requestId, userId, organizationId, role: role as Role, name, sessionToken, params })
+                const response = await handler(req, {
+                    requestId,
+                    userId,
+                    organizationId,
+                    role: role as Role,
+                    employeeId,
+                    name,
+                    sessionToken,
+                    params,
+                })
 
                 const duration = Date.now() - startTime
 
-                // Background metrics recording
                 MetricsCollector.recordRequest({
                     path,
                     method: req.method,

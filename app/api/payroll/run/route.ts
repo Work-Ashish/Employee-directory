@@ -1,17 +1,13 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError } from "@/lib/api-response"
 import { payrollRunSchema } from "@/lib/schemas/payroll"
 import { calculateNetSalary, calculatePFContributions, calculateDynamicTax } from "@/lib/payroll-engine"
+import { Module, Action } from "@/lib/permissions"
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth({ module: Module.PAYROLL, action: Action.CREATE }, async (req, ctx) => {
     try {
-        const session = await auth()
-        if (!session?.user?.organizationId || session.user.role !== "ADMIN") {
-            return NextResponse.json(apiError("Unauthorized", "UNAUTHORIZED", 401), { status: 401 })
-        }
-
         const body = await req.json()
         const parsed = payrollRunSchema.safeParse(body)
 
@@ -23,7 +19,7 @@ export async function POST(req: NextRequest) {
 
         // 1. Fetch active compliance config
         const config = await prisma.payrollComplianceConfig.findFirst({
-            where: { organizationId: session.user.organizationId, isActive: true },
+            where: { organizationId: ctx.organizationId, isActive: true },
             include: { taxSlabs: true }
         })
 
@@ -65,7 +61,7 @@ export async function POST(req: NextRequest) {
                     netSalary,
                     status: "PENDING",
                     employeeId,
-                    organizationId: session.user.organizationId!,
+                    organizationId: ctx.organizationId,
                 }
             })
 
@@ -82,9 +78,9 @@ export async function POST(req: NextRequest) {
                 data: {
                     payrollId: payroll.id,
                     action: "RUN_CALCULATION",
-                    actorId: session.user.id,
+                    actorId: ctx.userId,
                     details: auditDetails,
-                    organizationId: session.user.organizationId!
+                    organizationId: ctx.organizationId
                 }
             })
 
@@ -95,4 +91,4 @@ export async function POST(req: NextRequest) {
     } catch (err: any) {
         return NextResponse.json(apiError("Internal Server Error", "INTERNAL_ERROR", 500, err), { status: 500 })
     }
-}
+})

@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
-export const GET = withAuth("ADMIN", async (req, ctx) => {
+export const GET = withAuth({ module: Module.PERFORMANCE, action: Action.VIEW }, async (req, ctx) => {
     try {
         // Fetch unresolved Admin Alerts scoped to org
         const alerts = await prisma.adminAlerts.findMany({

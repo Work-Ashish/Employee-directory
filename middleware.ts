@@ -36,18 +36,8 @@ const publicRoutes = [
     "/api/raw-health",
 ]
 
-// Routes that require ADMIN role
-const adminRoutes = [
-    "/admin",
-    "/api/admin",
-    "/api/employees",
-    "/api/departments",
-    "/api/assets",
-    "/api/payroll",
-    "/api/pf",
-    "/api/recruitment",
-    "/api/organization",
-]
+// NOTE: Admin route enforcement removed — RBAC is handled at route level by withAuth()
+// All role/permission checks happen server-side in each API handler.
 
 function addSecurityHeaders(response: NextResponse) {
     response.headers.set("X-Frame-Options", "DENY")
@@ -146,23 +136,7 @@ export default async function middleware(req: NextRequest) {
         return NextResponse.redirect(loginUrl)
     }
 
-    // Check admin routes — only enforce if we can read the role
-    if (adminRoutes.some((route) => pathname.startsWith(route))) {
-        if (session.role && session.role !== "ADMIN") {
-            if (pathname.startsWith("/api/")) {
-                return addSecurityHeaders(
-                    NextResponse.json(
-                        { error: "Forbidden. Admin access required." },
-                        { status: 403 }
-                    )
-                )
-            }
-            return NextResponse.redirect(new URL("/", req.url))
-        }
-        // If role is undefined (JWE token), let the request through —
-        // route-level auth() will do the full RBAC check
-    }
-
+    // All permission checks happen at route level via withAuth()
     return addSecurityHeaders(response)
 }
 

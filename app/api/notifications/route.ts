@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { z } from "zod"
 
 // GET /api/notifications
 // Fetch recent notifications for the current user
-export const GET = withAuth(["ADMIN", "EMPLOYEE", "HR_MANAGER", "PAYROLL_ADMIN", "RECRUITER", "IT_ADMIN"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, async (req, ctx) => {
     try {
         const notifications = await prisma.inAppNotification.findMany({
             where: {
@@ -25,7 +26,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE", "HR_MANAGER", "PAYROLL_ADMIN",
 
 // PATCH /api/notifications
 // Mark specific or all notifications as read
-export const PATCH = withAuth(["ADMIN", "EMPLOYEE", "HR_MANAGER", "PAYROLL_ADMIN", "RECRUITER", "IT_ADMIN"], async (req, ctx) => {
+export const PATCH = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, async (req, ctx) => {
     try {
         const body = await req.json()
         const { id, markAll } = body

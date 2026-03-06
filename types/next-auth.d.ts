@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { DefaultSession, DefaultUser } from "next-auth"
 import { DefaultJWT } from "next-auth/jwt"
+import type { Role } from "@/lib/permissions"
 
 declare module "next-auth" {
     interface Session {
         user: {
             id: string
-            role: "ADMIN" | "EMPLOYEE" | "HR_MANAGER" | "PAYROLL_ADMIN" | "RECRUITER" | "IT_ADMIN"
+            role: Role
             organizationId?: string | null
             avatar?: string | null
             mustChangePassword?: boolean
@@ -14,7 +15,7 @@ declare module "next-auth" {
     }
 
     interface User extends DefaultUser {
-        role: "ADMIN" | "EMPLOYEE" | "HR_MANAGER" | "PAYROLL_ADMIN" | "RECRUITER" | "IT_ADMIN"
+        role: Role
         organizationId?: string | null
         avatar?: string | null
         mustChangePassword?: boolean
@@ -23,7 +24,7 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
     interface JWT {
-        role?: "ADMIN" | "EMPLOYEE" | "HR_MANAGER" | "PAYROLL_ADMIN" | "RECRUITER" | "IT_ADMIN"
+        role?: Role
         organizationId?: string | null
         avatar?: string | null
         mustChangePassword?: boolean

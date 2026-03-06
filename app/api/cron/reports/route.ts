@@ -25,13 +25,11 @@ export const GET = async (req: Request) => {
 
         for (const schedule of dueSchedules) {
             try {
-                // 2. Generate the report (simplified for MVP: create a Document entry)
-                // In a production app, we would use a worker or trigger a Lambda
                 const doc = await prisma.document.create({
                     data: {
                         title: `Scheduled Report: ${schedule.report.name} (${format(now, "yyyy-MM-dd")})`,
-                        category: "POLICY", // Using POLICY as a placeholder for general reports
-                        url: `/api/reports/download/${schedule.id}`, // Placeholder
+                        category: "POLICY",
+                        url: `/api/reports/download/${schedule.id}`,
                         organizationId: schedule.organizationId,
                         isPublic: false
                     }

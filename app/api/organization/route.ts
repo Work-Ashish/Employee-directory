@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
 // GET /api/organization (Scoped)
-export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
+export const GET = withAuth({ module: Module.ORGANIZATION, action: Action.VIEW }, async (req, ctx) => {
     try {
         const employees = await prisma.employee.findMany({
             where: { organizationId: ctx.organizationId },
@@ -35,7 +36,7 @@ export const GET = withAuth(["ADMIN", "EMPLOYEE"], async (req, ctx) => {
 
 // PUT /api/organization
 // Accept drag and drop updates to manager hierarchy
-export const PUT = withAuth("ADMIN", async (req, ctx) => {
+export const PUT = withAuth({ module: Module.ORGANIZATION, action: Action.UPDATE }, async (req, ctx) => {
     try {
         const updates = await req.json()
 
