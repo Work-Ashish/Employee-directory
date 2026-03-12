@@ -35,7 +35,7 @@ export const GET = withAuth({ module: Module.EMPLOYEES, action: Action.VIEW }, a
                 where,
                 include: {
                     department: true,
-                    user: { select: { lastLoginAt: true, mustChangePassword: true } },
+                    user: { select: { role: true, lastLoginAt: true, mustChangePassword: true } },
                 },
                 orderBy: { createdAt: "desc" },
                 skip,
@@ -73,6 +73,7 @@ export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }
             dateOfJoining,
             salary,
             status,
+            role,
             address,
             managerId,
             avatarUrl,
@@ -90,7 +91,7 @@ export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }
                     name: `${firstName} ${lastName}`,
                     email,
                     hashedPassword,
-                    role: Roles.EMPLOYEE,
+                    role: (role as any) || Roles.EMPLOYEE,
                     organizationId: ctx.organizationId,
                     mustChangePassword: true,
                     avatar: avatarUrl || null,
@@ -124,7 +125,7 @@ export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }
 
         console.log(`[NEW_EMPLOYEE] ${employeeCode} created in org ${ctx.organizationId}.`)
 
-        return apiSuccess(result, undefined, 201)
+        return apiSuccess({ ...result, tempPassword }, undefined, 201)
     } catch (error: unknown) {
         console.error("[EMPLOYEES_POST]", error)
         const prismaErr = error as { code?: string; meta?: { target?: string[] } }

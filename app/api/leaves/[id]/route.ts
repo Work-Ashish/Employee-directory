@@ -17,8 +17,8 @@ export const GET = withAuth({ module: Module.LEAVES, action: Action.VIEW }, asyn
             return apiError("Leave not found", ApiErrorCode.NOT_FOUND, 404)
         }
 
-        // Non-admin: can only view own leaves
-        if (!hasPermission(ctx.role, Module.LEAVES, Action.DELETE) && leave.employeeId !== ctx.employeeId) {
+        // Non-admin: can only view own leaves (UPDATE permission = can view all for approval)
+        if (!hasPermission(ctx.role, Module.LEAVES, Action.UPDATE) && leave.employeeId !== ctx.employeeId) {
             return apiError("Forbidden", ApiErrorCode.FORBIDDEN, 403)
         }
 
@@ -64,12 +64,12 @@ export const DELETE = withAuth({ module: Module.LEAVES, action: Action.DELETE },
         }
 
         // Non-admin: can only delete own leaves
-        if (!hasPermission(ctx.role, Module.LEAVES, Action.DELETE) && existing.employeeId !== ctx.employeeId) {
+        if (!hasPermission(ctx.role, Module.LEAVES, Action.UPDATE) && existing.employeeId !== ctx.employeeId) {
             return apiError("Forbidden", ApiErrorCode.FORBIDDEN, 403)
         }
 
         // Non-admin: can only cancel pending requests
-        if (existing.status !== "PENDING" && !hasPermission(ctx.role, Module.LEAVES, Action.DELETE)) {
+        if (existing.status !== "PENDING" && !hasPermission(ctx.role, Module.LEAVES, Action.UPDATE)) {
             return apiError("Can only cancel pending requests", ApiErrorCode.BAD_REQUEST, 400)
         }
 

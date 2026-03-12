@@ -64,49 +64,59 @@ const FULL_CRUD_EX: Action[] = [VIEW, CREATE, UPDATE, DELETE, EXPORT, IMPORT]
 
 export const PERMISSIONS: PermissionMatrix = {
   CEO: {
-    [Module.EMPLOYEES]:     FULL_CRUD_EX,
-    [Module.PAYROLL]:       FULL_CRUD_EX,
+    // 1) Full CRUD modules
     [Module.TEAMS]:         [...FULL_CRUD, ASSIGN],
-    [Module.PERFORMANCE]:   [...FULL_CRUD, REVIEW],
-    [Module.FEEDBACK]:      [VIEW],
-    [Module.DASHBOARD]:     [VIEW],
-    [Module.REPORTS]:       [VIEW, CREATE, EXPORT],
-    [Module.ATTENDANCE]:    FULL_CRUD_EX,
-    [Module.LEAVES]:        FULL_CRUD,
+    [Module.EMPLOYEES]:     FULL_CRUD_EX,
+    [Module.ORGANIZATION]:  FULL_CRUD,
     [Module.TRAINING]:      FULL_CRUD,
-    [Module.ANNOUNCEMENTS]: FULL_CRUD,
     [Module.ASSETS]:        [...FULL_CRUD, ASSIGN],
-    [Module.DOCUMENTS]:     FULL_CRUD,
-    [Module.TICKETS]:       [VIEW, UPDATE],
-    [Module.RECRUITMENT]:   FULL_CRUD,
-    [Module.RESIGNATION]:   [VIEW, UPDATE],
-    [Module.ORGANIZATION]:  [VIEW, UPDATE],
-    [Module.SETTINGS]:      [VIEW, UPDATE],
+    [Module.ANNOUNCEMENTS]: FULL_CRUD,
+    [Module.REPORTS]:       [...FULL_CRUD, EXPORT],
     [Module.WORKFLOWS]:     FULL_CRUD,
     [Module.AGENT_TRACKING]: FULL_CRUD,
+    // 2) View-only: attendance, feedback, payroll (all employees' data)
+    [Module.ATTENDANCE]:    [VIEW],
+    [Module.FEEDBACK]:      [VIEW],
+    [Module.PAYROLL]:       [VIEW],
+    // 3) View + approve: leaves, resignation
+    [Module.LEAVES]:        [VIEW, UPDATE],
+    [Module.RESIGNATION]:   [VIEW, UPDATE],
+    // 4) Provide + view: performance, documents
+    [Module.PERFORMANCE]:   [VIEW, CREATE, REVIEW],
+    [Module.DOCUMENTS]:     [VIEW, CREATE],
+    // Other modules
+    [Module.DASHBOARD]:     [VIEW],
+    [Module.TICKETS]:       [VIEW, UPDATE],
+    [Module.RECRUITMENT]:   FULL_CRUD,
+    [Module.SETTINGS]:      [VIEW, UPDATE],
   },
 
   HR: {
-    [Module.EMPLOYEES]:     [VIEW, CREATE, UPDATE, EXPORT, IMPORT],
-    [Module.PAYROLL]:       [VIEW],
+    // 1) Full CRUD modules
     [Module.TEAMS]:         [...FULL_CRUD, ASSIGN],
-    [Module.PERFORMANCE]:   [VIEW, CREATE, UPDATE, REVIEW],
-    [Module.FEEDBACK]:      [VIEW],
-    [Module.DASHBOARD]:     [VIEW],
-    [Module.REPORTS]:       [VIEW, CREATE, EXPORT],
-    [Module.ATTENDANCE]:    [VIEW, CREATE, UPDATE, EXPORT, IMPORT],
-    [Module.LEAVES]:        [VIEW, UPDATE],
+    [Module.EMPLOYEES]:     FULL_CRUD_EX,
+    [Module.ORGANIZATION]:  FULL_CRUD,
     [Module.TRAINING]:      FULL_CRUD,
+    [Module.ASSETS]:        [...FULL_CRUD, ASSIGN],
     [Module.ANNOUNCEMENTS]: FULL_CRUD,
-    [Module.ASSETS]:        [VIEW, ASSIGN],
-    [Module.DOCUMENTS]:     [VIEW, CREATE, UPDATE],
+    [Module.REPORTS]:       [...FULL_CRUD, EXPORT],
+    [Module.WORKFLOWS]:     FULL_CRUD,
+    [Module.AGENT_TRACKING]: FULL_CRUD,
+    // 2) View-only: attendance, feedback, payroll (all employees' data)
+    [Module.ATTENDANCE]:    [VIEW],
+    [Module.FEEDBACK]:      [VIEW],
+    [Module.PAYROLL]:       [VIEW],
+    // 3) View + approve: leaves, resignation
+    [Module.LEAVES]:        [VIEW, UPDATE],
+    [Module.RESIGNATION]:   [VIEW, UPDATE],
+    // 4) Provide + view: performance, documents
+    [Module.PERFORMANCE]:   [VIEW, CREATE, REVIEW],
+    [Module.DOCUMENTS]:     [VIEW, CREATE],
+    // Other modules
+    [Module.DASHBOARD]:     [VIEW],
     [Module.TICKETS]:       [VIEW, UPDATE],
     [Module.RECRUITMENT]:   FULL_CRUD,
-    [Module.RESIGNATION]:   [VIEW, UPDATE],
-    [Module.ORGANIZATION]:  [VIEW],
-    [Module.SETTINGS]:      [],
-    [Module.WORKFLOWS]:     [VIEW, CREATE, UPDATE],
-    [Module.AGENT_TRACKING]: [VIEW, UPDATE],
+    [Module.SETTINGS]:      [VIEW],
   },
 
   PAYROLL: {
@@ -206,6 +216,19 @@ export function getModulesForRole(role: string): Module[] {
 /** Check if a role is valid */
 export function isValidRole(role: string): role is Role {
   return ROLES.includes(role as Role)
+}
+
+/** Check if a role has org-wide (admin) data visibility for a module */
+export function hasAdminScope(role: string, module: Module): boolean {
+  switch (role as Role) {
+    case Roles.CEO:
+    case Roles.HR:
+      return true
+    case Roles.PAYROLL:
+      return module === Module.PAYROLL || module === Module.ATTENDANCE || module === Module.LEAVES
+    default:
+      return false
+  }
 }
 
 // ── Data Scoping ───────────────────────────────────────────

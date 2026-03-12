@@ -11,6 +11,7 @@ export const employeeSchema = z.object({
     dateOfJoining: z.coerce.date(),
     salary: z.coerce.number().positive("Salary must be positive"),
     status: z.enum(["ACTIVE", "ON_LEAVE", "RESIGNED", "TERMINATED", "INACTIVE", "ARCHIVED"]).default("ACTIVE"),
+    role: z.enum(["CEO", "HR", "PAYROLL", "TEAM_LEAD", "EMPLOYEE"]).default("EMPLOYEE"),
     address: z.string().optional().nullable(),
     managerId: z.string().optional().nullable(),
     avatarUrl: z.string().url().optional().nullable(),

@@ -15,6 +15,7 @@ const employeeUpdateSchema = z.object({
     dateOfJoining: z.string().optional(),
     salary: z.union([z.string(), z.number()]).transform(v => typeof v === 'string' ? parseFloat(v) : v).optional(),
     status: z.enum(["ACTIVE", "ON_LEAVE", "RESIGNED", "TERMINATED", "INACTIVE", "ARCHIVED"]).optional(),
+    role: z.enum(["CEO", "HR", "PAYROLL", "TEAM_LEAD", "EMPLOYEE"]).optional(),
     address: z.string().nullable().optional(),
     managerId: z.string().nullable().optional(),
 })
@@ -64,23 +65,36 @@ export const PUT = withAuth({ module: Module.EMPLOYEES, action: Action.UPDATE },
             return apiError("Employee not found", ApiErrorCode.NOT_FOUND, 404)
         }
 
-        const employee = await prisma.employee.update({
-            where: { id },
-            data: {
-                employeeCode: body.employeeCode,
-                firstName: body.firstName,
-                lastName: body.lastName,
-                email: body.email,
-                phone: body.phone ?? null,
-                designation: body.designation,
-                departmentId: body.departmentId,
-                dateOfJoining: body.dateOfJoining ? new Date(body.dateOfJoining) : undefined,
-                salary: body.salary,
-                status: body.status,
-                address: body.address ?? undefined,
-                managerId: body.managerId ?? undefined,
-            },
-            include: { department: true },
+        // Update employee + user role in a transaction
+        const employee = await prisma.$transaction(async (tx) => {
+            const emp = await tx.employee.update({
+                where: { id },
+                data: {
+                    employeeCode: body.employeeCode,
+                    firstName: body.firstName,
+                    lastName: body.lastName,
+                    email: body.email,
+                    phone: body.phone ?? null,
+                    designation: body.designation,
+                    departmentId: body.departmentId,
+                    dateOfJoining: body.dateOfJoining ? new Date(body.dateOfJoining) : undefined,
+                    salary: body.salary,
+                    status: body.status,
+                    address: body.address ?? undefined,
+                    managerId: body.managerId ?? undefined,
+                },
+                include: { department: true },
+            })
+
+            // Update user role if provided
+            if (body.role && existing.userId) {
+                await tx.user.update({
+                    where: { id: existing.userId },
+                    data: { role: body.role as any },
+                })
+            }
+
+            return emp
         })
 
         return apiSuccess(employee)

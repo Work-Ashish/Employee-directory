@@ -28,7 +28,8 @@ export const EmployeeAPI = {
     resetCredentials: async (id: string): Promise<{ username: string; tempPassword: string }> => {
         const res = await fetch(`/api/employees/${id}/credentials`, { method: "POST" })
         if (!res.ok) throw new Error("Failed to reset credentials")
-        return res.json()
+        const json = await res.json()
+        return json.data
     },
 
     upsertEmployee: async (isEdit: boolean, id: string | undefined, data: any): Promise<any> => {
@@ -40,8 +41,9 @@ export const EmployeeAPI = {
         })
         if (!res.ok) {
             const err = await res.json()
-            throw new Error(err.details || err.error || "Operation failed")
+            throw new Error(err.error?.message || err.details || "Operation failed")
         }
-        return res.json()
+        const json = await res.json()
+        return json.data
     }
 }

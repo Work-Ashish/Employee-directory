@@ -33,6 +33,7 @@ const employeeSchema = z.object({
     dateOfJoining: z.string().min(1, "Date of Joining is required"),
     salary: z.number().min(0, "Salary must be positive"),
     status: z.enum(["ACTIVE", "ON_LEAVE", "RESIGNED", "TERMINATED"]),
+    role: z.enum(["CEO", "HR", "PAYROLL", "TEAM_LEAD", "EMPLOYEE"]),
     avatarUrl: z.string().optional().nullable(),
 })
 
@@ -89,7 +90,7 @@ function EmployeesContent() {
 
     const form = useForm<EmployeeFormData>({
         resolver: zodResolver(employeeSchema),
-        defaultValues: { status: "ACTIVE", employeeCode: "", firstName: "", lastName: "", email: "", phone: "", designation: "", departmentId: "", dateOfJoining: new Date().toISOString().split('T')[0], salary: 0 }
+        defaultValues: { status: "ACTIVE", role: "EMPLOYEE", employeeCode: "", firstName: "", lastName: "", email: "", phone: "", designation: "", departmentId: "", dateOfJoining: new Date().toISOString().split('T')[0], salary: 0 }
     })
 
     const handleCreateDepartment = async (e: React.FormEvent) => {
@@ -190,19 +191,19 @@ function EmployeesContent() {
 
     const openCreateModal = () => {
         setModalMode("CREATE")
-        form.reset({ status: "ACTIVE", employeeCode: `EMP-${Date.now().toString().slice(-4)}`, firstName: "", lastName: "", email: "", phone: "", designation: "", departmentId: departments[0]?.id || "", dateOfJoining: new Date().toISOString().split('T')[0], salary: 0 })
+        form.reset({ status: "ACTIVE", role: "EMPLOYEE", employeeCode: `EMP-${Date.now().toString().slice(-4)}`, firstName: "", lastName: "", email: "", phone: "", designation: "", departmentId: departments[0]?.id || "", dateOfJoining: new Date().toISOString().split('T')[0], salary: 0 })
         setIsModalOpen(true)
     }
 
     const openEditModal = (empRaw: EmployeeApiData) => {
         setModalMode("EDIT")
-        form.reset({ id: empRaw.id, employeeCode: empRaw.employeeCode, firstName: empRaw.firstName, lastName: empRaw.lastName, email: empRaw.email, phone: empRaw.phone || "", designation: empRaw.designation, departmentId: empRaw.departmentId, dateOfJoining: new Date(empRaw.dateOfJoining).toISOString().split('T')[0], salary: empRaw.salary, status: empRaw.status as any })
+        form.reset({ id: empRaw.id, employeeCode: empRaw.employeeCode, firstName: empRaw.firstName, lastName: empRaw.lastName, email: empRaw.email, phone: empRaw.phone || "", designation: empRaw.designation, departmentId: empRaw.departmentId, dateOfJoining: new Date(empRaw.dateOfJoining).toISOString().split('T')[0], salary: empRaw.salary, status: empRaw.status as any, role: (empRaw as any).user?.role || "EMPLOYEE" })
         setIsModalOpen(true)
     }
 
     const openViewModal = (empRaw: EmployeeApiData) => {
         setModalMode("VIEW")
-        form.reset({ employeeCode: empRaw.employeeCode, firstName: empRaw.firstName, lastName: empRaw.lastName, email: empRaw.email, phone: empRaw.phone || "", designation: empRaw.designation, departmentId: empRaw.departmentId, dateOfJoining: new Date(empRaw.dateOfJoining).toISOString().split('T')[0], salary: empRaw.salary, status: empRaw.status as any })
+        form.reset({ employeeCode: empRaw.employeeCode, firstName: empRaw.firstName, lastName: empRaw.lastName, email: empRaw.email, phone: empRaw.phone || "", designation: empRaw.designation, departmentId: empRaw.departmentId, dateOfJoining: new Date(empRaw.dateOfJoining).toISOString().split('T')[0], salary: empRaw.salary, status: empRaw.status as any, role: (empRaw as any).user?.role || "EMPLOYEE" })
         setIsModalOpen(true)
     }
 

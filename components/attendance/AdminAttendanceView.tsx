@@ -3,6 +3,8 @@
 import * as React from "react"
 import { extractArray } from "@/lib/utils"
 import { toast } from "sonner"
+import { useAuth } from "@/context/AuthContext"
+import { hasPermission, Module, Action } from "@/lib/permissions"
 import { format } from "date-fns"
 import { CsvImportModal } from "@/components/ui/CsvImportModal"
 import { Button } from "@/components/ui/Button"
@@ -75,6 +77,8 @@ const FILTER_OPTIONS = [
 ]
 
 export function AdminAttendanceView() {
+    const { user } = useAuth()
+    const canEdit = hasPermission(user?.role ?? '', Module.ATTENDANCE, Action.UPDATE)
     const [records, setRecords] = React.useState<AttendanceRecord[]>([])
     const [loading, setLoading] = React.useState(true)
     const [filter, setFilter] = React.useState<"ALL" | AttendanceStatus>("ALL")
@@ -109,14 +113,14 @@ export function AdminAttendanceView() {
             <PageHeader
                 title="Attendance Tracking"
                 description="Track daily attendance and work hours"
-                actions={
+                actions={canEdit ? (
                     <Button
                         variant="secondary"
                         onClick={() => setIsImportOpen(true)}
                     >
                         Import CSV
                     </Button>
-                }
+                ) : undefined}
             />
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

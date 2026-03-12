@@ -49,6 +49,13 @@ export const EmployeeFormModal = React.memo(function EmployeeFormModal({
         { value: "TERMINATED", label: "Terminated" },
     ]
 
+    const roleOptions = [
+        { value: "EMPLOYEE", label: "Employee" },
+        { value: "TEAM_LEAD", label: "Team Lead" },
+        { value: "HR", label: "HR Manager" },
+        { value: "PAYROLL", label: "Payroll Admin" },
+    ]
+
     return (
         <Modal
             isOpen={isOpen}
@@ -158,12 +165,18 @@ export const EmployeeFormModal = React.memo(function EmployeeFormModal({
                         disabled={modalMode === "VIEW"}
                         error={form.formState.errors.salary?.message?.toString()}
                     />
+                    <div />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                     <Select
-                        label="Status *"
-                        options={statusOptions}
-                        {...form.register('status')}
+                        label="Portal Role *"
+                        options={roleOptions}
+                        {...form.register('role')}
                         disabled={modalMode === "VIEW"}
+                        error={form.formState.errors.role?.message?.toString()}
                     />
+                    <div />
                 </div>
 
                 {modalMode !== "VIEW" && (

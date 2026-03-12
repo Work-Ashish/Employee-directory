@@ -1,6 +1,8 @@
 import * as React from "react"
 import { cn, extractArray } from "@/lib/utils"
 import { PlusIcon, DownloadIcon, UploadIcon, ReaderIcon, ArchiveIcon, GearIcon } from "@radix-ui/react-icons"
+import { useAuth } from "@/context/AuthContext"
+import { hasPermission, Module, Action } from "@/lib/permissions"
 import { CsvImportModal } from "@/components/ui/CsvImportModal"
 import { useForm, SubmitHandler } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -112,6 +114,8 @@ function getPFStatusBadge(status: string) {
 }
 
 export function AdminPayrollView() {
+    const { user } = useAuth()
+    const canEdit = hasPermission(user?.role ?? '', Module.PAYROLL, Action.CREATE)
     const [activeTab, setActiveTab] = React.useState<string>("payroll")
     const [records, setRecords] = React.useState<PayrollRecord[]>([])
     const [pfRecords, setPfRecords] = React.useState<PFRecord[]>([])
@@ -315,11 +319,13 @@ export function AdminPayrollView() {
                                 <TabsTrigger value="pf" className="gap-1.5">
                                     <ArchiveIcon className="w-4 h-4" /> PF
                                 </TabsTrigger>
-                                <TabsTrigger value="config" className="gap-1.5">
-                                    <GearIcon className="w-4 h-4" /> Setup
-                                </TabsTrigger>
+                                {canEdit && (
+                                    <TabsTrigger value="config" className="gap-1.5">
+                                        <GearIcon className="w-4 h-4" /> Setup
+                                    </TabsTrigger>
+                                )}
                             </TabsList>
-                            {activeTab !== "config" && (
+                            {activeTab !== "config" && canEdit && (
                                 <>
                                     <Button
                                         variant="secondary"
@@ -386,7 +392,7 @@ export function AdminPayrollView() {
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="border-b border-border bg-bg-2">
-                                            {['Employee', 'Month', 'Basic', '+ Additions', '- Deductions', 'Net Payout', 'Status', 'Actions'].map((h) => (
+                                            {['Employee', 'Month', 'Basic', '+ Additions', '- Deductions', 'Net Payout', 'Status', ...(canEdit ? ['Actions'] : [])].map((h) => (
                                                 <th key={h} className="px-4 py-3 text-xs font-bold text-text-3 text-left uppercase tracking-wide">
                                                     {h}
                                                 </th>
@@ -421,11 +427,11 @@ export function AdminPayrollView() {
                                                         <Button size="sm" variant="primary" onClick={() => handleDownloadPDF(rec.id)}>
                                                             PDF
                                                         </Button>
-                                                    ) : (
+                                                    ) : canEdit ? (
                                                         <Button size="sm" variant="success" onClick={() => handleFinalize(rec.id)}>
                                                             Lock & Finalize
                                                         </Button>
-                                                    )}
+                                                    ) : null}
                                                 </td>
                                             </tr>
                                         )) : (
