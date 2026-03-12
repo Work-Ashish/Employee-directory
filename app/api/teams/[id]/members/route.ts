@@ -44,7 +44,7 @@ export const POST = withAuth({ module: Module.TEAMS, action: Action.ASSIGN }, as
 
         // Verify employee exists in org
         const employee = await prisma.employee.findFirst({
-            where: orgFilter(ctx, { id: employeeId }),
+            where: orgFilter(ctx, { id: employeeId, deletedAt: null }),
         })
         if (!employee) return apiError("Employee not found", ApiErrorCode.NOT_FOUND, 404)
 

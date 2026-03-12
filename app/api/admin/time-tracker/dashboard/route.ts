@@ -10,7 +10,7 @@ export const GET = withAuth({ module: Module.SETTINGS, action: Action.VIEW }, as
 
         // Get employees with their active sessions (paginated)
         const employees = await prisma.employee.findMany({
-            where: orgFilter(ctx),
+            where: orgFilter(ctx, { deletedAt: null }),
             take: 100, // K3: Bounded — prevents OOM with 50K employees
             select: {
                 id: true,

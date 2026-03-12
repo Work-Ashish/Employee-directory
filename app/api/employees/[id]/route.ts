@@ -116,27 +116,38 @@ export const DELETE = withAuth({ module: Module.EMPLOYEES, action: Action.DELETE
             return apiError("Employee not found", ApiErrorCode.NOT_FOUND, 404)
         }
 
-        await prisma.$transaction([
+        await prisma.$transaction(async (tx) => {
             // Soft-delete the employee — preserve all historical data
-            prisma.employee.update({
+            await tx.employee.update({
                 where: { id },
                 data: {
                     deletedAt: new Date(),
                     isArchived: true,
                     status: "ARCHIVED",
                 },
-            }),
+            })
             // Unassign assets
-            prisma.asset.updateMany({
+            await tx.asset.updateMany({
                 where: { assignedToId: id },
                 data: { assignedToId: null, assignedDate: null, status: "AVAILABLE" },
-            }),
+            })
             // Remove as manager from other employees
-            prisma.employee.updateMany({
+            await tx.employee.updateMany({
                 where: { managerId: id },
                 data: { managerId: null },
-            }),
-        ])
+            })
+            // Remove from teams
+            await tx.teamMember.deleteMany({
+                where: { employeeId: id },
+            })
+            // Revoke portal access — revoke all active sessions so user is logged out
+            if (existing.userId) {
+                await tx.userSession.updateMany({
+                    where: { userId: existing.userId, isRevoked: false },
+                    data: { isRevoked: true },
+                })
+            }
+        })
 
         return apiSuccess({ message: "Employee archived successfully" })
     } catch (error) {

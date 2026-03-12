@@ -39,7 +39,7 @@ export const POST = withAuth({ module: Module.TEAMS, action: Action.CREATE }, as
 
         // Verify lead exists in org
         const lead = await prisma.employee.findFirst({
-            where: orgFilter(ctx, { id: leadId }),
+            where: orgFilter(ctx, { id: leadId, deletedAt: null }),
         })
         if (!lead) {
             return apiError("Team lead not found", ApiErrorCode.NOT_FOUND, 404)

@@ -10,7 +10,7 @@ export const DELETE = withAuth({ module: Module.EMPLOYEES, action: Action.DELETE
 
         // Check if any employees are still assigned to this department
         const employeeCount = await prisma.employee.count({
-            where: { departmentId: id, organizationId: ctx.organizationId }
+            where: { departmentId: id, organizationId: ctx.organizationId, deletedAt: null }
         })
 
         if (employeeCount > 0) {

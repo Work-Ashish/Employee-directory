@@ -51,7 +51,7 @@ export const POST = withAuth({ module: Module.REPORTS, action: Action.EXPORT }, 
 
 async function runReportQuery(config: any, organizationId: string) {
     const { entityType, columns, filters } = config
-    const where = { ...filters, organizationId }
+    const where = { ...filters, organizationId, deletedAt: null }
 
     switch (entityType) {
         case "EMPLOYEE":

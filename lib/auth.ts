@@ -49,6 +49,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                     if (!user || !user.hashedPassword) return null
 
+                    // Block login if the linked employee is archived/deleted
+                    const linkedEmployee = await prisma.employee.findFirst({
+                        where: { userId: user.id },
+                        select: { deletedAt: true, status: true },
+                    })
+                    if (linkedEmployee?.deletedAt || linkedEmployee?.status === "ARCHIVED") {
+                        return null
+                    }
+
                     const isPasswordValid = await bcrypt.compare(
                         credentials.password as string,
                         user.hashedPassword

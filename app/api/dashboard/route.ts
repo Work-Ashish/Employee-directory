@@ -85,19 +85,20 @@ export const GET = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, a
 
         if (ctx.role === Roles.CEO || ctx.role === Roles.HR) {
             // --- ADMINISTRATIVE VIEW (CEO / HR) ---
+            const notDeleted = { organizationId: ctx.organizationId, deletedAt: null }
             const [totalEmployees, activeEmployees, onLeaveEmployees, resignedEmployees, payroll] = await Promise.all([
-                prisma.employee.count({ where: { organizationId: ctx.organizationId } }),
-                prisma.employee.count({ where: { status: "ACTIVE", organizationId: ctx.organizationId } }),
-                prisma.employee.count({ where: { status: "ON_LEAVE", organizationId: ctx.organizationId } }),
+                prisma.employee.count({ where: notDeleted }),
+                prisma.employee.count({ where: { ...notDeleted, status: "ACTIVE" } }),
+                prisma.employee.count({ where: { ...notDeleted, status: "ON_LEAVE" } }),
                 prisma.employee.count({
                     where: {
+                        ...notDeleted,
                         status: { in: ["RESIGNED", "TERMINATED"] },
                         updatedAt: { gte: subMonths(new Date(), 1) },
-                        organizationId: ctx.organizationId
                     }
                 }),
                 prisma.employee.aggregate({
-                    where: { organizationId: ctx.organizationId },
+                    where: notDeleted,
                     _sum: { salary: true }
                 }),
             ])
@@ -106,7 +107,7 @@ export const GET = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, a
                 where: { organizationId: ctx.organizationId },
                 include: {
                     _count: {
-                        select: { employees: { where: { organizationId: ctx.organizationId } } }
+                        select: { employees: { where: notDeleted } }
                     }
                 }
             })
@@ -124,8 +125,8 @@ export const GET = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, a
             const hiringRaw = await prisma.employee.groupBy({
                 by: ["dateOfJoining"],
                 where: {
+                    ...notDeleted,
                     dateOfJoining: { gte: sixMonthsAgo },
-                    organizationId: ctx.organizationId
                 },
                 _count: true,
             })
@@ -150,7 +151,7 @@ export const GET = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, a
                     COUNT(*) FILTER (WHERE salary >= 120000)::int as "range_120_plus",
                     COALESCE(AVG(salary), 0) as avg_salary
                 FROM "Employee"
-                WHERE "organizationId" = ${ctx.organizationId}
+                WHERE "organizationId" = ${ctx.organizationId} AND "deletedAt" IS NULL
             `
             const stats = salaryStats[0] || {}
             const salaryRanges = [
@@ -161,7 +162,7 @@ export const GET = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, a
             ]
 
             const recentHiresRaw = await prisma.employee.findMany({
-                where: { organizationId: ctx.organizationId },
+                where: notDeleted,
                 take: 5,
                 orderBy: { dateOfJoining: "desc" },
                 include: { department: true }

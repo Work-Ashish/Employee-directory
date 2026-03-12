@@ -34,6 +34,7 @@ export async function POST(req: Request) {
                     const employee = await prisma.employee.findFirst({
                         where: {
                             ...(organizationId ? { organizationId } : {}),
+                            deletedAt: null,
                             ...(employeeCode
                                 ? { employeeCode }
                                 : { firstName: { contains: String(row["firstName"] || row["First Name"] || ""), mode: "insensitive" as const } })
@@ -77,6 +78,7 @@ export async function POST(req: Request) {
                     const employee = await prisma.employee.findFirst({
                         where: {
                             ...(pfOrgId ? { organizationId: pfOrgId } : {}),
+                            deletedAt: null,
                             ...(employeeCode
                                 ? { employeeCode }
                                 : { firstName: { contains: String(row["firstName"] || row["First Name"] || ""), mode: "insensitive" as const } })

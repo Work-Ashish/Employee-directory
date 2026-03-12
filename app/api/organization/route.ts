@@ -7,7 +7,7 @@ import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 export const GET = withAuth({ module: Module.ORGANIZATION, action: Action.VIEW }, async (req, ctx) => {
     try {
         const employees = await prisma.employee.findMany({
-            where: { organizationId: ctx.organizationId },
+            where: { organizationId: ctx.organizationId, deletedAt: null },
             select: {
                 id: true,
                 firstName: true,

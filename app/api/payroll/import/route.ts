@@ -23,6 +23,7 @@ export const POST = withAuth({ module: Module.PAYROLL, action: Action.IMPORT }, 
                 const employee = await prisma.employee.findFirst({
                     where: {
                         organizationId: orgId,
+                        deletedAt: null,
                         ...(employeeCode
                             ? { employeeCode }
                             : { firstName: { contains: String(row["firstName"] || row["First Name"] || ""), mode: "insensitive" } })

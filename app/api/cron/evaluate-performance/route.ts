@@ -38,7 +38,7 @@ export async function POST(req: Request) {
         console.log(`[AGENT] Starting evaluation matrix for Week ${weekNumber}, ${year} (Batch: ${batchId})`)
 
         const employees = await prisma.employee.findMany({
-            where: { status: "ACTIVE" },
+            where: { status: "ACTIVE", deletedAt: null },
             include: { user: true },
             take: 50 // Chunk for demo safety
         })

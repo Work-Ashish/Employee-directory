@@ -20,7 +20,7 @@ export const POST = withAuth({ module: Module.REPORTS, action: Action.VIEW }, as
         let result: any[] = []
         let total = 0
 
-        const where: any = { organizationId: ctx.organizationId }
+        const where: any = { organizationId: ctx.organizationId, deletedAt: null }
 
         // Apply dynamic filters
         if (filters && typeof filters === "object") {
