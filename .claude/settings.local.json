@@ -67,7 +67,11 @@
       "Bash(npx vitest run __tests__/api/)",
       "Bash(npx vitest run __tests__/api/payroll.test.ts)",
       "Bash(npx prisma validate)",
-      "Bash(npx prisma migrate status)"
+      "Bash(npx prisma migrate status)",
+      "Bash(npx vitest run __tests__/debug-monthly-review.test.ts)",
+      "Bash(npx tsx scripts/test-review-create.ts)",
+      "Bash(npx tsx scripts/sync-schema.ts)",
+      "Bash(npx tsc --noEmit --pretty)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\reimbursements"

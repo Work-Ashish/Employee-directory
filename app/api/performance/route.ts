@@ -69,26 +69,47 @@ export const GET = withAuth({ module: Module.PERFORMANCE, action: Action.VIEW },
 export const POST = withAuth({ module: Module.PERFORMANCE, action: Action.CREATE }, async (req, ctx) => {
     try {
         const body = await req.json()
+        console.log("[PERFORMANCE_POST] ctx:", { role: ctx.role, employeeId: ctx.employeeId, orgId: ctx.organizationId })
+
         const parsed = performanceReviewSchema.safeParse(body)
         if (!parsed.success) {
+            console.error("[PERFORMANCE_POST] Validation failed:", JSON.stringify(parsed.error.format()))
             return apiError("Validation Error", ApiErrorCode.VALIDATION_ERROR, 400, parsed.error.format())
         }
 
+        // Verify the target employee exists in the org
+        const targetEmployee = await prisma.employee.findFirst({
+            where: { id: parsed.data.employeeId, organizationId: ctx.organizationId, deletedAt: null },
+            select: { id: true },
+        })
+        if (!targetEmployee) {
+            return apiError("Employee not found in your organization", ApiErrorCode.NOT_FOUND, 404)
+        }
+
+        const createData = {
+            rating: parsed.data.rating,
+            progress: parsed.data.progress,
+            comments: parsed.data.comments,
+            reviewDate: parsed.data.reviewDate || new Date(),
+            status: parsed.data.status,
+            employeeId: parsed.data.employeeId,
+            organizationId: ctx.organizationId,
+            reviewerId: ctx.employeeId || parsed.data.reviewerId || null,
+            reviewType: parsed.data.reviewType,
+            reviewPeriod: parsed.data.reviewPeriod,
+            formType: parsed.data.formType || null,
+            formData: parsed.data.formData ? (parsed.data.formData as Prisma.InputJsonValue) : Prisma.JsonNull,
+        }
+        console.log("[PERFORMANCE_POST] Creating review:", {
+            employeeId: createData.employeeId,
+            reviewerId: createData.reviewerId,
+            formType: createData.formType,
+            status: createData.status,
+            rating: createData.rating,
+        })
+
         const review = await prisma.performanceReview.create({
-            data: {
-                rating: parsed.data.rating,
-                progress: parsed.data.progress,
-                comments: parsed.data.comments,
-                reviewDate: parsed.data.reviewDate || new Date(),
-                status: parsed.data.status,
-                employeeId: parsed.data.employeeId,
-                organizationId: ctx.organizationId,
-                reviewerId: ctx.employeeId || parsed.data.reviewerId,
-                reviewType: parsed.data.reviewType,
-                reviewPeriod: parsed.data.reviewPeriod,
-                formType: parsed.data.formType,
-                formData: parsed.data.formData ? (parsed.data.formData as Prisma.InputJsonValue) : Prisma.JsonNull,
-            },
+            data: createData,
             include: {
                 employee: {
                     select: {
@@ -109,8 +130,16 @@ export const POST = withAuth({ module: Module.PERFORMANCE, action: Action.CREATE
         })
 
         return apiSuccess(review, undefined, 201)
-    } catch (error) {
-        console.error("[PERFORMANCE_POST]", error)
-        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
+    } catch (error: any) {
+        const errMsg = error?.message || "Unknown error"
+        const errCode = error?.code || ""
+        console.error("[PERFORMANCE_POST] Error:", errMsg, "Code:", errCode, error)
+        return apiError(
+            errCode === "P2003" ? "Referenced employee or reviewer not found"
+                : errCode === "P2002" ? "Duplicate review entry"
+                    : `Failed to create review: ${errMsg}`,
+            ApiErrorCode.INTERNAL_ERROR,
+            500
+        )
     }
 })

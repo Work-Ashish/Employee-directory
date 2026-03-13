@@ -67,6 +67,7 @@ function getStatusBadge(status: string) {
         case "GOOD": return <Badge variant="default">{status}</Badge>
         case "NEEDS_IMPROVEMENT": return <Badge variant="warning">NEEDS IMPROVEMENT</Badge>
         case "COMPLETED": return <Badge variant="neutral">{status}</Badge>
+        case "PENDING": return null
         default: return <Badge variant="neutral">{status}</Badge>
     }
 }
@@ -88,6 +89,7 @@ export function AdminPerformanceView() {
 
     // Team report view state
     const [teamReportOpen, setTeamReportOpen] = React.useState<{ id: string; name: string } | null>(null)
+    const [teamReportSelectedReview, setTeamReportSelectedReview] = React.useState<PerformanceReview | null>(null)
 
     // Performance template config (initialized with defaults so editor always works)
     const [perfTemplate, setPerfTemplate] = React.useState({
@@ -443,59 +445,125 @@ export function AdminPerformanceView() {
             />
 
             {/* ═══════════ TEAM REVIEW PAGE ═══════════ */}
-            {teamReviewPage && (
-                <div className="bg-surface border border-border rounded-xl p-8 min-h-[calc(100vh-220px)] flex flex-col items-center justify-center">
-                    <div className="w-full flex items-center mb-6">
-                        <button
-                            onClick={() => setTeamReviewPage(false)}
-                            className="text-sm text-accent hover:underline flex items-center gap-1"
-                        >
-                            <ChevronRightIcon className="w-4 h-4 rotate-180" />
-                            Back
-                        </button>
-                        <h2 className="text-lg font-semibold text-text ml-4">Team Review</h2>
-                    </div>
-                    <div className="flex-1 flex flex-col items-center justify-center gap-4">
-                        <EmptyState
-                            icon={<FileTextIcon className="w-10 h-10" />}
-                            title="Team Review"
-                            description="This section is under construction. Content will be added soon."
-                        />
-                        <Button variant="primary" onClick={() => setTeamReviewFormOpen(true)}>
-                            Put Review
-                        </Button>
-                    </div>
+            {teamReviewPage && (() => {
+                const teamReviews = reviews.filter(r => r.formType === "TEAM_REVIEW")
+                return (
+                    <div className="bg-surface border border-border rounded-xl min-h-[calc(100vh-220px)] flex flex-col">
+                        <div className="flex items-center justify-between p-5 border-b border-border">
+                            <div className="flex items-center">
+                                <button
+                                    onClick={() => setTeamReviewPage(false)}
+                                    className="text-sm text-accent hover:underline flex items-center gap-1"
+                                >
+                                    <ChevronRightIcon className="w-4 h-4 rotate-180" />
+                                    Back
+                                </button>
+                                <h2 className="text-lg font-semibold text-text ml-4">Team Review</h2>
+                                {teamReviews.length > 0 && (
+                                    <Badge variant="neutral" size="sm" className="ml-2">{teamReviews.length}</Badge>
+                                )}
+                            </div>
+                            <Button variant="primary" size="sm" onClick={() => setTeamReviewFormOpen(true)} leftIcon={<PlusIcon className="w-4 h-4" />}>
+                                Put Review
+                            </Button>
+                        </div>
 
-                    {/* Team Review Form Dialog */}
-                    <TeamReviewForm
-                        open={teamReviewFormOpen}
-                        onClose={() => setTeamReviewFormOpen(false)}
-                        employees={employees}
-                        onSubmit={async (data) => {
-                            const memberReviews = data.reviews.filter((r: any) => r.overallRating > 0 || r.kpis.some((k: any) => k.actual))
-                            if (memberReviews.length === 0) throw new Error("No reviews to submit")
-                            const results = await Promise.all(
-                                memberReviews.map((rev: any) =>
-                                    fetch("/api/performance", {
-                                        method: "POST",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({
-                                            employeeId: rev.employeeId,
-                                            rating: rev.overallRating || 3,
-                                            formType: "TEAM_REVIEW",
-                                            reviewType: "MANAGER",
-                                            formData: { ...rev, config: data.config },
-                                        }),
-                                    })
+                        {teamReviews.length === 0 ? (
+                            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
+                                <EmptyState
+                                    icon={<FileTextIcon className="w-10 h-10" />}
+                                    title="No Team Reviews Yet"
+                                    description="Submit a team review to see it listed here."
+                                />
+                                <Button variant="primary" onClick={() => setTeamReviewFormOpen(true)}>
+                                    Put Review
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="p-5 space-y-3 overflow-y-auto flex-1">
+                                {teamReviews.map(rev => (
+                                    <button
+                                        key={rev.id}
+                                        onClick={() => setViewReview(rev)}
+                                        className="w-full text-left p-4 bg-bg-2/50 hover:bg-accent/[0.04] border border-border/60 rounded-xl transition-all group"
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <Avatar
+                                                    name={`${rev.employee.firstName} ${rev.employee.lastName}`}
+                                                    size="xs"
+                                                />
+                                                <span className="text-sm font-semibold text-text">
+                                                    {rev.employee.firstName} {rev.employee.lastName}
+                                                </span>
+                                                {rev.employee.designation && (
+                                                    <span className="text-xs text-text-4">{rev.employee.designation}</span>
+                                                )}
+                                            </div>
+                                            {getStatusBadge(rev.status)}
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <span className="text-warning tracking-wider text-sm">{"★".repeat(Math.floor(rev.rating))}</span>
+                                                    <span className="text-text-4 tracking-wider text-sm">{"★".repeat(5 - Math.floor(rev.rating))}</span>
+                                                    <span className="text-xs text-text-3 font-mono ml-1">{rev.rating.toFixed(1)}</span>
+                                                </div>
+                                                <div className="text-xs text-text-3">
+                                                    {format(new Date(rev.reviewDate), "MMM d, yyyy")}
+                                                    {rev.reviewPeriod && <span className="ml-2 text-text-4">{rev.reviewPeriod}</span>}
+                                                    {rev.reviewer && (
+                                                        <span className="ml-2">by {rev.reviewer.firstName} {rev.reviewer.lastName}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <span className="text-xs font-medium text-accent opacity-0 group-hover:opacity-100 transition-opacity">
+                                                View Details &rarr;
+                                            </span>
+                                        </div>
+                                        {rev.comments && (
+                                            <p className="text-xs text-text-3 mt-2 line-clamp-2">{rev.comments}</p>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Team Review Form Dialog */}
+                        <TeamReviewForm
+                            open={teamReviewFormOpen}
+                            onClose={() => setTeamReviewFormOpen(false)}
+                            employees={employees}
+                            onSubmit={async (data) => {
+                                const memberReviews = data.reviews.filter((r: any) => r.overallRating > 0 || r.kpis.some((k: any) => k.actual))
+                                if (memberReviews.length === 0) throw new Error("No reviews to submit")
+                                const results = await Promise.all(
+                                    memberReviews.map((rev: any) =>
+                                        fetch("/api/performance", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({
+                                                employeeId: rev.employeeId,
+                                                rating: rev.overallRating || 3,
+                                                progress: Math.round(((rev.overallRating || 3) / 5) * 100),
+                                                status: (rev.overallRating || 3) >= 4 ? "EXCELLENT" : (rev.overallRating || 3) >= 3 ? "GOOD" : "NEEDS_IMPROVEMENT",
+                                                comments: rev.comments || `Team review for ${rev.employeeName || "team member"}`,
+                                                reviewPeriod: format(new Date(), "MMMM yyyy"),
+                                                formType: "TEAM_REVIEW",
+                                                reviewType: "MANAGER",
+                                                formData: { ...rev, config: data.config },
+                                            }),
+                                        })
+                                    )
                                 )
-                            )
-                            const failed = results.filter(r => !r.ok)
-                            if (failed.length > 0) throw new Error(`${failed.length} review(s) failed to submit`)
-                            fetchAll()
-                        }}
-                    />
-                </div>
-            )}
+                                const failed = results.filter(r => !r.ok)
+                                if (failed.length > 0) throw new Error(`${failed.length} review(s) failed to submit`)
+                                fetchAll()
+                            }}
+                        />
+                    </div>
+                )
+            })()}
 
             {/* ═══════════ TEAM MODE ═══════════ */}
             {!teamReviewPage && mode === "team" && (
@@ -604,6 +672,7 @@ export function AdminPerformanceView() {
                                                             const team = teams.find(t => t.name === teamName)
                                                             if (team) {
                                                                 setSelectedEmployeeId(null)
+                                                                setTeamReportSelectedReview(null)
                                                                 setTeamReportOpen({ id: team.id, name: team.name })
                                                             }
                                                         }}
@@ -764,49 +833,39 @@ export function AdminPerformanceView() {
                                 const teamReviews = reviews.filter(r =>
                                     r.formType === "TEAM_REVIEW" && memberIds.includes(r.employeeId)
                                 )
-                                if (teamReviews.length === 0) {
+
+                                // Detail view for a selected team review
+                                if (teamReportSelectedReview) {
+                                    const rev = teamReportSelectedReview
+                                    const fd = rev.formData as any
                                     return (
-                                        <div className="flex flex-col items-center justify-center h-full text-center gap-4 p-8">
-                                            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-500/10 dark:to-indigo-500/10 flex items-center justify-center text-4xl shadow-sm">
-                                                <span>&#128203;</span>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-semibold text-text-2 mb-1">{teamReportOpen.name} — Team Report</p>
-                                                <p className="text-xs text-text-4 max-w-[280px]">
-                                                    No team reviews have been submitted yet. The team lead will fill this report for their team.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )
-                                }
-                                return (
-                                    <div className="p-4 space-y-6 overflow-y-auto">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-sm font-bold text-text">{teamReportOpen.name} — Team Reviews</h3>
-                                            <span className="text-xs text-text-3">{teamReviews.length} review(s)</span>
-                                        </div>
-                                        {teamReviews.map((rev) => {
-                                            const fd = rev.formData as any
-                                            if (!fd) return <ReviewCard key={rev.id} rev={rev} onClick={() => setViewReview(rev)} />
-                                            return (
-                                                <div key={rev.id} className="border border-border rounded-xl overflow-hidden bg-surface">
-                                                    {/* Header */}
-                                                    <div className="bg-accent/10 border-b border-border px-5 py-3 flex items-center justify-between">
-                                                        <h4 className="text-sm font-bold text-accent">
-                                                            {fd.name || `${rev.employee.firstName} ${rev.employee.lastName}`}
-                                                            <span className="ml-2 text-text-3 normal-case font-normal italic text-xs">
-                                                                — {fd.role || rev.employee.designation || "Team Member"}
-                                                            </span>
-                                                        </h4>
-                                                        <div className="flex items-center gap-3">
-                                                            {fd.overallRating > 0 && (
-                                                                <Badge variant={fd.overallRating >= 4 ? "success" : fd.overallRating >= 3 ? "default" : "warning"}>
-                                                                    Rating: {fd.overallRating}/5
-                                                                </Badge>
-                                                            )}
-                                                            <span className="text-[10px] text-text-3">{format(new Date(rev.reviewDate), "dd MMM yyyy")}</span>
-                                                        </div>
+                                        <div className="p-4 space-y-4 overflow-y-auto">
+                                            <button
+                                                onClick={() => setTeamReportSelectedReview(null)}
+                                                className="text-xs text-accent hover:underline flex items-center gap-1 mb-2"
+                                            >
+                                                <ChevronRightIcon className="w-3.5 h-3.5 rotate-180" />
+                                                Back to list
+                                            </button>
+                                            <div className="border border-border rounded-xl overflow-hidden bg-surface">
+                                                {/* Header */}
+                                                <div className="bg-accent/10 border-b border-border px-5 py-3 flex items-center justify-between">
+                                                    <h4 className="text-sm font-bold text-accent">
+                                                        {fd?.name || `${rev.employee.firstName} ${rev.employee.lastName}`}
+                                                        <span className="ml-2 text-text-3 normal-case font-normal italic text-xs">
+                                                            — {fd?.role || rev.employee.designation || "Team Member"}
+                                                        </span>
+                                                    </h4>
+                                                    <div className="flex items-center gap-3">
+                                                        {(fd?.overallRating ?? rev.rating) > 0 && (
+                                                            <Badge variant={(fd?.overallRating ?? rev.rating) >= 4 ? "success" : (fd?.overallRating ?? rev.rating) >= 3 ? "default" : "warning"}>
+                                                                Rating: {fd?.overallRating ?? rev.rating}/5
+                                                            </Badge>
+                                                        )}
+                                                        <span className="text-[10px] text-text-3">{format(new Date(rev.reviewDate), "dd MMM yyyy")}</span>
                                                     </div>
+                                                </div>
+                                                {fd ? (
                                                     <div className="p-5 space-y-4">
                                                         {/* KPIs */}
                                                         {fd.kpis && fd.kpis.length > 0 && (
@@ -911,7 +970,86 @@ export function AdminPerformanceView() {
                                                             </div>
                                                         )}
                                                     </div>
-                                                </div>
+                                                ) : (
+                                                    <div className="p-5">
+                                                        <p className="text-xs text-text-3">{rev.comments || "No details available"}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                }
+
+                                // Empty state
+                                if (teamReviews.length === 0) {
+                                    return (
+                                        <div className="flex flex-col items-center justify-center h-full text-center gap-4 p-8">
+                                            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-500/10 dark:to-indigo-500/10 flex items-center justify-center text-4xl shadow-sm">
+                                                <span>&#128203;</span>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-text-2 mb-1">{teamReportOpen.name} — Team Report</p>
+                                                <p className="text-xs text-text-4 max-w-[280px]">
+                                                    No team reviews have been submitted yet. The team lead will fill this report for their team.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )
+                                }
+
+                                // Line items list
+                                return (
+                                    <div className="p-4 space-y-3 overflow-y-auto">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <h3 className="text-sm font-bold text-text">{teamReportOpen.name} — Team Reviews</h3>
+                                            <span className="text-xs text-text-3">{teamReviews.length} review(s)</span>
+                                        </div>
+                                        {teamReviews.map((rev) => {
+                                            const fd = rev.formData as any
+                                            return (
+                                                <button
+                                                    key={rev.id}
+                                                    onClick={() => setTeamReportSelectedReview(rev)}
+                                                    className="w-full text-left p-4 bg-bg-2/50 hover:bg-accent/[0.04] border border-border/60 rounded-xl transition-all group"
+                                                >
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <Avatar
+                                                                name={`${rev.employee.firstName} ${rev.employee.lastName}`}
+                                                                size="xs"
+                                                            />
+                                                            <span className="text-sm font-semibold text-text">
+                                                                {fd?.name || `${rev.employee.firstName} ${rev.employee.lastName}`}
+                                                            </span>
+                                                            <span className="text-xs text-text-4 italic">
+                                                                {fd?.role || rev.employee.designation || "Team Member"}
+                                                            </span>
+                                                        </div>
+                                                        {getStatusBadge(rev.status)}
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <div className="flex items-center gap-1.5 mb-1">
+                                                                <span className="text-warning tracking-wider text-sm">{"★".repeat(Math.floor(rev.rating))}</span>
+                                                                <span className="text-text-4 tracking-wider text-sm">{"★".repeat(5 - Math.floor(rev.rating))}</span>
+                                                                <span className="text-xs text-text-3 font-mono ml-1">{rev.rating.toFixed(1)}</span>
+                                                            </div>
+                                                            <div className="text-xs text-text-3">
+                                                                {format(new Date(rev.reviewDate), "MMM d, yyyy")}
+                                                                {rev.reviewPeriod && <span className="ml-2 text-text-4">{rev.reviewPeriod}</span>}
+                                                                {rev.reviewer && (
+                                                                    <span className="ml-2">by {rev.reviewer.firstName} {rev.reviewer.lastName}</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-xs font-medium text-accent opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            View Details &rarr;
+                                                        </span>
+                                                    </div>
+                                                    {rev.comments && (
+                                                        <p className="text-xs text-text-3 mt-2 line-clamp-2">{rev.comments}</p>
+                                                    )}
+                                                </button>
                                             )
                                         })}
                                     </div>
