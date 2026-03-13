@@ -79,6 +79,9 @@ model Organization {
   savedReports       SavedReport[]
   reportSchedules    ReportSchedule[]
   inAppNotifications InAppNotification[]
+
+  // Performance Templates
+  performanceTemplate PerformanceTemplate?
 }
 
 model User {
@@ -441,6 +444,19 @@ model AttendancePolicy {
   organization      Organization @relation(fields: [organizationId], references: [id])
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
+}
+
+model PerformanceTemplate {
+  id                  String       @id @default(cuid())
+  organizationId      String       @unique
+  dailyMetrics        Json         @default("[]")
+  dailyCompetencies   Json         @default("[]")
+  monthlyKpis         Json         @default("[]")
+  monthlyCompetencies Json         @default("[]")
+  selfCompetencies    Json         @default("[]")
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  organization        Organization @relation(fields: [organizationId], references: [id])
 }
 
 model AttendanceRegularization {

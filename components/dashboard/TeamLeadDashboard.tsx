@@ -11,6 +11,7 @@ import { CalendarIcon, ClockIcon, BackpackIcon, PersonIcon } from "@radix-ui/rea
 import { KudosWidget } from "./KudosWidget"
 import { TimeTracker } from "./TimeTracker"
 import { OnboardingCompanion } from "./OnboardingCompanion"
+import { TodoList } from "./TodoList"
 import Link from "next/link"
 import { useAuth } from "@/context/AuthContext"
 import { cn } from "@/lib/utils"
@@ -300,6 +301,9 @@ export function TeamLeadDashboard() {
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* To-Do List */}
+                        <TodoList />
                     </div>
 
                     <div className="flex flex-col gap-6">

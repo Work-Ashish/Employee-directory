@@ -5,18 +5,10 @@ import { Input } from "@/components/ui/Input"
 import { Textarea } from "@/components/ui/Textarea"
 import { Button } from "@/components/ui/Button"
 import { Badge } from "@/components/ui/Badge"
-import { Select } from "@/components/ui/Select"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { toast } from "sonner"
 import { Cross2Icon, PlusIcon } from "@radix-ui/react-icons"
-
-interface Employee {
-    id: string
-    firstName: string
-    lastName: string
-    designation?: string
-}
 
 interface ActivityMetric {
     metric: string
@@ -31,7 +23,7 @@ interface BehavioralRating {
     comments: string
 }
 
-interface DailyFormData {
+interface DailySelfFormData {
     activityMetrics: ActivityMetric[]
     behavioralRatings: BehavioralRating[]
     priorities: string[]
@@ -62,16 +54,15 @@ const DEFAULT_BEHAVIORAL_COMPETENCIES: BehavioralRating[] = [
 
 const RATING_LABELS = ["", "Poor", "Below Avg", "Average", "Good", "Excellent"]
 
-interface DailyReviewFormProps {
-    employees: Employee[]
+interface DailySelfReviewFormProps {
+    employeeId: string
     onSubmit: (data: any) => Promise<void>
     onCancel: () => void
     defaultActivityMetrics?: string[]
     defaultBehavioralItems?: string[]
 }
 
-export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivityMetrics, defaultBehavioralItems }: DailyReviewFormProps) {
-    const [employeeId, setEmployeeId] = React.useState("")
+export function DailySelfReviewForm({ employeeId, onSubmit, onCancel, defaultActivityMetrics, defaultBehavioralItems }: DailySelfReviewFormProps) {
     const [reviewDate, setReviewDate] = React.useState(format(new Date(), "yyyy-MM-dd"))
     const [activityMetrics, setActivityMetrics] = React.useState<ActivityMetric[]>(() =>
         defaultActivityMetrics
@@ -88,8 +79,6 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
     const [keyWins, setKeyWins] = React.useState("")
     const [actionItems, setActionItems] = React.useState("")
     const [submitting, setSubmitting] = React.useState(false)
-
-    const selectedEmployee = employees.find(e => e.id === employeeId)
 
     const updateMetric = (index: number, field: keyof ActivityMetric, value: string) => {
         setActivityMetrics(prev => prev.map((m, i) => i === index ? { ...m, [field]: value } : m))
@@ -118,10 +107,6 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
     }, [behavioralRatings])
 
     const handleSubmit = async () => {
-        if (!employeeId) {
-            toast.error("Please select an employee")
-            return
-        }
         const unrated = behavioralRatings.filter(r => r.rating === 0)
         if (unrated.length > 0) {
             toast.error(`Please rate all competencies (${unrated.length} unrated)`)
@@ -130,7 +115,7 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
 
         setSubmitting(true)
         try {
-            const formData: DailyFormData = {
+            const formData: DailySelfFormData = {
                 activityMetrics: activityMetrics.filter(m => m.metric.trim()),
                 behavioralRatings,
                 priorities: priorities.filter(p => p.trim()),
@@ -143,10 +128,10 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
                 employeeId,
                 rating: Math.round(avgRating * 10) / 10,
                 progress: Math.round((avgRating / 5) * 100),
-                comments: keyWins || "Daily performance review",
+                comments: keyWins || "Daily self-review",
                 reviewDate: new Date(reviewDate),
                 status: avgRating >= 4 ? "EXCELLENT" : avgRating >= 3 ? "GOOD" : "NEEDS_IMPROVEMENT",
-                reviewType: "MANAGER",
+                reviewType: "SELF",
                 reviewPeriod: format(new Date(reviewDate), "MMM d, yyyy"),
                 formType: "DAILY",
                 formData,
@@ -158,38 +143,26 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
 
     return (
         <div className="space-y-8">
-            {/* Section 1: Employee Info */}
-            <div className="bg-gradient-to-r from-accent/5 to-purple/5 border border-accent/10 rounded-xl p-5">
-                <h3 className="text-sm font-bold text-text-3 uppercase tracking-wider mb-4">Employee Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Select
-                        label="Employee *"
-                        value={employeeId}
-                        onChange={e => setEmployeeId(e.target.value)}
-                    >
-                        <option value="">Select Employee...</option>
-                        {employees.map(e => (
-                            <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
-                        ))}
-                    </Select>
-                    <Input
-                        label="Designation"
-                        value={selectedEmployee?.designation || "—"}
-                        disabled
-                    />
+            {/* Section 1: Review Date */}
+            <div className="bg-gradient-to-r from-emerald-500/5 to-teal-500/5 border border-emerald-500/10 rounded-xl p-5">
+                <h3 className="text-sm font-bold text-text-3 uppercase tracking-wider mb-4">Daily Self-Assessment</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
                         label="Review Date"
                         type="date"
                         value={reviewDate}
                         onChange={e => setReviewDate(e.target.value)}
                     />
+                    <div className="flex items-end">
+                        <p className="text-sm text-text-3">Reflect on your performance for the day and rate yourself honestly.</p>
+                    </div>
                 </div>
             </div>
 
             {/* Section 2: Activity Metrics Table */}
             <div>
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-text-3 uppercase tracking-wider">Daily Activity Metrics</h3>
+                    <h3 className="text-sm font-bold text-text-3 uppercase tracking-wider">My Daily Activity Metrics</h3>
                     <Button variant="ghost" size="sm" onClick={addMetricRow} leftIcon={<PlusIcon className="w-3.5 h-3.5" />}>
                         Add Row
                     </Button>
@@ -199,7 +172,7 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
                         <thead>
                             <tr className="bg-surface-2 border-b border-border">
                                 <th className="px-4 py-2.5 text-xs font-bold text-text-3 text-left uppercase tracking-wider w-[25%]">Activity / Metric</th>
-                                <th className="px-4 py-2.5 text-xs font-bold text-text-3 text-left uppercase tracking-wider w-[15%]">Daily Target</th>
+                                <th className="px-4 py-2.5 text-xs font-bold text-text-3 text-left uppercase tracking-wider w-[15%]">Target</th>
                                 <th className="px-4 py-2.5 text-xs font-bold text-text-3 text-left uppercase tracking-wider w-[15%]">Actual</th>
                                 <th className="px-4 py-2.5 text-xs font-bold text-text-3 text-left uppercase tracking-wider w-[35%]">Notes</th>
                                 <th className="px-2 py-2.5 w-[10%]" />
@@ -256,10 +229,10 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
                 </div>
             </div>
 
-            {/* Section 3: Behavioral Ratings */}
+            {/* Section 3: Behavioral Self-Ratings */}
             <div>
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-text-3 uppercase tracking-wider">Quality & Behavioral Ratings</h3>
+                    <h3 className="text-sm font-bold text-text-3 uppercase tracking-wider">Self-Assessment: Quality & Behavior</h3>
                     {avgRating > 0 && (
                         <Badge variant={avgRating >= 4 ? "success" : avgRating >= 3 ? "default" : "warning"}>
                             Avg: {avgRating.toFixed(1)} / 5.0
@@ -278,7 +251,7 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
                                         ))}
                                     </div>
                                 </th>
-                                <th className="px-4 py-2.5 text-xs font-bold text-text-3 text-left uppercase tracking-wider w-[25%]">Comments</th>
+                                <th className="px-4 py-2.5 text-xs font-bold text-text-3 text-left uppercase tracking-wider w-[25%]">Self-Reflection</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -295,8 +268,8 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
                                                 className={cn(
                                                     "w-8 h-8 rounded-full border-2 transition-all duration-200 text-xs font-bold",
                                                     r.rating === n
-                                                        ? "border-accent bg-accent text-white scale-110"
-                                                        : "border-border hover:border-accent/50 text-text-3 hover:text-accent"
+                                                        ? "border-emerald-500 bg-emerald-500 text-white scale-110"
+                                                        : "border-border hover:border-emerald-500/50 text-text-3 hover:text-emerald-500"
                                                 )}
                                             >
                                                 {n}
@@ -308,7 +281,7 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
                                             className="input-base text-sm py-1.5"
                                             value={r.comments}
                                             onChange={e => updateRatingComment(i, e.target.value)}
-                                            placeholder="Optional..."
+                                            placeholder="How did you do?"
                                         />
                                     </td>
                                 </tr>
@@ -327,13 +300,13 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
 
             {/* Section 4: Priorities & Blockers */}
             <div>
-                <h3 className="text-sm font-bold text-text-3 uppercase tracking-wider mb-4">Daily Priorities & Blockers</h3>
+                <h3 className="text-sm font-bold text-text-3 uppercase tracking-wider mb-4">My Priorities & Blockers</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">
-                        <label className="text-sm font-medium text-text-2">Top 3 Priorities</label>
+                        <label className="text-sm font-medium text-text-2">Top 3 Priorities Today</label>
                         {priorities.map((p, i) => (
                             <div key={i} className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-accent w-5 shrink-0">{i + 1}.</span>
+                                <span className="text-xs font-bold text-emerald-500 w-5 shrink-0">{i + 1}.</span>
                                 <input
                                     className="input-base text-sm"
                                     value={p}
@@ -351,28 +324,28 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
                         label="Blockers / Challenges"
                         value={blockers}
                         onChange={e => setBlockers(e.target.value)}
-                        placeholder="Describe any blockers or challenges faced today..."
+                        placeholder="What challenges did you face today?"
                         rows={4}
                     />
                 </div>
             </div>
 
-            {/* Section 5: End-of-Day Summary */}
+            {/* Section 5: End-of-Day Reflection */}
             <div>
-                <h3 className="text-sm font-bold text-text-3 uppercase tracking-wider mb-4">End-of-Day Summary</h3>
+                <h3 className="text-sm font-bold text-text-3 uppercase tracking-wider mb-4">End-of-Day Reflection</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Textarea
                         label="Key Wins / Accomplishments"
                         value={keyWins}
                         onChange={e => setKeyWins(e.target.value)}
-                        placeholder="What were the key wins or accomplishments today?"
+                        placeholder="What went well today? What are you proud of?"
                         rows={4}
                     />
                     <Textarea
                         label="Action Items for Tomorrow"
                         value={actionItems}
                         onChange={e => setActionItems(e.target.value)}
-                        placeholder="What needs to be followed up on tomorrow?"
+                        placeholder="What do you plan to focus on tomorrow?"
                         rows={4}
                     />
                 </div>
@@ -383,10 +356,10 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
                 <div className="flex items-center gap-3">
                     {avgRating > 0 && (
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-text-3">Overall Score:</span>
+                            <span className="text-sm text-text-3">Self-Score:</span>
                             <span className={cn(
                                 "text-lg font-extrabold",
-                                avgRating >= 4 ? "text-success" : avgRating >= 3 ? "text-accent" : "text-warning"
+                                avgRating >= 4 ? "text-success" : avgRating >= 3 ? "text-emerald-500" : "text-warning"
                             )}>
                                 {avgRating.toFixed(1)}
                             </span>
@@ -399,7 +372,7 @@ export function DailyReviewForm({ employees, onSubmit, onCancel, defaultActivity
                 </div>
                 <div className="flex gap-3">
                     <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-                    <Button onClick={handleSubmit} loading={submitting}>Submit Daily Review</Button>
+                    <Button onClick={handleSubmit} loading={submitting}>Submit Daily Self Review</Button>
                 </div>
             </div>
         </div>

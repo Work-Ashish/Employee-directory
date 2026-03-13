@@ -119,8 +119,16 @@ export const performanceReviewSchema = z.object({
     reviewerId: z.string().optional().nullable(),
     reviewType: z.enum(["MANAGER", "SELF", "PEER"]).default("MANAGER"),
     reviewPeriod: z.string().optional().nullable(),
-    formType: z.enum(["DAILY", "MONTHLY"]).optional().nullable(),
+    formType: z.enum(["DAILY", "MONTHLY", "TEAM_REVIEW", "LEADER_MONTHLY"]).optional().nullable(),
     formData: z.record(z.string(), z.unknown()).optional().nullable(),
+})
+
+export const performanceTemplateSchema = z.object({
+    dailyMetrics:        z.array(z.string().min(1)).min(1),
+    dailyCompetencies:   z.array(z.string().min(1)).min(1),
+    monthlyKpis:         z.array(z.string().min(1)).min(1),
+    monthlyCompetencies: z.array(z.string().min(1)).min(1),
+    selfCompetencies:    z.array(z.string().min(1)).min(1),
 })
 
 export const teamSchema = z.object({

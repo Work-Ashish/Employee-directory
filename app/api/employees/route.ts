@@ -79,6 +79,19 @@ export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }
             avatarUrl,
         } = parsed.data
 
+        // Pre-check: ensure email and employeeCode don't already exist
+        const [existingUser, existingEmployee, existingCode] = await Promise.all([
+            prisma.user.findUnique({ where: { email }, select: { id: true } }),
+            prisma.employee.findFirst({ where: { email, organizationId: ctx.organizationId }, select: { id: true } }),
+            prisma.employee.findFirst({ where: { employeeCode, organizationId: ctx.organizationId }, select: { id: true } }),
+        ])
+        if (existingUser || existingEmployee) {
+            return apiError("An account or employee with this email already exists.", ApiErrorCode.CONFLICT, 409)
+        }
+        if (existingCode) {
+            return apiError("An employee with this code already exists.", ApiErrorCode.CONFLICT, 409)
+        }
+
         // Generate cryptographically random temp password
         const tempPassword = crypto.randomUUID()
         const hashedPassword = await bcrypt.hash(tempPassword, 12)
@@ -128,14 +141,17 @@ export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }
         return apiSuccess({ ...result, tempPassword }, undefined, 201)
     } catch (error: unknown) {
         console.error("[EMPLOYEES_POST]", error)
-        const prismaErr = error as { code?: string; meta?: { target?: string[] } }
+        const prismaErr = error as { code?: string; meta?: { target?: string[] }; message?: string }
         if (prismaErr.code === 'P2002') {
-            const target = prismaErr.meta?.target || []
-            let message = "A conflict occurred."
-            if (target.includes('email')) {
+            const target = (prismaErr.meta?.target || []).join(' ').toLowerCase()
+            const errMsg = (prismaErr.message || '').toLowerCase()
+            let message = "A conflict occurred. A record with these details already exists."
+            if (target.includes('email') || errMsg.includes('email')) {
                 message = "An account or employee with this email already exists."
-            } else if (target.includes('employeeCode')) {
+            } else if (target.includes('employeecode') || target.includes('employee_code') || errMsg.includes('employeecode')) {
                 message = "An employee with this code already exists."
+            } else if (target.includes('userid') || target.includes('user_id')) {
+                message = "This user account is already linked to another employee."
             }
             return apiError(message, ApiErrorCode.CONFLICT, 409)
         }

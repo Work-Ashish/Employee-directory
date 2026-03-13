@@ -7,8 +7,14 @@ import { teamSchema } from "@/lib/schemas"
 // GET /api/teams – List all teams
 export const GET = withAuth({ module: Module.TEAMS, action: Action.VIEW }, async (req, ctx) => {
     try {
+        // Team leads only see teams they lead
+        const baseWhere = orgFilter(ctx)
+        const where = ctx.role === "TEAM_LEAD" && ctx.employeeId
+            ? { ...baseWhere, leadId: ctx.employeeId }
+            : baseWhere
+
         const teams = await prisma.team.findMany({
-            where: orgFilter(ctx),
+            where,
             include: {
                 lead: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
                 members: {

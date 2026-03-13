@@ -11,6 +11,7 @@ import { KudosWidget } from "./KudosWidget"
 import { TimeTracker } from "./TimeTracker"
 import { OnboardingCompanion } from "./OnboardingCompanion"
 import { AgentActivityWidget } from "@/components/agent/AgentActivityWidget"
+import { TodoList } from "./TodoList"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
@@ -80,8 +81,8 @@ export function EmployeeDashboard() {
             if (isFirstLoad.current) setLoading(true)
             const res = await fetch("/api/dashboard", { cache: "no-store" })
             if (res.ok) {
-                const updatedData = await res.json()
-                setData(updatedData)
+                const json = await res.json()
+                setData(json.data || json)
             } else {
                 const errorJson = await res.json().catch(() => ({}))
                 console.error("Dashboard API error:", res.status, errorJson.error?.message || res.statusText)
@@ -161,7 +162,7 @@ export function EmployeeDashboard() {
                     ) : (
                         <>
                             <DashboardStatCard label="Attendance" value={data?.stats?.attendanceCount || 0} sub="Days present this month" badge="Live" badgeType="up" icon={<ClockIcon className="w-5 h-5" />} />
-                            <DashboardStatCard label="Leave Balance" value={data?.stats?.leaveBalance || 0} sub="Available days" badge="Yearly" badgeType="neutral" icon={<CalendarIcon className="w-5 h-5" />} />
+                            <DashboardStatCard label="Leaves Used" value={data?.stats?.leavesUsed || 0} sub="Approved leaves this year" badge="Yearly" badgeType="neutral" icon={<CalendarIcon className="w-5 h-5" />} />
                             <DashboardStatCard label="Pending Training" value={data?.stats?.pendingTrainingCount || 0} sub="Assigned modules"
                                 badge={data?.stats?.pendingTrainingCount > 0 ? "Priority" : "Done"}
                                 badgeType={data?.stats?.pendingTrainingCount > 0 ? "down" : "up"}
@@ -211,6 +212,9 @@ export function EmployeeDashboard() {
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* To-Do List */}
+                        <TodoList />
                     </div>
 
                     <div className="flex flex-col gap-6">
@@ -228,9 +232,9 @@ export function EmployeeDashboard() {
                                     <div className="space-y-4">
                                         {Array(3).fill(0).map((_, i) => <div key={i} className="h-12 w-full bg-bg-2 rounded-xl animate-pulse" />)}
                                     </div>
-                                ) : (
+                                ) : data?.teamStatus?.length > 0 ? (
                                     <div className="space-y-3">
-                                        {data?.teamStatus?.map((tm: any, i: number) => (
+                                        {data.teamStatus.map((tm: any, i: number) => (
                                             <div key={i} className="flex items-center justify-between p-3 hover:bg-bg/50 rounded-xl transition-colors group">
                                                 <div className="flex items-center gap-3">
                                                     <Avatar name={tm.name || tm.initials || "?"} size="default" />
@@ -246,19 +250,26 @@ export function EmployeeDashboard() {
                                             </div>
                                         ))}
                                     </div>
+                                ) : (
+                                    <div className="text-sm text-text-3 py-6 text-center bg-bg-2/30 rounded-xl border-2 border-dashed border-border font-medium">
+                                        No team members to display.
+                                    </div>
                                 )}
 
                                 <div className="mt-6 pt-5 border-t border-border">
                                     <h4 className="text-xs font-bold text-text-3 mb-3 uppercase tracking-wider">Quick Actions</h4>
                                     <div className="grid grid-cols-2 gap-2.5">
+                                        <Link href="/recruitment">
+                                            <Button variant="secondary" size="sm" className="w-full">Recruitment</Button>
+                                        </Link>
                                         <Link href="/leave">
                                             <Button variant="secondary" size="sm" className="w-full">Apply Leave</Button>
                                         </Link>
                                         <Link href="/help-desk">
                                             <Button variant="secondary" size="sm" className="w-full">Raise Ticket</Button>
                                         </Link>
-                                        <Link href="/resignation" className="col-span-2">
-                                            <Button variant="danger" size="sm" className="w-full">Resign / Exit Dashboard</Button>
+                                        <Link href="/reimbursement">
+                                            <Button variant="secondary" size="sm" className="w-full">Reimbursement</Button>
                                         </Link>
                                     </div>
                                 </div>

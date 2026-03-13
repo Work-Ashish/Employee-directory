@@ -82,8 +82,8 @@ export const PERMISSIONS: PermissionMatrix = {
     // 3) View + approve: leaves, resignation
     [Module.LEAVES]:        [VIEW, UPDATE],
     [Module.RESIGNATION]:   [VIEW, UPDATE],
-    // 4) Provide + view: performance, documents
-    [Module.PERFORMANCE]:   [VIEW, CREATE, REVIEW],
+    // 4) View-only + template config: performance; provide + view: documents
+    [Module.PERFORMANCE]:   [VIEW, UPDATE],
     [Module.DOCUMENTS]:     [VIEW, CREATE],
     // Other modules
     [Module.DASHBOARD]:     [VIEW],
@@ -111,8 +111,8 @@ export const PERMISSIONS: PermissionMatrix = {
     // 3) View + approve: leaves, resignation
     [Module.LEAVES]:        [VIEW, UPDATE],
     [Module.RESIGNATION]:   [VIEW, UPDATE],
-    // 4) Provide + view: performance, documents
-    [Module.PERFORMANCE]:   [VIEW, CREATE, REVIEW],
+    // 4) View-only + template config: performance; provide + view: documents
+    [Module.PERFORMANCE]:   [VIEW, UPDATE],
     [Module.DOCUMENTS]:     [VIEW, CREATE],
     // Other modules
     [Module.DASHBOARD]:     [VIEW],

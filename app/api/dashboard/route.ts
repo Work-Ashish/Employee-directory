@@ -301,19 +301,22 @@ export const GET = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, a
         } else {
             // --- EMPLOYEE VIEW ---
             const personal = await getPersonalStats(ctx.userId, ctx.organizationId)
-            if (!personal) {
-                return apiError("Employee profile not found", ApiErrorCode.NOT_FOUND, 404)
-            }
             payload = {
                 ...payload,
-                stats: personal.stats,
-                teamStatus: personal.teamStatus,
+                stats: personal?.stats || {
+                    attendanceCount: 0,
+                    leavesUsed: 0,
+                    pendingTrainingCount: 0,
+                    reviewStatus: "No reviews yet",
+                },
+                teamStatus: personal?.teamStatus || [],
             }
         }
 
         return apiSuccess(payload)
     } catch (error) {
         console.error("[DASHBOARD_GET]", error)
-        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
+        const msg = error instanceof Error ? error.message : "Internal Server Error"
+        return apiError(msg, ApiErrorCode.INTERNAL_ERROR, 500)
     }
 })

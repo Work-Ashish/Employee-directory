@@ -84,14 +84,24 @@ interface MonthlyReviewFormProps {
     employees: Employee[]
     onSubmit: (data: any) => Promise<void>
     onCancel: () => void
+    defaultKpis?: string[]
+    defaultCompetencies?: string[]
 }
 
-export function MonthlyReviewForm({ employees, onSubmit, onCancel }: MonthlyReviewFormProps) {
+export function MonthlyReviewForm({ employees, onSubmit, onCancel, defaultKpis, defaultCompetencies }: MonthlyReviewFormProps) {
     const [employeeId, setEmployeeId] = React.useState("")
     const [reviewMonth, setReviewMonth] = React.useState(format(new Date(), "yyyy-MM"))
     const [reviewDate, setReviewDate] = React.useState(format(new Date(), "yyyy-MM-dd"))
-    const [kpis, setKpis] = React.useState<KPIRow[]>([...DEFAULT_KPIS])
-    const [competencies, setCompetencies] = React.useState<CompetencyRating[]>([...DEFAULT_COMPETENCIES])
+    const [kpis, setKpis] = React.useState<KPIRow[]>(() =>
+        defaultKpis
+            ? defaultKpis.map(kpi => ({ kpi, target: "", actual: "", achievement: 0, trend: "same" as const }))
+            : [...DEFAULT_KPIS]
+    )
+    const [competencies, setCompetencies] = React.useState<CompetencyRating[]>(() =>
+        defaultCompetencies
+            ? defaultCompetencies.map(area => ({ area, rating: 0, comments: "" }))
+            : [...DEFAULT_COMPETENCIES]
+    )
     const [overallRating, setOverallRating] = React.useState(0)
     const [accomplishments, setAccomplishments] = React.useState("")
     const [areasForImprovement, setAreasForImprovement] = React.useState("")

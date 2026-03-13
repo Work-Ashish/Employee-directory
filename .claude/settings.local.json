@@ -56,7 +56,18 @@
       "Bash(curl -s http://localhost:3099/api/auth/csrf)",
       "Bash(curl -v -s -c cookies.txt -X POST http://localhost:3099/api/auth/callback/credentials -H \"Content-Type: application/x-www-form-urlencoded\" -d \"csrfToken=f72c33c4bd9cb25a6be7eeb3d9f122c373b933721987e1c11c1f6fe215a21ce8&email=ashish@nexicorn.com&password=Admin123!\")",
       "Bash(curl -v -s -c cookies.txt -b cookies.txt -X POST http://localhost:3099/api/auth/callback/credentials -H \"Content-Type: application/x-www-form-urlencoded\" -d \"csrfToken=ded5741b6834b46adfba318e2729a9d72286df95646a5a937ee5207cd5075513&email=ashish@nexicorn.com&password=Admin123!\")",
-      "Bash(node scripts/init-and-test-buckets.mjs)"
+      "Bash(node scripts/init-and-test-buckets.mjs)",
+      "Bash(curl -s http://localhost:3000/api/dashboard)",
+      "Bash(curl -v http://localhost:3000/api/dashboard)",
+      "Bash(netstat -ano)",
+      "Bash(findstr \"LISTENING\")",
+      "Bash(findstr \":300\")",
+      "Bash(curl -s http://localhost:3001/api/dashboard)",
+      "Bash(npx vitest run __tests__/api/performance.test.ts)",
+      "Bash(npx vitest run __tests__/api/)",
+      "Bash(npx vitest run __tests__/api/payroll.test.ts)",
+      "Bash(npx prisma validate)",
+      "Bash(npx prisma migrate status)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\reimbursements"

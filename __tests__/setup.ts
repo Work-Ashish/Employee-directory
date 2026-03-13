@@ -74,6 +74,15 @@ export const prismaMock = {
         create: vi.fn(),
         count: vi.fn(),
     },
+    performanceReview: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        findFirst: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn(),
+        count: vi.fn(),
+    },
     userSession: {
         findMany: vi.fn(),
         findUnique: vi.fn(),
@@ -94,20 +103,30 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 // Mock NextAuth — default role is CEO (was ADMIN)
+const authMock = vi.fn().mockResolvedValue({
+    user: { id: 'test-user-id', role: Roles.CEO, organizationId: 'org-1', name: 'Test User' }
+})
 vi.mock('@/lib/auth', () => ({
-    auth: vi.fn().mockResolvedValue({
-        user: { id: 'test-user-id', role: Roles.CEO, organizationId: 'org-1', name: 'Test User' }
-    })
+    auth: authMock,
 }))
 
+function defaultUser(overrides: Record<string, unknown> = {}) {
+    return { id: 'test-user-id', role: Roles.CEO, organizationId: 'org-1', name: 'Test User', ...overrides }
+}
+
 /**
- * Helper to override the mocked session for a single test.
+ * Helper to override the mocked session for a single test (next call only).
  * Usage: mockSession({ role: Roles.EMPLOYEE, organizationId: 'org-2' })
  */
 export function mockSession(overrides: Record<string, unknown> = {}) {
-    const { auth } = require('@/lib/auth') as any
-    auth.mockResolvedValueOnce({
-        user: { id: 'test-user-id', role: Roles.CEO, organizationId: 'org-1', name: 'Test User', ...overrides }
-    })
+    authMock.mockResolvedValueOnce({ user: defaultUser(overrides) })
+}
+
+/**
+ * Helper to override the default session for ALL calls until clearAllMocks().
+ * Usage: mockSessionPersistent({ role: Roles.TEAM_LEAD })
+ */
+export function mockSessionPersistent(overrides: Record<string, unknown> = {}) {
+    authMock.mockResolvedValue({ user: defaultUser(overrides) })
 }
 
