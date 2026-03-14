@@ -245,6 +245,7 @@ model EmployeeProfile {
   grade              String?
   location           String?
   previousEmployment String?
+  previousCtc        Float?
 
   // Passport & Visa
   passportNumber String?

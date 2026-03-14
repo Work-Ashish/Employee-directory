@@ -98,17 +98,15 @@ export default function FeedbackPage() {
     const fetchData = React.useCallback(async () => {
         try {
             setLoading(true)
-            const [fbRes, empRes] = await Promise.all([
-                fetch("/api/feedback"),
-                fetch("/api/employees?limit=200"),
-            ])
+            const fbRes = await fetch("/api/feedback")
             if (fbRes.ok) {
                 const json = await fbRes.json()
                 setFeedbackList(extractArray<Feedback>(json))
                 setIsAdmin(json.meta?.isAdmin === true)
-            }
-            if (empRes.ok) {
-                setEmployees(extractArray<Employee>(await empRes.json()))
+                // Employee list is returned in meta from the feedback API
+                if (json.meta?.employees) {
+                    setEmployees(json.meta.employees)
+                }
             }
         } catch {
             toast.error("Failed to load feedback")
@@ -176,7 +174,7 @@ export default function FeedbackPage() {
                 fetchData()
             } else {
                 const err = await res.json().catch(() => null)
-                toast.error(err?.message || "Failed to submit feedback")
+                toast.error(err?.error?.message || err?.message || "Failed to submit feedback")
             }
         } catch {
             toast.error("An error occurred")

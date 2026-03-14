@@ -151,7 +151,7 @@ export const PERMISSIONS: PermissionMatrix = {
     [Module.PAYROLL]:       [VIEW],
     [Module.TEAMS]:         [VIEW],
     [Module.PERFORMANCE]:   [VIEW, CREATE, REVIEW],
-    [Module.FEEDBACK]:      [VIEW],
+    [Module.FEEDBACK]:      [VIEW, CREATE],
     [Module.DASHBOARD]:     [VIEW],
     [Module.REPORTS]:       [],
     [Module.ATTENDANCE]:    [VIEW],

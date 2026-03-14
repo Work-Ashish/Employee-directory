@@ -79,7 +79,7 @@ Please generate the "Weekly Team Health & Productivity Report".`
 
         try {
             const { text } = await generateText({
-                model: google("gemini-2.0-flash"),
+                model: google("gemini-2.5-flash"),
                 system: systemInstruction,
                 prompt,
                 abortSignal: controller.signal,

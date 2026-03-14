@@ -59,7 +59,7 @@ Please generate the onboarding welcome message and checklist.`
 
         try {
             const { text } = await generateText({
-                model: google("gemini-1.5-pro"),
+                model: google("gemini-2.5-flash"),
                 system: systemInstruction,
                 prompt,
                 abortSignal: controller.signal,

@@ -90,7 +90,7 @@ export async function PUT(req: Request) {
             'height', 'weight', 'identificationMark', 'fatherDob', 'fatherBloodGroup',
             'fatherGender', 'fatherNationality', 'emergencyContactName', 'emergencyContactPhone',
             'emergencyContactRelation', 'passportNumber', 'passportExpiry', 'visaNumber', 'visaExpiry',
-            'category', 'costCenter', 'division', 'grade', 'location', 'previousEmployment'
+            'category', 'costCenter', 'division', 'grade', 'location', 'previousEmployment', 'previousCtc'
         ]
         // Address fields
         const addressFields = [
@@ -109,6 +109,11 @@ export async function PUT(req: Request) {
                 if (body[f] !== undefined) data[f] = body[f]
             }
             return Object.keys(data).length > 0 ? data : undefined
+        }
+
+        // Coerce numeric fields
+        if (body.previousCtc !== undefined) {
+            body.previousCtc = body.previousCtc ? parseFloat(body.previousCtc) || null : null
         }
 
         const rootData = getSubset(rootFields) || {}

@@ -31,14 +31,23 @@ export const GET = withAuth({ module: Module.FEEDBACK, action: Action.VIEW }, as
             ]
         }
 
-        const feedback = await prisma.employeeFeedback.findMany({
-            where,
-            include: {
-                fromEmployee: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
-                toEmployee: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
-            },
-            orderBy: { createdAt: "desc" },
-        })
+        const [feedback, employees] = await Promise.all([
+            prisma.employeeFeedback.findMany({
+                where,
+                include: {
+                    fromEmployee: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+                    toEmployee: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+                },
+                orderBy: { createdAt: "desc" },
+            }),
+            // Return org employees for the feedback picker (avoids dependency on /api/employees permission)
+            prisma.employee.findMany({
+                where: { organizationId: ctx.organizationId, deletedAt: null },
+                select: { id: true, firstName: true, lastName: true, avatarUrl: true, designation: true, department: { select: { name: true } } },
+                orderBy: { firstName: "asc" },
+                take: 200,
+            }),
+        ])
 
         // Redact sender info for anonymous feedback (except for the sender themselves and admins)
         const result = feedback.map(f => {
@@ -51,7 +60,7 @@ export const GET = withAuth({ module: Module.FEEDBACK, action: Action.VIEW }, as
             }
         })
 
-        return apiSuccess(result, { isAdmin })
+        return apiSuccess(result, { isAdmin, employees })
     } catch (error) {
         return apiError("Failed to fetch feedback", ApiErrorCode.INTERNAL_ERROR, 500)
     }
