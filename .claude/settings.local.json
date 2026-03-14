@@ -76,7 +76,10 @@
       "mcp__claude_ai_Notion__notion-create-database",
       "mcp__claude_ai_Notion__notion-create-view",
       "mcp__claude_ai_Notion__notion-update-page",
-      "mcp__claude_ai_Notion__notion-fetch"
+      "mcp__claude_ai_Notion__notion-fetch",
+      "Bash(DATABASE_URL=\"$DIRECT_URL\" npx prisma db push --accept-data-loss)",
+      "Bash(npx tsx init-buckets.ts)",
+      "Bash(npx tsx create-buckets-sql.ts)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\reimbursements"
