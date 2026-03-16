@@ -7,6 +7,7 @@ import { Spinner } from "@/components/ui/Spinner"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Badge } from "@/components/ui/Badge"
 import { Avatar } from "@/components/ui/Avatar"
+import { api } from "@/lib/api-client"
 
 interface EmployeeStatus {
     id: string
@@ -46,9 +47,8 @@ export default function ActivityDashboardPage() {
     const [filter, setFilter] = useState<string>("all")
 
     const fetchData = () => {
-        fetch("/api/admin/time-tracker/dashboard")
-            .then(r => r.ok ? r.json() : null)
-            .then(setData)
+        api.get<DashboardData>('/time-tracker/dashboard/')
+            .then(({ data }) => setData(data))
             .catch(() => { })
             .finally(() => setLoading(false))
     }

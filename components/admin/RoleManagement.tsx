@@ -3,6 +3,9 @@
 import * as React from "react"
 import { toast } from "sonner"
 import { extractArray } from "@/lib/utils"
+import { api, apiClient } from "@/lib/api-client"
+import { RoleAPI } from "@/features/roles/api/client"
+import { EmployeeAPI } from "@/features/employees/api/client"
 import { Module, Action } from "@/lib/permissions"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Button } from "@/components/ui/Button"
@@ -57,10 +60,8 @@ export function RoleManagement() {
 
     const fetchRoles = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/roles")
-            if (res.ok) {
-                setRoles(extractArray<FunctionalRole>(await res.json()))
-            }
+            const data = await RoleAPI.list()
+            setRoles(extractArray<FunctionalRole>(data))
         } catch {
             toast.error("Failed to load roles")
         } finally {
@@ -70,10 +71,8 @@ export function RoleManagement() {
 
     const fetchEmployees = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/employees?limit=500")
-            if (res.ok) {
-                setEmployees(extractArray<EmployeeOption>(await res.json()))
-            }
+            const data = await EmployeeAPI.fetchEmployees(1, 500)
+            setEmployees(extractArray<EmployeeOption>(data))
         } catch { /* non-critical */ }
     }, [])
 
@@ -82,16 +81,11 @@ export function RoleManagement() {
     const handleDelete = async (role: FunctionalRole) => {
         if (!confirm(`Delete role "${role.name}"? This will unassign all employees.`)) return
         try {
-            const res = await fetch(`/api/roles/${role.id}`, { method: "DELETE" })
-            if (res.ok) {
-                toast.success("Role deleted")
-                fetchRoles()
-            } else {
-                const err = await res.json().catch(() => null)
-                toast.error(err?.error?.message || "Failed to delete role")
-            }
-        } catch {
-            toast.error("Failed to delete role")
+            await RoleAPI.delete(role.id)
+            toast.success("Role deleted")
+            fetchRoles()
+        } catch (error: any) {
+            toast.error(error?.data?.error?.message || error.message || "Failed to delete role")
         }
     }
 
@@ -422,23 +416,16 @@ function RoleFormDialog({
         }
 
         try {
-            const url = role ? `/api/roles/${role.id}` : "/api/roles"
-            const method = role ? "PUT" : "POST"
-            const res = await fetch(url, {
-                method,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-            })
-            if (res.ok) {
-                toast.success(role ? "Role updated" : "Role created")
-                onClose()
-                onSaved()
+            if (role) {
+                await RoleAPI.update(role.id, body)
             } else {
-                const err = await res.json().catch(() => null)
-                toast.error(err?.error?.message || "Failed to save role")
+                await RoleAPI.create(body)
             }
-        } catch {
-            toast.error("Failed to save role")
+            toast.success(role ? "Role updated" : "Role created")
+            onClose()
+            onSaved()
+        } catch (error: any) {
+            toast.error(error?.data?.error?.message || error.message || "Failed to save role")
         } finally {
             setSaving(false)
         }
@@ -574,14 +561,10 @@ function AssignDialog({
         if (!role || !open) return
         async function loadAssigned() {
             try {
-                const res = await fetch(`/api/roles/${role!.id}`)
-                if (res.ok) {
-                    const json = await res.json()
-                    const data = json.data || json
-                    const ids = new Set<string>((data.employees || []).map((e: any) => e.employeeId || e.employee?.id))
-                    setAssigned(ids)
-                    setSelected(ids)
-                }
+                const data = await RoleAPI.get(role!.id) as any
+                const ids = new Set<string>((data.employees || []).map((e: any) => e.employeeId || e.employee?.id))
+                setAssigned(ids)
+                setSelected(ids)
             } catch { /* non-critical */ }
         }
         loadAssigned()
@@ -616,16 +599,11 @@ function AssignDialog({
             const toRemove = [...assigned].filter((id) => !selected.has(id))
 
             if (toAdd.length > 0) {
-                await fetch(`/api/roles/${role.id}/assign`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ employeeIds: toAdd }),
-                })
+                await api.post("/roles/" + role.id + "/assign/", { employeeIds: toAdd })
             }
             if (toRemove.length > 0) {
-                await fetch(`/api/roles/${role.id}/assign`, {
+                await apiClient("/roles/" + role.id + "/assign/", {
                     method: "DELETE",
-                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ employeeIds: toRemove }),
                 })
             }

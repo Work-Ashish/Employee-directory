@@ -25,6 +25,10 @@ import { format } from "date-fns"
 import { useAuth } from "@/context/AuthContext"
 import { cn } from "@/lib/utils"
 import { MagnifyingGlassIcon, FileTextIcon, PlusIcon, PersonIcon, ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons"
+import { PerformanceAPI } from "@/features/performance/api/client"
+import { EmployeeAPI } from "@/features/employees/api/client"
+import { TeamAPI } from "@/features/teams/api/client"
+import { api } from "@/lib/api-client"
 
 type Employee = {
     id: string
@@ -143,9 +147,9 @@ export function AdminPerformanceView() {
             setIsLoading(true)
             const role = user?.role
 
-            const revRes = await fetch("/api/performance")
+            const revPromise = PerformanceAPI.listReviews()
 
-            let empPromise: Promise<Response>
+            let empPromise: Promise<any[]>
             if (role === "TEAM_LEAD") {
                 // Resolve this user's employee ID first, then find their team
                 empPromise = (async () => {
@@ -153,46 +157,44 @@ export function AdminPerformanceView() {
                     let myEmployeeId: string | null = selfEmployeeId
                     if (!myEmployeeId) {
                         try {
-                            const profileRes = await fetch("/api/employee/profile")
-                            if (profileRes.ok) {
-                                const pJson = await profileRes.json()
-                                const pData = pJson.data || pJson
-                                myEmployeeId = pData?.employeeId || pData?.id || null
-                                if (myEmployeeId) setSelfEmployeeId(myEmployeeId)
-                            }
+                            const { data: profileData } = await api.get<any>('/employees/profile/')
+                            const pData = profileData
+                            myEmployeeId = pData?.employeeId || pData?.id || null
+                            if (myEmployeeId) setSelfEmployeeId(myEmployeeId)
                         } catch { /* ignore */ }
                     }
 
-                    const teamsRes = await fetch("/api/teams")
-                    if (!teamsRes.ok) return new Response(JSON.stringify({ data: [] }))
-                    const teamsJson = await teamsRes.json()
-                    const allTeams = extractArray<any>(teamsJson)
+                    try {
+                        const teamsData = await TeamAPI.list()
+                        const allTeams = extractArray<any>(teamsData.results || teamsData)
 
-                    // Find the team where this user is the lead
-                    const myTeam = allTeams.find((t: any) =>
-                        t.leadId === myEmployeeId || t.lead?.id === myEmployeeId
-                    )
-                    if (myTeam) {
-                        return fetch(`/api/teams/${myTeam.id}/members`)
-                    }
-                    return new Response(JSON.stringify({ data: [] }))
+                        // Find the team where this user is the lead
+                        const myTeam = allTeams.find((t: any) =>
+                            t.leadId === myEmployeeId || t.lead?.id === myEmployeeId
+                        )
+                        if (myTeam) {
+                            const { data: membersData } = await api.get<any>(`/teams/${myTeam.id}/members/`)
+                            return extractArray<any>(membersData)
+                        }
+                    } catch { /* ignore */ }
+                    return []
                 })()
             } else {
-                empPromise = fetch("/api/employees?limit=200")
+                empPromise = EmployeeAPI.fetchEmployees(1, 200).then(data => {
+                    return data.results || []
+                }).catch(() => [])
             }
 
-            const [revResult, empResult] = await Promise.all([revRes, empPromise])
+            const [revResult, empArr] = await Promise.all([revPromise.catch(() => null), empPromise])
 
             let fetchedReviews: PerformanceReview[] = []
-            if (revResult.ok) {
-                fetchedReviews = extractArray<PerformanceReview>(await revResult.json())
+            if (revResult) {
+                fetchedReviews = extractArray<PerformanceReview>(revResult.results || revResult)
                 setReviews(fetchedReviews)
             }
 
             let mapped: Employee[] = []
-            if (empResult.ok) {
-                const empJson = await empResult.json()
-                const empArr = extractArray<any>(empJson)
+            if (empArr && empArr.length > 0) {
                 mapped = empArr.map((e: any) => {
                     if (e.employee) {
                         return {
@@ -230,17 +232,14 @@ export function AdminPerformanceView() {
             // Fetch teams for CEO/HR team-wise grouping
             if (role === "CEO" || role === "HR") {
                 try {
-                    const teamsRes = await fetch("/api/teams")
-                    if (teamsRes.ok) {
-                        const teamsJson = await teamsRes.json()
-                        const teamsArr = extractArray<any>(teamsJson)
-                        setTeams(teamsArr.map((t: any) => {
-                            const ids = (t.members || []).map((m: any) => m.employee?.id || m.employeeId)
-                            if (t.lead?.id && !ids.includes(t.lead.id)) ids.push(t.lead.id)
-                            if (t.leadId && !ids.includes(t.leadId)) ids.push(t.leadId)
-                            return { id: t.id, name: t.name, leadId: t.leadId || t.lead?.id, memberIds: ids }
-                        }))
-                    }
+                    const teamsData = await TeamAPI.list()
+                    const teamsArr = extractArray<any>(teamsData.results || teamsData)
+                    setTeams(teamsArr.map((t: any) => {
+                        const ids = (t.members || []).map((m: any) => m.employee?.id || m.employeeId)
+                        if (t.lead?.id && !ids.includes(t.lead.id)) ids.push(t.lead.id)
+                        if (t.leadId && !ids.includes(t.leadId)) ids.push(t.leadId)
+                        return { id: t.id, name: t.name, leadId: t.leadId || t.lead?.id, memberIds: ids }
+                    }))
                 } catch { /* non-critical */ }
             }
         } catch (_error) {
@@ -254,17 +253,13 @@ export function AdminPerformanceView() {
     const resolveSelfEmployeeId = React.useCallback(async (): Promise<string | null> => {
         if (selfEmployeeId) return selfEmployeeId
         try {
-            const res = await fetch("/api/employee/profile")
-            if (res.ok) {
-                const json = await res.json()
-                const data = json.data || json
-                // flattenEmployee() can overwrite `id` with sub-model ids,
-                // so prefer `employeeId` (from EmployeeProfile/Address/Banking) first
-                const empId = data?.employeeId || data?.id
-                if (empId) {
-                    setSelfEmployeeId(empId)
-                    return empId
-                }
+            const { data } = await api.get<any>('/employees/profile/')
+            // flattenEmployee() can overwrite `id` with sub-model ids,
+            // so prefer `employeeId` (from EmployeeProfile/Address/Banking) first
+            const empId = data?.employeeId || data?.id
+            if (empId) {
+                setSelfEmployeeId(empId)
+                return empId
             }
         } catch { /* non-critical */ }
         return null
@@ -273,12 +268,9 @@ export function AdminPerformanceView() {
     // Fetch performance template on mount
     const fetchTemplate = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/performance/config")
-            if (res.ok) {
-                const json = await res.json()
-                setPerfTemplate(json.data || json)
-            }
-        } catch { /* non-critical — forms fall back to hardcoded defaults */ }
+            const { data } = await api.get<any>('/performance/config/')
+            setPerfTemplate(data)
+        } catch { /* non-critical -- forms fall back to hardcoded defaults */ }
     }, [])
 
     // Eagerly resolve on mount
@@ -301,25 +293,16 @@ export function AdminPerformanceView() {
 
     const handleSubmitReview = async (data: any) => {
         try {
-            const res = await fetch("/api/performance", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            })
-            if (res.ok) {
-                toast.success("Review submitted successfully")
-                setDailyOpen(false)
-                setMonthlyOpen(false)
-                setSelfReviewOpen(false)
-                setDailySelfOpen(false)
-                fetchAll()
-            } else {
-                const err = await res.json().catch(() => null)
-                console.error("[REVIEW_SUBMIT]", res.status, err)
-                toast.error(err?.error?.message || err?.message || "Failed to submit review")
-            }
-        } catch (_error) {
-            toast.error("An error occurred while submitting the review")
+            await PerformanceAPI.createReview(data)
+            toast.success("Review submitted successfully")
+            setDailyOpen(false)
+            setMonthlyOpen(false)
+            setSelfReviewOpen(false)
+            setDailySelfOpen(false)
+            fetchAll()
+        } catch (err: any) {
+            console.error("[REVIEW_SUBMIT]", err)
+            toast.error(err?.message || "Failed to submit review")
         }
     }
 
@@ -537,26 +520,22 @@ export function AdminPerformanceView() {
                             onSubmit={async (data) => {
                                 const memberReviews = data.reviews.filter((r: any) => r.overallRating > 0 || r.kpis.some((k: any) => k.actual))
                                 if (memberReviews.length === 0) throw new Error("No reviews to submit")
-                                const results = await Promise.all(
+                                const results = await Promise.allSettled(
                                     memberReviews.map((rev: any) =>
-                                        fetch("/api/performance", {
-                                            method: "POST",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({
-                                                employeeId: rev.employeeId,
-                                                rating: rev.overallRating || 3,
-                                                progress: Math.round(((rev.overallRating || 3) / 5) * 100),
-                                                status: (rev.overallRating || 3) >= 4 ? "EXCELLENT" : (rev.overallRating || 3) >= 3 ? "GOOD" : "NEEDS_IMPROVEMENT",
-                                                comments: rev.comments || `Team review for ${rev.employeeName || "team member"}`,
-                                                reviewPeriod: format(new Date(), "MMMM yyyy"),
-                                                formType: "TEAM_REVIEW",
-                                                reviewType: "MANAGER",
-                                                formData: { ...rev, config: data.config },
-                                            }),
+                                        PerformanceAPI.createReview({
+                                            employeeId: rev.employeeId,
+                                            rating: rev.overallRating || 3,
+                                            progress: Math.round(((rev.overallRating || 3) / 5) * 100),
+                                            status: (rev.overallRating || 3) >= 4 ? "EXCELLENT" : (rev.overallRating || 3) >= 3 ? "GOOD" : "NEEDS_IMPROVEMENT",
+                                            comments: rev.comments || `Team review for ${rev.employeeName || "team member"}`,
+                                            reviewPeriod: format(new Date(), "MMMM yyyy"),
+                                            formType: "TEAM_REVIEW",
+                                            reviewType: "MANAGER",
+                                            formData: { ...rev, config: data.config },
                                         })
                                     )
                                 )
-                                const failed = results.filter(r => !r.ok)
+                                const failed = results.filter(r => r.status === "rejected")
                                 if (failed.length > 0) throw new Error(`${failed.length} review(s) failed to submit`)
                                 fetchAll()
                             }}

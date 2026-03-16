@@ -11,6 +11,7 @@ import {
   type LoginPayload,
 } from "@/lib/django-auth"
 import type { Role } from "@/lib/permissions"
+import { api } from "@/lib/api-client"
 
 // Map Django role slugs to EMS Pro role enum
 const ROLE_MAP: Record<string, Role> = {
@@ -58,14 +59,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const token = localStorage.getItem("access_token")
       if (!token) return undefined
-      const res = await fetch("/api/user/capabilities", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const json = await res.json()
-        const data = json.data || json
-        return data.capabilities || undefined
-      }
+      const { data } = await api.get<{ capabilities?: Record<string, string[]> }>('/roles/capabilities/')
+      return data.capabilities || undefined
     } catch { /* non-critical */ }
     return undefined
   }, [])

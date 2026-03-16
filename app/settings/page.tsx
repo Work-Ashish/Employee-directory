@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/Textarea"
 import { Card, CardContent, CardTitle } from "@/components/ui/Card"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Spinner } from "@/components/ui/Spinner"
+import { api } from "@/lib/api-client"
 
 const profileSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -57,18 +58,15 @@ export default function SettingsPage() {
     const fetchUser = React.useCallback(async () => {
         try {
             setIsLoading(true)
-            const res = await fetch("/api/user/profile")
-            if (res.ok) {
-                const data = await res.json()
-                setUser(data)
-                profileForm.reset({
-                    name: data.name || "",
-                    bio: data.bio || "",
-                    accentColor: data.accentColor || "blue",
-                })
-                if (data.accentColor) {
-                    applyAccentColor(data.accentColor)
-                }
+            const { data } = await api.get<any>('/employees/profile/')
+            setUser(data)
+            profileForm.reset({
+                name: data.name || "",
+                bio: data.bio || "",
+                accentColor: data.accentColor || "blue",
+            })
+            if (data.accentColor) {
+                applyAccentColor(data.accentColor)
             }
         } catch (error) {
             console.error("Fetch user error:", error)
@@ -104,19 +102,11 @@ export default function SettingsPage() {
 
     const onProfileSubmit = async (data: z.infer<typeof profileSchema>) => {
         try {
-            const res = await fetch("/api/user/profile", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...data, avatar: user?.avatar }),
-            })
-            if (res.ok) {
-                toast.success("Profile updated successfully")
-                fetchUser()
-            } else {
-                toast.error("Failed to update profile")
-            }
+            await api.put('/employees/profile/', { ...data, avatar: user?.avatar })
+            toast.success("Profile updated successfully")
+            fetchUser()
         } catch (error) {
-            toast.error("An error occurred")
+            toast.error("Failed to update profile")
         }
     }
 
@@ -143,16 +133,11 @@ export default function SettingsPage() {
             if (res.ok) {
                 const { url } = await res.json()
                 // Update profile with the new avatar URL
-                const updateRes = await fetch("/api/user/profile", {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ...profileForm.getValues(), avatar: url })
-                })
-
-                if (updateRes.ok) {
+                try {
+                    await api.put('/employees/profile/', { ...profileForm.getValues(), avatar: url })
                     toast.success("Avatar updated successfully", { id: "avatar-upload" })
                     fetchUser()
-                } else {
+                } catch {
                     toast.error("Failed to save avatar reference", { id: "avatar-upload" })
                 }
             } else {
@@ -165,23 +150,15 @@ export default function SettingsPage() {
 
     const onPasswordSubmit = async (data: z.infer<typeof passwordSchema>) => {
         try {
-            const res = await fetch("/api/user/password", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    currentPassword: data.currentPassword,
-                    newPassword: data.newPassword,
-                }),
+            await api.put('/users/password/', {
+                currentPassword: data.currentPassword,
+                newPassword: data.newPassword,
             })
-            if (res.ok) {
-                toast.success("Password updated successfully")
-                passwordForm.reset()
-            } else {
-                const err = await res.json()
-                toast.error(err.error || "Failed to update password")
-            }
-        } catch (error) {
-            toast.error("An error occurred")
+            toast.success("Password updated successfully")
+            passwordForm.reset()
+        } catch (error: any) {
+            const message = error?.data?.error || error?.message || "Failed to update password"
+            toast.error(message)
         }
     }
 
@@ -190,11 +167,7 @@ export default function SettingsPage() {
         profileForm.setValue('accentColor', color)
         // Auto-save accent color
         try {
-            await fetch("/api/user/profile", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...profileForm.getValues(), accentColor: color }),
-            })
+            await api.put('/employees/profile/', { ...profileForm.getValues(), accentColor: color })
             toast.success(`Theme updated to ${color}`)
         } catch (error) {
             console.error("Color update error:", error)

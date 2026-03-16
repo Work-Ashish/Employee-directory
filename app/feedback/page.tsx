@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
-import { canAccessModule, Module } from "@/lib/permissions"
+import { canAccessModule, hasAdminScope, Module } from "@/lib/permissions"
 import { extractArray } from "@/lib/utils"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Card } from "@/components/ui/Card"
@@ -15,6 +15,8 @@ import { Dialog, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/D
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { MagnifyingGlassIcon, PaperPlaneIcon, ChatBubbleIcon } from "@radix-ui/react-icons"
+import { FeedbackAPI } from "@/features/feedback/api/client"
+import { EmployeeAPI } from "@/features/employees/api/client"
 
 interface Employee {
     id: string
@@ -98,22 +100,19 @@ export default function FeedbackPage() {
     const fetchData = React.useCallback(async () => {
         try {
             setLoading(true)
-            const fbRes = await fetch("/api/feedback")
-            if (fbRes.ok) {
-                const json = await fbRes.json()
-                setFeedbackList(extractArray<Feedback>(json))
-                setIsAdmin(json.meta?.isAdmin === true)
-                // Employee list is returned in meta from the feedback API
-                if (json.meta?.employees) {
-                    setEmployees(json.meta.employees)
-                }
-            }
+            const [fbData, empData] = await Promise.all([
+                FeedbackAPI.list(),
+                EmployeeAPI.fetchEmployees(1, 500),
+            ])
+            setFeedbackList(extractArray<Feedback>(fbData))
+            setIsAdmin(hasAdminScope(user?.role ?? "", Module.FEEDBACK))
+            setEmployees(empData.results || extractArray<Employee>(empData))
         } catch {
             toast.error("Failed to load feedback")
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [user?.role])
 
     React.useEffect(() => { fetchData() }, [fetchData])
 
@@ -162,22 +161,13 @@ export default function FeedbackPage() {
 
         setSubmitting(true)
         try {
-            const res = await fetch("/api/feedback", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ toEmployeeId, content, rating, isAnonymous, period }),
-            })
-            if (res.ok) {
-                toast.success("Feedback submitted successfully")
-                setShowCreate(false)
-                resetForm()
-                fetchData()
-            } else {
-                const err = await res.json().catch(() => null)
-                toast.error(err?.error?.message || err?.message || "Failed to submit feedback")
-            }
-        } catch {
-            toast.error("An error occurred")
+            await FeedbackAPI.create({ toEmployeeId, content, rating, isAnonymous, period })
+            toast.success("Feedback submitted successfully")
+            setShowCreate(false)
+            resetForm()
+            fetchData()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to submit feedback")
         } finally {
             setSubmitting(false)
         }

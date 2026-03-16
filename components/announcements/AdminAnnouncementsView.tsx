@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { PlusIcon, TrashIcon, Pencil2Icon, DrawingPinFilledIcon, DrawingPinIcon } from "@radix-ui/react-icons"
 import { Modal } from "@/components/ui/Modal"
+import { AnnouncementAPI } from "@/features/announcements/api/client"
 import { GoogleCalendarWidget } from "./GoogleCalendarWidget"
 import { KudosSidebarWidget } from "./KudosSidebarWidget"
 import { useForm } from "react-hook-form"
@@ -63,11 +64,8 @@ export function AdminAnnouncementsView() {
     const fetchAnnouncements = React.useCallback(async () => {
         try {
             setIsLoading(true)
-            const res = await fetch('/api/announcements')
-            if (res.ok) {
-                const data = await res.json()
-                setAnnouncements(extractArray<Announcement>(data))
-            }
+            const data = await AnnouncementAPI.list()
+            setAnnouncements(extractArray<Announcement>(data))
         } catch {
             toast.error("Failed to load announcements")
         } finally {
@@ -81,56 +79,38 @@ export function AdminAnnouncementsView() {
 
     const onSubmit = async (data: AnnouncementFormData) => {
         try {
-            const method = editingId ? 'PUT' : 'POST'
-            const body = editingId ? { ...data, id: editingId } : data
-            const res = await fetch('/api/announcements', {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            })
-
-            if (res.ok) {
-                toast.success(editingId ? "Announcement updated" : "Announcement created")
-                setIsModalOpen(false)
-                setEditingId(null)
-                form.reset()
-                fetchAnnouncements()
+            if (editingId) {
+                await AnnouncementAPI.update(editingId, data)
             } else {
-                const err = await res.json()
-                toast.error(err.error || "Operation failed")
+                await AnnouncementAPI.create(data)
             }
-        } catch (error) {
+            toast.success(editingId ? "Announcement updated" : "Announcement created")
+            setIsModalOpen(false)
+            setEditingId(null)
+            form.reset()
+            fetchAnnouncements()
+        } catch (error: any) {
             console.error("Submit error:", error)
-            toast.error("An error occurred")
+            toast.error(error.message || "Operation failed")
         }
     }
 
     const deleteAnnouncement = async (id: string) => {
         if (!confirm("Are you sure?")) return
         try {
-            const res = await fetch(`/api/announcements?id=${id}`, { method: 'DELETE' })
-            if (res.ok) {
-                toast.success("Announcement deleted")
-                fetchAnnouncements()
-            } else {
-                toast.error("Deletion failed")
-            }
-        } catch {
-            toast.error("An error occurred")
+            await AnnouncementAPI.delete(id)
+            toast.success("Announcement deleted")
+            fetchAnnouncements()
+        } catch (error: any) {
+            toast.error(error.message || "Deletion failed")
         }
     }
 
     const togglePin = async (ann: Announcement) => {
         try {
-            const res = await fetch('/api/announcements', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...ann, isPinned: !ann.isPinned })
-            })
-            if (res.ok) {
-                toast.success(ann.isPinned ? "Unpinned" : "Pinned")
-                fetchAnnouncements()
-            }
+            await AnnouncementAPI.update(ann.id, { ...ann, isPinned: !ann.isPinned })
+            toast.success(ann.isPinned ? "Unpinned" : "Pinned")
+            fetchAnnouncements()
         } catch {
             toast.error("Failed to update pinning")
         }

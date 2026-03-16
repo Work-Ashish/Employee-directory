@@ -12,6 +12,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis
 import { DashboardStatCard, DeptRow, HireRow } from "./DashboardComponents"
 import { tooltipStyle, axisStyle, chartColors } from "@/lib/chart-theme"
 import { DashboardAPI } from "@/features/dashboard/api/client"
+import { api } from "@/lib/api-client"
 
 export function AdminDashboard() {
     const [loading, setLoading] = React.useState(true)
@@ -67,13 +68,8 @@ export function AdminDashboard() {
     const generateReport = async () => {
         setReportLoading(true)
         try {
-            const res = await fetch("/api/admin/analytics/burnout")
-            if (res.ok) {
-                const json = await res.json()
-                setReportData(json.report || "No data found")
-            } else {
-                setReportData("Error generating report.")
-            }
+            const { data: json } = await api.get<{ report?: string }>('/dashboard/burnout-analytics/')
+            setReportData(json.report || "No data found")
         } catch (error) {
             console.error(error)
             setReportData("Failed to generate report.")

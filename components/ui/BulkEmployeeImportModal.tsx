@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select"
 import { Badge } from "@/components/ui/Badge"
 import { Spinner } from "@/components/ui/Spinner"
 import { exportToCSV } from "@/lib/exportUtils"
+import { api } from "@/lib/api-client"
 
 /* ── Types ── */
 
@@ -263,19 +264,8 @@ export function BulkEmployeeImportModal({ isOpen, onClose, departments, onSucces
                 return mapped
             })
 
-            const res = await fetch("/api/employees/import/resolve-hierarchy", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ rows: mappedRows }),
-            })
-            const json = await res.json()
-
-            if (!res.ok) {
-                setHierarchySuggestions([])
-            } else {
-                const data = json.data || json
-                setHierarchySuggestions(data.suggestions || [])
-            }
+            const { data } = await api.post<{ suggestions: HierarchySuggestion[] }>('/employees/import/resolve-hierarchy/', { rows: mappedRows })
+            setHierarchySuggestions(data.suggestions || [])
         } catch {
             setHierarchySuggestions([])
         } finally {
@@ -328,20 +318,7 @@ export function BulkEmployeeImportModal({ isOpen, onClose, departments, onSucces
                 }
             })
 
-            const res = await fetch("/api/employees/import", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ rows: mappedRows, mode: importMode, hierarchyAudit }),
-            })
-            const json = await res.json()
-
-            if (!res.ok) {
-                setErrorMsg(json.error || "Import failed.")
-                setStep("error")
-                return
-            }
-
-            const data = json.data || json
+            const { data } = await api.post<ImportResult>('/employees/import/', { rows: mappedRows, mode: importMode, hierarchyAudit })
             setResult({
                 inserted: data.inserted ?? 0,
                 skipped: data.skipped ?? 0,

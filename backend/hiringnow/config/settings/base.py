@@ -41,6 +41,22 @@ INSTALLED_APPS = [
     'apps.attendance.apps.AttendanceConfig',
     'apps.leave.apps.LeaveConfig',
     'apps.payroll.apps.PayrollConfig',
+    'apps.teams.apps.TeamsConfig',
+    'apps.performance.apps.PerformanceConfig',
+    'apps.training.apps.TrainingConfig',
+    'apps.assets.apps.AssetsConfig',
+    'apps.documents.apps.DocumentsConfig',
+    'apps.tickets.apps.TicketsConfig',
+    'apps.announcements.apps.AnnouncementsConfig',
+    'apps.reimbursements.apps.ReimbursementsConfig',
+    'apps.resignations.apps.ResignationsConfig',
+    'apps.feedback.apps.FeedbackConfig',
+    'apps.events.apps.EventsConfig',
+    'apps.notifications.apps.NotificationsConfig',
+    'apps.reports.apps.ReportsConfig',
+    'apps.roles.apps.RolesConfig',
+    'apps.sessions.apps.SessionsConfig',
+    'apps.timetracker.apps.TimetrackerConfig',
 ]
 
 # The MIDDLEWARE setting is a list of all the middleware that is used in the project.

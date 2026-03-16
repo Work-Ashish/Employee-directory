@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"
 import { LaptopIcon, BarChartIcon, ClockIcon } from "@radix-ui/react-icons"
+import { api } from "@/lib/api-client"
 
 interface DashboardData {
     devices: { active: number; pending: number; suspended: number; uninstalled: number; total: number }
@@ -55,11 +56,8 @@ export default function AgentTrackingPage() {
 
     const fetchDashboard = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/admin/agent/dashboard")
-            if (res.ok) {
-                const json = await res.json()
-                setDashboard(json.data)
-            }
+            const { data } = await api.get<DashboardData>('/admin/agent/dashboard/')
+            setDashboard(data)
         } catch (err) {
             console.error("Dashboard fetch error:", err)
         }
@@ -71,12 +69,9 @@ export default function AgentTrackingPage() {
             if (statusFilter) params.set("status", statusFilter)
             if (search) params.set("search", search)
 
-            const res = await fetch(`/api/admin/agent/devices?${params}`)
-            if (res.ok) {
-                const json = await res.json()
-                setDevices(json.data || [])
-                setDeviceTotal(json.meta?.total || 0)
-            }
+            const { data } = await api.get<{ data: Device[]; meta?: { total: number } }>('/admin/agent/devices/?' + params)
+            setDevices(data?.data || [])
+            setDeviceTotal(data?.meta?.total || 0)
         } catch (err) {
             console.error("Devices fetch error:", err)
         }
@@ -88,21 +83,13 @@ export default function AgentTrackingPage() {
     }, [fetchDashboard, fetchDevices])
 
     const handleDeviceAction = async (deviceId: string, status: "ACTIVE" | "SUSPENDED") => {
-        await fetch("/api/admin/agent/devices", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ deviceId, status }),
-        })
+        await api.post('/admin/agent/devices/', { deviceId, status })
         fetchDevices()
     }
 
     const handleCommand = async (deviceId: string, type: string) => {
         if (!confirm(`Are you sure you want to issue ${type} command?`)) return
-        await fetch("/api/admin/agent/command", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ deviceId, type }),
-        })
+        await api.post('/admin/agent/command/', { deviceId, type })
         fetchDevices()
     }
 

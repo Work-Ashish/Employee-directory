@@ -4,6 +4,7 @@ import * as React from "react"
 import { Document, DocCategory } from "@/types"
 import { FileTextIcon, DownloadIcon } from "@radix-ui/react-icons"
 import { extractArray, cn } from "@/lib/utils"
+import { DocumentAPI } from "@/features/documents/api/client"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Card } from "@/components/ui/Card"
@@ -25,10 +26,8 @@ export default function MyDocuments() {
     React.useEffect(() => {
         async function load() {
             try {
-                const res = await fetch("/api/documents")
-                if (!res.ok) throw new Error("Failed to fetch")
-                const json = await res.json()
-                setDocuments(extractArray<Document>(json))
+                const data = await DocumentAPI.list()
+                setDocuments(extractArray<Document>(data))
             } catch {
                 toast.error("Failed to load documents")
             } finally {

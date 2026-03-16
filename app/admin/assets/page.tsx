@@ -1,13 +1,17 @@
 "use client"
 
 import * as React from "react"
-import { Asset, AssetStatus, AssetType } from "@/types"
+import { Asset } from "@/features/assets/api/client"
+type AssetType = "HARDWARE" | "SOFTWARE" | "ACCESSORY"
+type AssetStatus = "AVAILABLE" | "ASSIGNED" | "MAINTENANCE" | "RETIRED"
 import { DataTable } from "@/components/ui/DataTable"
 import { ColumnDef } from "@tanstack/react-table"
 import { Modal } from "@/components/ui/Modal"
 import { CsvImportModal } from "@/components/ui/CsvImportModal"
 import { PlusIcon, LaptopIcon, CubeIcon, ExclamationTriangleIcon, TrashIcon } from "@radix-ui/react-icons"
-import { cn } from "@/lib/utils"
+import { cn, extractArray } from "@/lib/utils"
+import { AssetAPI } from "@/features/assets/api/client"
+import { EmployeeAPI } from "@/features/employees/api/client"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Button } from "@/components/ui/Button"
@@ -96,10 +100,8 @@ export default function AssetManagement() {
 
     const fetchAssets = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/assets")
-            if (!res.ok) throw new Error("Failed to fetch assets")
-            const jsonData = await res.json()
-            setAssets(Array.isArray(jsonData) ? jsonData : jsonData.data || [])
+            const data = await AssetAPI.list()
+            setAssets(data.results || extractArray(data))
         } catch {
             toast.error("Failed to load assets")
         } finally {
@@ -109,11 +111,8 @@ export default function AssetManagement() {
 
     const fetchEmployees = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/employees?limit=100")
-            if (res.ok) {
-                const json = await res.json()
-                setEmployees(Array.isArray(json) ? json : json.data || [])
-            }
+            const empData = await EmployeeAPI.fetchEmployees(1, 100)
+            setEmployees(empData.results || [])
         } catch {
             console.error("Failed to fetch employees")
         }
@@ -134,9 +133,9 @@ export default function AssetManagement() {
         setEditingAsset(asset)
         setFormData({
             name: asset.name,
-            type: asset.type,
+            type: asset.type as AssetType,
             serialNumber: asset.serialNumber,
-            status: asset.status,
+            status: asset.status as AssetStatus,
             purchaseDate: asset.purchaseDate ? asset.purchaseDate.split("T")[0] : "",
             value: String(asset.value),
             assignedToId: asset.assignedToId || "",
@@ -165,28 +164,10 @@ export default function AssetManagement() {
                 image: formData.image || null,
             }
 
-            const url = editingAsset ? `/api/assets/${editingAsset.id}` : "/api/assets"
-            const method = editingAsset ? "PUT" : "POST"
-
-            const res = await fetch(url, {
-                method,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            })
-
-            if (!res.ok) {
-                const err = await res.json()
-                // If it's a validation error, try to extract specific field errors
-                if (err.code === "VALIDATION_ERROR" && err.details) {
-                    const fields = Object.keys(err.details).filter(k => k !== "_errors")
-                    if (fields.length > 0) {
-                        const field = fields[0]
-                        const fieldError = err.details[field]?._errors?.[0]
-                        throw new Error(`${field}: ${fieldError}`)
-                    }
-                }
-                const msg = err.error?.message || err.error || "Failed to save asset"
-                throw new Error(msg)
+            if (editingAsset) {
+                await AssetAPI.update(editingAsset.id, payload)
+            } else {
+                await AssetAPI.create(payload)
             }
 
             toast.success(editingAsset ? "Asset updated" : "Asset created")
@@ -204,11 +185,7 @@ export default function AssetManagement() {
         if (!confirm("Are you sure you want to delete this asset?")) return
 
         try {
-            const res = await fetch(`/api/assets/${id}`, { method: "DELETE" })
-            if (!res.ok) {
-                const err = await res.json()
-                throw new Error(err.error?.message || "Failed to delete asset")
-            }
+            await AssetAPI.delete(id)
             toast.success("Asset deleted")
             fetchAssets()
         } catch (error: any) {
@@ -259,11 +236,10 @@ export default function AssetManagement() {
             header: "Assigned To",
             cell: ({ row }) => {
                 const employee = row.original.assignedTo
-                return (
-                    <div className="text-text-2">
-                        {employee ? `${employee.firstName} ${employee.lastName}` : "—"}
-                    </div>
-                )
+                const name = typeof employee === "string"
+                    ? employee
+                    : employee ? `${employee.firstName} ${employee.lastName}` : "—"
+                return <div className="text-text-2">{name}</div>
             },
         },
         {

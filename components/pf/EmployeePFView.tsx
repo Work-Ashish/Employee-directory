@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
 import { Spinner } from "@/components/ui/Spinner"
 import { EmptyState } from "@/components/ui/EmptyState"
+import { api } from "@/lib/api-client"
 
 type PFRecord = {
     id: string
@@ -25,10 +26,8 @@ export function EmployeePFView() {
     React.useEffect(() => {
         const fetchRecords = async () => {
             try {
-                const res = await fetch('/api/pf')
-                if (res.ok) {
-                    setRecords(extractArray<PFRecord>(await res.json()))
-                }
+                const { data } = await api.get<PFRecord[]>('/pf/')
+                setRecords(extractArray<PFRecord>(data))
             } catch (error) {
                 toast.error("Failed to load PF records")
             } finally {

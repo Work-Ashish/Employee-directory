@@ -9,6 +9,8 @@ import { Card } from "@/components/ui/Card"
 import { Input } from "@/components/ui/Input"
 import { Avatar } from "@/components/ui/Avatar"
 import { Spinner } from "@/components/ui/Spinner"
+import { AnnouncementAPI } from "@/features/announcements/api/client"
+import { EmployeeAPI } from "@/features/employees/api/client"
 
 interface KudosData {
     id: string
@@ -29,11 +31,9 @@ export function KudosWidget() {
 
     const fetchKudos = useCallback(async () => {
         try {
-            const res = await fetch("/api/kudos")
-            if (res.ok) {
-                const data = await res.json()
-                setKudos(Array.isArray(data) ? data : data.data || [])
-            }
+            const data = await AnnouncementAPI.listKudos()
+            const list = Array.isArray(data) ? data : data.results || (data as any).data || []
+            setKudos(list as unknown as KudosData[])
         } catch (error) {
             console.error("Failed to fetch kudos:", error)
         } finally {
@@ -43,14 +43,12 @@ export function KudosWidget() {
 
     const fetchColleagues = useCallback(async () => {
         try {
-            const res = await fetch("/api/employees?limit=100")
-            if (res.ok) {
-                const data = await res.json()
-                setColleagues((data.data || []).map((e: any) => ({
-                    id: e.id,
-                    name: `${e.firstName} ${e.lastName}`
-                })))
-            }
+            const data = await EmployeeAPI.fetchEmployees(1, 100)
+            const list = data.results || (data as any).data || []
+            setColleagues(list.map((e: any) => ({
+                id: e.id,
+                name: `${e.firstName} ${e.lastName}`
+            })))
         } catch (error) {
             console.error("Failed to fetch colleagues:", error)
         }
@@ -68,23 +66,13 @@ export function KudosWidget() {
 
         setSending(true)
         try {
-            const res = await fetch("/api/kudos", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ toId: selectedRecipient, message })
-            })
-
-            if (res.ok) {
-                toast.success("Shoutout sent! 🎉")
-                setMessage("")
-                setSelectedRecipient("")
-                fetchKudos()
-            } else {
-                const err = await res.json()
-                toast.error(err.error || "Failed to send shoutout")
-            }
-        } catch (error) {
-            toast.error("An error occurred")
+            await AnnouncementAPI.createKudos({ toId: selectedRecipient, message })
+            toast.success("Shoutout sent! 🎉")
+            setMessage("")
+            setSelectedRecipient("")
+            fetchKudos()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to send shoutout")
         } finally {
             setSending(false)
         }

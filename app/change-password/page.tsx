@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { LockClosedIcon, CheckIcon } from "@radix-ui/react-icons"
 import { motion } from "framer-motion"
+import { api } from "@/lib/api-client"
 
 export default function ChangePasswordPage() {
     const { user } = useAuth()
@@ -38,22 +39,13 @@ export default function ChangePasswordPage() {
 
         setLoading(true)
         try {
-            const res = await fetch("/api/user/password", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ newPassword, isFirstLogin: true }),
-            })
-
-            if (res.ok) {
-                setSuccess(true)
-                // User state will refresh on dashboard load via getMe()
-                setTimeout(() => router.replace("/"), 2000)
-            } else {
-                const data = await res.json()
-                setError(data.error || "Failed to update password")
-            }
-        } catch {
-            setError("Something went wrong. Please try again.")
+            const { data } = await api.put('/users/password/', { newPassword, isFirstLogin: true }) as any
+            setSuccess(true)
+            // User state will refresh on dashboard load via getMe()
+            setTimeout(() => router.replace("/"), 2000)
+        } catch (err: any) {
+            const message = err?.data?.error || err?.message || "Something went wrong. Please try again."
+            setError(message)
         } finally {
             setLoading(false)
         }

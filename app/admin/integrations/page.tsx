@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react"
 import { PlusIcon, TrashIcon, RocketIcon, DownloadIcon, CheckCircledIcon } from "@radix-ui/react-icons"
 import { toast } from "sonner"
+import { api } from "@/lib/api-client"
 import { Modal } from "@/components/ui/Modal"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -40,11 +41,8 @@ export default function IntegrationsPage() {
     const fetchWebhooks = async () => {
         try {
             setIsLoading(true)
-            const res = await fetch("/api/settings/webhooks")
-            if (res.ok) {
-                const data = await res.json()
-                setWebhooks(data.data || [])
-            }
+            const { data } = await api.get<any>('/settings/webhooks/')
+            setWebhooks(data.data || data || [])
         } catch (error) {
             toast.error("Failed to load webhooks")
         } finally {
@@ -56,34 +54,23 @@ export default function IntegrationsPage() {
         fetchWebhooks()
     }, [])
 
-    const onSubmit = async (data: any) => {
+    const onSubmit = async (formData: any) => {
         try {
-            const res = await fetch("/api/settings/webhooks", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
-            })
-            if (res.ok) {
-                toast.success("Webhook created successfully")
-                setIsModalOpen(false)
-                fetchWebhooks()
-            } else {
-                const err = await res.json()
-                toast.error(err.message || "Failed to create webhook")
-            }
-        } catch (error) {
-            toast.error("An error occurred")
+            await api.post('/settings/webhooks/', formData)
+            toast.success("Webhook created successfully")
+            setIsModalOpen(false)
+            fetchWebhooks()
+        } catch (error: any) {
+            toast.error(error?.data?.message || error?.message || "Failed to create webhook")
         }
     }
 
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this webhook?")) return
         try {
-            const res = await fetch(`/api/settings/webhooks/${id}`, { method: "DELETE" })
-            if (res.ok) {
-                toast.success("Webhook deleted")
-                fetchWebhooks()
-            }
+            await api.delete('/settings/webhooks/' + id + '/')
+            toast.success("Webhook deleted")
+            fetchWebhooks()
         } catch (error) {
             toast.error("Failed to delete webhook")
         }

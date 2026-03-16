@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Asset, AssetStatus } from "@/types"
+import { Asset } from "@/features/assets/api/client"
+type AssetStatus = "AVAILABLE" | "ASSIGNED" | "MAINTENANCE" | "RETIRED"
 import { LaptopIcon, ExclamationTriangleIcon } from "@radix-ui/react-icons"
-import { cn } from "@/lib/utils"
+import { cn, extractArray } from "@/lib/utils"
+import { AssetAPI } from "@/features/assets/api/client"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Card } from "@/components/ui/Card"
@@ -11,7 +13,7 @@ import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { Spinner } from "@/components/ui/Spinner"
 
-const STATUS_LABELS: Record<AssetStatus, string> = {
+const STATUS_LABELS: Record<string, string> = {
     AVAILABLE: "Available",
     ASSIGNED: "Assigned",
     MAINTENANCE: "Maintenance",
@@ -25,10 +27,9 @@ export default function MyAssets() {
     React.useEffect(() => {
         async function load() {
             try {
-                const res = await fetch("/api/assets")
-                if (!res.ok) throw new Error("Failed to fetch")
-                const data: Asset[] = await res.json()
-                setAssets(data.filter(a => a.status === "ASSIGNED"))
+                const data = await AssetAPI.list()
+                const allAssets: Asset[] = data.results || extractArray(data)
+                setAssets(allAssets.filter(a => a.status === "ASSIGNED"))
             } catch {
                 toast.error("Failed to load your assets")
             } finally {

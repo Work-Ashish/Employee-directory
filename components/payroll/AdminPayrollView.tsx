@@ -23,6 +23,8 @@ import { PageHeader } from "@/components/ui/PageHeader"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { PayrollAPI } from "@/features/payroll/api/client"
+import { EmployeeAPI } from "@/features/employees/api/client"
+import { ReimbursementAPI } from "@/features/reimbursements/api/client"
 
 // ----------------------------------------------------------------------------
 // Zod Schema for Validation
@@ -161,16 +163,14 @@ export function AdminPayrollView() {
     const fetchAll = React.useCallback(async () => {
         try {
             setIsLoading(true)
-            const [payData, pfData, empRes] = await Promise.all([
+            const [payData, pfData, empData] = await Promise.all([
                 PayrollAPI.list(),
                 PayrollAPI.listPF(),
-                fetch('/api/employees?limit=100')
+                EmployeeAPI.fetchEmployees(1, 100)
             ])
             setRecords(payData.results as unknown as PayrollRecord[])
             setPfRecords(pfData.results as unknown as PFRecord[])
-            if (empRes.ok) {
-                setEmployees(extractArray<Employee>(await empRes.json()))
-            }
+            setEmployees(empData.results as unknown as Employee[])
         } catch (error) {
             toast.error("Failed to load data")
         } finally {
@@ -188,12 +188,9 @@ export function AdminPayrollView() {
         if (!empId) { setApprovedReimbursements([]); return }
         setLoadingReimb(true)
         try {
-            const res = await fetch(`/api/reimbursements?status=APPROVED&employeeId=${empId}`)
-            if (res.ok) {
-                const data = await res.json()
-                const items = (data?.data || data || []).filter((r: any) => !r.paidInMonth)
-                setApprovedReimbursements(items)
-            }
+            const reimbData = await ReimbursementAPI.list('status=APPROVED&employeeId=' + empId)
+            const items = (reimbData.results || []).filter((r: any) => !r.paidInMonth)
+            setApprovedReimbursements(items as any)
         } catch { /* ignore */ } finally { setLoadingReimb(false) }
     }, [])
 

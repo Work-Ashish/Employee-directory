@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
+import { api } from "@/lib/api-client"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Button } from "@/components/ui/Button"
 import { Card, CardContent } from "@/components/ui/Card"
@@ -56,9 +57,8 @@ export default function PerformanceAdminDashboard() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        fetch("/api/admin/performance")
-            .then(res => res.json())
-            .then(resJson => {
+        api.get('/performance/metrics/')
+            .then((resJson: any) => {
                 const data = resJson.data || resJson
                 setAlerts(data.alerts || [])
                 setScores(data.scores || [])

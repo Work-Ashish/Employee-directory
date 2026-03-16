@@ -14,6 +14,7 @@ import { Spinner } from "@/components/ui/Spinner"
 import { TeamFormModal } from "@/components/teams/TeamFormModal"
 import { TeamDetailModal } from "@/components/teams/TeamDetailModal"
 import { PlusIcon, Pencil1Icon, TrashIcon, PersonIcon } from "@radix-ui/react-icons"
+import { TeamAPI } from "@/features/teams/api/client"
 
 interface TeamMember {
     employee: { id: string; firstName: string; lastName: string; avatarUrl?: string; designation: string; email?: string }
@@ -53,10 +54,9 @@ export default function TeamsPage() {
 
     const fetchTeams = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/teams")
-            const data = await res.json()
-            const arr = data.data || data
-            setTeams(Array.isArray(arr) ? arr : [])
+            const data = await TeamAPI.list()
+            const arr = data.results || data
+            setTeams(Array.isArray(arr) ? arr as Team[] : [])
         } catch { /* empty */ }
         finally { setLoading(false) }
     }, [])
@@ -67,10 +67,8 @@ export default function TeamsPage() {
         if (!confirm("Are you sure you want to delete this team? All members will be removed.")) return
         setDeleting(teamId)
         try {
-            const res = await fetch(`/api/teams/${teamId}`, { method: "DELETE" })
-            if (res.ok) {
-                setTeams(prev => prev.filter(t => t.id !== teamId))
-            }
+            await TeamAPI.delete(teamId)
+            setTeams(prev => prev.filter(t => t.id !== teamId))
         } catch { /* empty */ }
         finally { setDeleting(null) }
     }

@@ -6,6 +6,8 @@ import { format, parse, startOfWeek, getDay, isSameDay, addMonths, subMonths, ad
 import { enUS } from 'date-fns/locale'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { cn } from "@/lib/utils"
+import { EventAPI } from "@/features/events/api/client"
+import { api } from "@/lib/api-client"
 import {
     CalendarIcon,
     ChevronLeftIcon,
@@ -111,33 +113,27 @@ export default function CalendarPage() {
         try {
             setLoading(true)
             // Fetch local org events (primary source)
-            const eventsRes = await fetch('/api/events')
+            const eventsData = await EventAPI.list()
             let allEvents: any[] = []
 
-            if (eventsRes.ok) {
-                const eventsJson = await eventsRes.json()
-                const localEvents = (eventsJson.data || eventsJson || []).map((evt: any) => ({
-                    ...evt,
-                    start: new Date(evt.start),
-                    end: new Date(evt.end),
-                    type: (evt.type || 'event').toLowerCase(),
-                }))
-                allEvents = [...localEvents]
-            }
+            const localEvents = (eventsData.results || []).map((evt: any) => ({
+                ...evt,
+                start: new Date(evt.startDate || evt.start),
+                end: new Date(evt.endDate || evt.end),
+                type: (evt.type || 'event').toLowerCase(),
+            }))
+            allEvents = [...localEvents]
 
             // Optionally merge Google Calendar events
             try {
-                const googleRes = await fetch('/api/calendar')
-                if (googleRes.ok) {
-                    const googleData = await googleRes.json()
-                    const googleEvents = (Array.isArray(googleData) ? googleData : []).map((evt: any) => ({
-                        ...evt,
-                        start: new Date(evt.start),
-                        end: new Date(evt.end),
-                        type: evt.type || 'event',
-                    }))
-                    allEvents = [...allEvents, ...googleEvents]
-                }
+                const { data: googleData } = await api.get<any[]>('/calendar/')
+                const googleEvents = (Array.isArray(googleData) ? googleData : []).map((evt: any) => ({
+                    ...evt,
+                    start: new Date(evt.start),
+                    end: new Date(evt.end),
+                    type: evt.type || 'event',
+                }))
+                allEvents = [...allEvents, ...googleEvents]
             } catch {
                 // Google Calendar not configured — skip silently
             }

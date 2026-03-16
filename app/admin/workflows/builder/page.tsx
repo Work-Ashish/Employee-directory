@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { api } from '@/lib/api-client'
 import { PlusIcon, TrashIcon, GearIcon } from '@radix-ui/react-icons'
 import { ROLES } from '@/lib/permissions'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -44,18 +45,9 @@ export default function BuilderPage() {
                 }))
             }
 
-            const res = await fetch('/api/workflows/templates', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
-
-            if (res.ok) {
-                toast.success('Workflow created successfully')
-                router.push('/admin/workflows')
-            } else {
-                toast.error('Failed to create workflow')
-            }
+            await api.post('/workflows/templates/', payload)
+            toast.success('Workflow created successfully')
+            router.push('/admin/workflows')
         } catch (err) {
             toast.error('Network error')
         }

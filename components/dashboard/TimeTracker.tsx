@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { PlayIcon, StopIcon, PauseIcon, ResumeIcon } from "@radix-ui/react-icons"
 import { cn } from "@/lib/utils"
+import { api } from "@/lib/api-client"
+import { TimeTrackerAPI } from "@/features/timetracker/api/client"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/Button"
 import { Badge } from "@/components/ui/Badge"
@@ -58,9 +60,8 @@ export function TimeTracker() {
 
     // ─── Restore session on mount ───
     useEffect(() => {
-        fetch("/api/time-tracker/status")
-            .then(r => r.ok ? r.json() : null)
-            .then(data => {
+        TimeTrackerAPI.status()
+            .then((data: any) => {
                 if (!data) return
                 if (data.active) {
                     const s = data.session as SessionState
@@ -119,15 +120,8 @@ export function TimeTracker() {
             keystrokesRef.current = 0
 
             try {
-                const res = await fetch("/api/time-tracker/heartbeat", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ mouseClicks: clicks, keystrokes: keys })
-                })
-                if (res.ok) {
-                    const data = await res.json()
-                    setActivityStatus(data.status)
-                }
+                const { data } = await api.post<{ status: "ACTIVE" | "IDLE" | "BREAK" }>("/time-tracker/heartbeat/", { mouseClicks: clicks, keystrokes: keys })
+                setActivityStatus(data.status)
             } catch { }
         }, HEARTBEAT_INTERVAL)
 
@@ -150,39 +144,33 @@ export function TimeTracker() {
     // ─── Handlers ───
     const handleCheckIn = async () => {
         try {
-            const res = await fetch("/api/time-tracker/check-in", { method: "POST" })
-            if (!res.ok) {
-                const err = await res.json()
-                if (res.status === 409 && err.session) {
-                    // Already checked in — restore that session
-                    setSessionId(err.session.id)
-                    setCheckInTime(new Date(err.session.checkIn))
-                    const elapsed = Math.floor((Date.now() - new Date(err.session.checkIn).getTime()) / 1000)
-                    setSeconds(elapsed)
-                    setStatus("running")
-                    toast.info("Restored your existing session")
-                    return
-                }
-                throw new Error(err.error)
-            }
-            const session = await res.json()
+            const session = await TimeTrackerAPI.checkIn() as any
             setSessionId(session.id)
-            setCheckInTime(new Date(session.checkIn))
+            setCheckInTime(new Date(session.checkIn || session.startTime))
             setSeconds(0)
             setStatus("running")
             setActivityStatus("ACTIVE")
             lastActivityRef.current = Date.now()
             toast.success("Checked in!")
         } catch (e: any) {
+            // Handle 409 conflict — already checked in
+            if (e.status === 409 && e.data?.session) {
+                const s = e.data.session
+                setSessionId(s.id)
+                setCheckInTime(new Date(s.checkIn))
+                const elapsed = Math.floor((Date.now() - new Date(s.checkIn).getTime()) / 1000)
+                setSeconds(elapsed)
+                setStatus("running")
+                toast.info("Restored your existing session")
+                return
+            }
             toast.error(e.message || "Failed to check in")
         }
     }
 
     const handleCheckOut = async () => {
         try {
-            const res = await fetch("/api/time-tracker/check-out", { method: "POST" })
-            if (!res.ok) throw new Error()
-            const result = await res.json()
+            const result = await TimeTrackerAPI.checkOut() as any
             setStatus("idle")
             setSeconds(0)
             setSessionId(null)
@@ -203,12 +191,11 @@ export function TimeTracker() {
     const handleBreak = async (reason?: string) => {
         const action = status === 'running' ? 'start' : 'end'
         try {
-            const res = await fetch("/api/time-tracker/break", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action, reason })
-            })
-            if (!res.ok) throw new Error()
+            if (action === 'start') {
+                await TimeTrackerAPI.startBreak(reason)
+            } else {
+                await TimeTrackerAPI.endBreak()
+            }
             setStatus(action === 'start' ? 'paused' : 'running')
             setActivityStatus(action === 'start' ? 'BREAK' : 'ACTIVE')
             setShowBreakMenu(false)

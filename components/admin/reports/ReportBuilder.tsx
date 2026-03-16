@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import { extractArray } from "@/lib/utils"
+import { DepartmentAPI } from "@/features/departments/api/client"
+import { ReportAPI } from "@/features/reports/api/client"
 import { toast } from "sonner"
 import {
     DownloadIcon,
@@ -181,8 +184,9 @@ export function ReportBuilder() {
 
     // Fetch departments + saved reports on mount
     useEffect(() => {
-        fetch("/api/departments").then(r => r.ok ? r.json() : null).then(d => {
-            if (d) setDepartments((d.data || d || []).map((dept: { id: string; name: string }) => ({ id: dept.id, name: dept.name })))
+        DepartmentAPI.list().then(d => {
+            const arr = extractArray(d)
+            setDepartments((arr as { id: string; name: string }[]).map(dept => ({ id: dept.id, name: dept.name })))
         }).catch(() => {})
 
         fetchSavedReports()
@@ -191,11 +195,8 @@ export function ReportBuilder() {
     const fetchSavedReports = async () => {
         setLoadingSaved(true)
         try {
-            const res = await fetch("/api/reports/saved")
-            if (res.ok) {
-                const data = await res.json()
-                setSavedReports((data.data || data || []) as SavedReport[])
-            }
+            const data = await ReportAPI.list()
+            setSavedReports((data.results || extractArray(data)) as unknown as SavedReport[])
         } catch { /* ignore */ } finally {
             setLoadingSaved(false)
         }
@@ -208,26 +209,17 @@ export function ReportBuilder() {
         }
         setLoading(true)
         try {
-            const res = await fetch("/api/reports/query", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    entityType,
-                    columns: selectedColumns,
-                    filters,
-                    sortBy: sortBy || undefined,
-                    sortOrder,
-                    limit: 10,
-                })
-            })
-            if (res.ok) {
-                const result = await res.json()
-                const inner = result.data || result
-                setPreviewData((inner.data || (Array.isArray(inner) ? inner : [])) as Record<string, unknown>[])
-                setTotalRows(inner.meta?.total ?? (inner.data?.length || 0))
-            } else {
-                toast.error("Failed to fetch preview")
-            }
+            const result = await ReportAPI.generate({
+                entityType,
+                columns: selectedColumns,
+                filters,
+                sortBy: sortBy || undefined,
+                sortOrder,
+                limit: 10,
+            }) as any
+            const inner = result.data || result
+            setPreviewData((inner.data || (Array.isArray(inner) ? inner : [])) as Record<string, unknown>[])
+            setTotalRows(inner.meta?.total ?? (inner.data?.length || 0))
         } catch {
             toast.error("Failed to fetch preview")
         } finally {
@@ -240,22 +232,14 @@ export function ReportBuilder() {
         if (reportName.trim().length < 3) return toast.error("Report name must be at least 3 characters")
         setSaving(true)
         try {
-            const res = await fetch("/api/reports/saved", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: reportName.trim(),
-                    entityType,
-                    config: { columns: selectedColumns, filters }
-                })
+            await ReportAPI.create({
+                name: reportName.trim(),
+                entityType,
+                config: { columns: selectedColumns, filters }
             })
-            if (res.ok) {
-                toast.success("Report saved")
-                setReportName("")
-                fetchSavedReports()
-            } else {
-                toast.error("Failed to save")
-            }
+            toast.success("Report saved")
+            setReportName("")
+            fetchSavedReports()
         } catch {
             toast.error("Failed to save")
         } finally {
@@ -277,13 +261,9 @@ export function ReportBuilder() {
     const handleDeleteReport = async (id: string) => {
         setDeletingId(id)
         try {
-            const res = await fetch(`/api/reports/saved?id=${id}`, { method: "DELETE" })
-            if (res.ok) {
-                toast.success("Report deleted")
-                fetchSavedReports()
-            } else {
-                toast.error("Failed to delete")
-            }
+            await ReportAPI.delete(id)
+            toast.success("Report deleted")
+            fetchSavedReports()
         } catch {
             toast.error("Failed to delete")
         } finally {

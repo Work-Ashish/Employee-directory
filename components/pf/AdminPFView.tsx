@@ -17,6 +17,8 @@ import { Avatar } from "@/components/ui/Avatar"
 import { Spinner } from "@/components/ui/Spinner"
 import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"
+import { api } from "@/lib/api-client"
+import { EmployeeAPI } from "@/features/employees/api/client"
 
 // ----------------------------------------------------------------------------
 // Zod Schema for Validation
@@ -82,13 +84,11 @@ export function AdminPFView() {
         try {
             setIsLoading(true)
             const [pfRes, empRes] = await Promise.all([
-                fetch('/api/pf'),
-                fetch('/api/employees?limit=100')
+                api.get<PFRecord[]>('/pf/'),
+                EmployeeAPI.fetchEmployees(1, 100)
             ])
-            if (pfRes.ok && empRes.ok) {
-                setRecords(extractArray<PFRecord>(await pfRes.json()))
-                setEmployees(extractArray<Employee>(await empRes.json()))
-            }
+            setRecords(extractArray<PFRecord>(pfRes.data))
+            setEmployees(extractArray<Employee>(empRes.results))
         } catch (error) {
             toast.error("Failed to load data")
         } finally {
@@ -112,23 +112,15 @@ export function AdminPFView() {
 
     const onSubmit: SubmitHandler<PFFormData> = async (data) => {
         try {
-            const res = await fetch('/api/pf', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+            await api.post('/pf/', data)
+            toast.success("PF record created")
+            setIsModalOpen(false)
+            fetchAll()
+            form.reset({
+                ...form.getValues(),
+                employeeId: "",
+                basicSalary: 0,
             })
-            if (res.ok) {
-                toast.success("PF record created")
-                setIsModalOpen(false)
-                fetchAll()
-                form.reset({
-                    ...form.getValues(),
-                    employeeId: "",
-                    basicSalary: 0,
-                })
-            } else {
-                toast.error("Failed to create record")
-            }
         } catch (error) {
             toast.error("An error occurred")
         }

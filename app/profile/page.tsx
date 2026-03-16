@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { api } from "@/lib/api-client"
 import { useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
 import {
@@ -143,9 +144,8 @@ export default function ProfilePage() {
     const [saving, setSaving] = React.useState(false)
 
     React.useEffect(() => {
-        fetch("/api/employee/profile")
-            .then(r => r.ok ? r.json() : Promise.reject())
-            .then(data => { setProfile(data); setFormData(data) })
+        api.get('/employees/profile/')
+            .then(({ data }) => { setProfile(data as any); setFormData(data as any) })
             .catch(() => { })
             .finally(() => setLoading(false))
     }, [])
@@ -157,13 +157,7 @@ export default function ProfilePage() {
     const handleSave = async () => {
         setSaving(true)
         try {
-            const res = await fetch("/api/employee/profile", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
-            })
-            if (!res.ok) throw new Error()
-            const updated = await res.json()
+            const { data: updated } = await api.put('/employees/profile/', formData) as any
             setProfile({ ...profile!, ...updated })
             setFormData({ ...profile!, ...updated })
             setEditing(false)
@@ -451,9 +445,8 @@ function TabAccounts({ profile, formData, editing, onChange }: { profile: Profil
     const [docs, setDocs] = React.useState<Record<string, any>>({})
 
     React.useEffect(() => {
-        fetch("/api/employee/documents")
-            .then(r => r.ok ? r.json() : {})
-            .then(setDocs)
+        api.get('/documents/?scope=mine')
+            .then(({ data }) => setDocs(data as any))
             .catch(() => { })
     }, [])
 
@@ -462,7 +455,7 @@ function TabAccounts({ profile, formData, editing, onChange }: { profile: Profil
         fd.append("file", file)
         fd.append("docType", docType)
         try {
-            const res = await fetch("/api/employee/documents", { method: "POST", body: fd })
+            const res = await fetch("/api/upload", { method: "POST", body: fd })
             if (!res.ok) {
                 const err = await res.json()
                 toast.error(err.error || "Upload failed")
@@ -478,8 +471,7 @@ function TabAccounts({ profile, formData, editing, onChange }: { profile: Profil
 
     const handleDelete = async (docId: string) => {
         try {
-            const res = await fetch(`/api/employee/documents?id=${docId}`, { method: "DELETE" })
-            if (!res.ok) throw new Error()
+            await api.delete(`/documents/${docId}/`)
             setDocs(prev => {
                 const next = { ...prev }
                 for (const key of Object.keys(next)) {

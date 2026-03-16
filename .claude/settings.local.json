@@ -111,7 +111,23 @@
       "Bash(python -c \"import sys; print\\([p for p in sys.path[:5]]\\)\")",
       "Bash(python -m pytest hiringnow/apps/employees/tests/test_views.py -k \"test_credentials_reset or test_manager_list\" --tb=long -q)",
       "Bash(xargs grep -l \"dashboard\\\\|Dashboard\")",
-      "Bash(xargs grep -l \"AdminDashboard\\\\|EmployeeDashboard\")"
+      "Bash(xargs grep -l \"AdminDashboard\\\\|EmployeeDashboard\")",
+      "Bash(python -c \"import django; print\\(django.VERSION\\)\")",
+      "Bash(for file in config/settings/base.py config/db_router.py config/db_utils.py config/tenant_context.py common/pagination.py common/renderers.py common/throttles.py)",
+      "Bash(do wc -l \"c:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\Employee directory\\\\backend\\\\hiringnow/$file\" \"C:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\HiringNow\\\\hiringnow-platform\\\\hiringnow/$file\")",
+      "Bash(done)",
+      "Bash(for file in common/models.py common/managers.py common/pagination.py common/renderers.py common/throttles.py common/__init__.py)",
+      "Bash(do echo \"=== Comparing $file ===\" wc -l \"c:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\Employee directory\\\\backend\\\\hiringnow/$file\" \"C:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\HiringNow\\\\hiringnow-platform\\\\hiringnow/$file\")",
+      "Read(//c/Users/Ashish Singh/Desktop/Employee directory/backend/hiringnow/**)",
+      "Read(//c/Users/Ashish Singh/Desktop/Employee directory/backend/hiringnow/apps/$app/**)",
+      "Read(//c/Users/Ashish Singh/Desktop/Employee directory/**)",
+      "Bash(ls -d \"c:/Users/Ashish Singh/Desktop/Employee directory/features/\"*/)",
+      "Bash(ls -d \"c:/Users/Ashish Singh/Desktop/Employee directory/backend/hiringnow/apps/\"*/)",
+      "Bash(for mod in teams performance training assets documents tickets announcements reimbursements resignations feedback events notifications reports roles sessions timetracker)",
+      "Bash(do mkdir -p \"features/$mod/api\")",
+      "Bash(python manage.py makemigrations teams performance training assets documents tickets announcements reimbursements resignations feedback events notifications reports roles sessions timetracker)",
+      "Bash(python manage.py makemigrations user_sessions)",
+      "Bash(python manage.py migrate --database=default)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\reimbursements",
@@ -119,7 +135,12 @@
       "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\workflows\\fields",
       "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\departments",
       "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\employees",
-      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\users"
+      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\users",
+      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\dashboard",
+      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\attendance",
+      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\leave",
+      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\payroll",
+      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\config"
     ]
   }
 }

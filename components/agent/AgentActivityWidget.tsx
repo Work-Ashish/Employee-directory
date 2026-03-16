@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
 import { LaptopIcon } from "@radix-ui/react-icons"
 import Link from "next/link"
+import { api } from "@/lib/api-client"
 
 interface WidgetData {
     productivityScore: number
@@ -27,16 +28,15 @@ export function AgentActivityWidget() {
 
     React.useEffect(() => {
         const today = new Date().toISOString().split("T")[0]
-        fetch(`/api/agent/report/${today}`)
-            .then(res => res.ok ? res.json() : null)
-            .then(json => {
-                if (json?.data) {
+        api.get<WidgetData>('/agent/report/' + today + '/')
+            .then(({ data }) => {
+                if (data) {
                     setData({
-                        productivityScore: json.data.productivityScore ?? 0,
-                        totalActiveSeconds: json.data.totalActiveSeconds ?? 0,
-                        totalIdleSeconds: json.data.totalIdleSeconds ?? 0,
-                        topApps: (json.data.topApps || []).slice(0, 3),
-                        topWebsites: (json.data.topWebsites || []).slice(0, 3),
+                        productivityScore: data.productivityScore ?? 0,
+                        totalActiveSeconds: data.totalActiveSeconds ?? 0,
+                        totalIdleSeconds: data.totalIdleSeconds ?? 0,
+                        topApps: (data.topApps || []).slice(0, 3),
+                        topWebsites: (data.topWebsites || []).slice(0, 3),
                         date: today,
                     })
                 }

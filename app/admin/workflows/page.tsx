@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { PlusIcon, InputIcon, GearIcon } from '@radix-ui/react-icons'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { api } from '@/lib/api-client'
 import { WorkflowTemplate } from '@prisma/client'
 import { extractArray } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -23,15 +24,10 @@ export default function WorkflowsAdmin() {
 
     const loadTemplates = async () => {
         try {
-            const res = await fetch('/api/workflows/templates')
-            if (res.ok) {
-                const json = await res.json()
-                setTemplates(extractArray<Template>(json))
-            } else {
-                toast.error('Failed to load workflow templates')
-            }
+            const { data } = await api.get<any>('/workflows/templates/')
+            setTemplates(extractArray<Template>(data))
         } catch (err) {
-            toast.error('Network error loading workflows')
+            toast.error('Failed to load workflow templates')
         }
     }
 

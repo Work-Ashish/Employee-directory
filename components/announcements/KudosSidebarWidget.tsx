@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/Button"
 import { Spinner } from "@/components/ui/Spinner"
 import { hasPermission, Module, Action } from "@/lib/permissions"
 import { useAuth } from "@/context/AuthContext"
+import { AnnouncementAPI } from "@/features/announcements/api/client"
+import { EmployeeAPI } from "@/features/employees/api/client"
 
 interface KudosData {
     id: string
@@ -40,17 +42,12 @@ export function KudosSidebarWidget() {
     const fetchData = React.useCallback(async () => {
         try {
             setLoading(true)
-            const [kudosRes, empRes] = await Promise.all([
-                fetch("/api/kudos"),
-                fetch("/api/employees?limit=200"),
+            const [kudosData, empData] = await Promise.all([
+                AnnouncementAPI.listKudos(),
+                EmployeeAPI.fetchEmployees(1, 200),
             ])
-            if (kudosRes.ok) {
-                const data = await kudosRes.json()
-                setKudos(extractArray<KudosData>(data))
-            }
-            if (empRes.ok) {
-                setEmployees(extractArray<Employee>(await empRes.json()))
-            }
+            setKudos(extractArray<KudosData>(kudosData))
+            setEmployees(extractArray<Employee>(empData))
         } catch {
             console.error("Failed to fetch kudos")
         } finally {
@@ -67,23 +64,14 @@ export function KudosSidebarWidget() {
         }
         setSending(true)
         try {
-            const res = await fetch("/api/kudos", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ toId, message }),
-            })
-            if (res.ok) {
-                toast.success("Kudos sent!")
-                setToId("")
-                setMessage("")
-                setShowForm(false)
-                fetchData()
-            } else {
-                const err = await res.json().catch(() => null)
-                toast.error(err?.message || err?.error || "Failed to send kudos")
-            }
-        } catch {
-            toast.error("An error occurred")
+            await AnnouncementAPI.createKudos({ toId, message })
+            toast.success("Kudos sent!")
+            setToId("")
+            setMessage("")
+            setShowForm(false)
+            fetchData()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to send kudos")
         } finally {
             setSending(false)
         }

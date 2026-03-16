@@ -3,6 +3,7 @@
 import * as React from "react"
 import { BellIcon, CheckIcon } from "@radix-ui/react-icons"
 import { cn } from "@/lib/utils"
+import { NotificationAPI } from "@/features/notifications/api/client"
 import { toast } from "sonner"
 import { ReloadIcon } from "@radix-ui/react-icons"
 import { Spinner } from "@/components/ui/Spinner"
@@ -17,11 +18,8 @@ export function NotificationCenter() {
     const fetchNotifications = React.useCallback(async () => {
         setLoading(true)
         try {
-            const res = await fetch("/api/notifications")
-            if (res.ok) {
-                const result = await res.json()
-                setNotifications(result.data)
-            }
+            const data = await NotificationAPI.list()
+            setNotifications(data.results || (data as any).data || [])
         } catch (error) {
             console.error("Failed to fetch notifications")
         } finally {
@@ -48,15 +46,9 @@ export function NotificationCenter() {
 
     const markAllRead = async () => {
         try {
-            const res = await fetch("/api/notifications", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ markAll: true })
-            })
-            if (res.ok) {
-                setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
-                toast.success("All notifications marked as read")
-            }
+            await NotificationAPI.markAllRead()
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+            toast.success("All notifications marked as read")
         } catch (error) {
             toast.error("Failed to mark read")
         }
@@ -65,14 +57,8 @@ export function NotificationCenter() {
     const markRead = async (id: string, isAlreadyRead: boolean) => {
         if (isAlreadyRead) return
         try {
-            const res = await fetch("/api/notifications", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id })
-            })
-            if (res.ok) {
-                setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
-            }
+            await NotificationAPI.markRead(id)
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
         } catch (error) {
             console.error("Failed to mark read")
         }

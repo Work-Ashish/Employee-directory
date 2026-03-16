@@ -11,6 +11,7 @@ import { StatCard } from "@/components/ui/StatCard"
 import { Card, CardContent } from "@/components/ui/Card"
 import { Select } from "@/components/ui/Select"
 import { Avatar } from "@/components/ui/Avatar"
+import { ResignationAPI } from "@/features/resignations/api/client"
 
 type Resignation = {
     id: string
@@ -35,11 +36,8 @@ export function AdminResignationView() {
     const fetchResignations = React.useCallback(async () => {
         try {
             setIsLoading(true)
-            const res = await fetch('/api/resignations')
-            if (res.ok) {
-                const data = await res.json()
-                setResignations(extractArray<Resignation>(data))
-            }
+            const data = await ResignationAPI.list()
+            setResignations(extractArray<Resignation>(data))
         } catch {
             toast.error("Failed to load resignations")
         } finally {
@@ -53,17 +51,9 @@ export function AdminResignationView() {
 
     const updateStatus = async (id: string, newStatus: string) => {
         try {
-            const res = await fetch('/api/resignations', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, status: newStatus })
-            })
-            if (res.ok) {
-                toast.success("Status updated")
-                fetchResignations()
-            } else {
-                toast.error("Update failed")
-            }
+            await ResignationAPI.update(id, { status: newStatus })
+            toast.success("Status updated")
+            fetchResignations()
         } catch {
             toast.error("An error occurred")
         }

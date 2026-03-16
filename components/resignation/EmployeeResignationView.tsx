@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/Card"
 import { Select } from "@/components/ui/Select"
 import { Input } from "@/components/ui/Input"
 import { Modal } from "@/components/ui/Modal"
+import { ResignationAPI } from "@/features/resignations/api/client"
 
 const resignationSchema = z.object({
     reason: z.string().min(1, "Reason is required"),
@@ -52,12 +53,9 @@ export function EmployeeResignationView({ employeeId }: { employeeId: string }) 
 
     const fetchMyResignation = React.useCallback(async () => {
         try {
-            const res = await fetch(`/api/resignations?employeeId=${employeeId}`)
-            if (res.ok) {
-                const resJson = await res.json()
-                const data = resJson.data || resJson
-                setMyResignation(data[0] || null)
-            }
+            const data = await ResignationAPI.list(`employeeId=${employeeId}`)
+            const first = data.results?.[0]
+            setMyResignation(first ? (first as unknown as Resignation) : null)
         } catch {
             toast.error("Failed to load records")
         } finally {
@@ -92,23 +90,15 @@ export function EmployeeResignationView({ employeeId }: { employeeId: string }) 
                 parts.push(`Feedback: ${pendingData.feedback.trim()}`)
             }
 
-            const res = await fetch('/api/resignations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    reason: parts.join(" | "),
-                    lastDay: pendingData.lastDay,
-                    employeeId,
-                })
+            await ResignationAPI.create({
+                reason: parts.join(" | "),
+                lastDay: pendingData.lastDay,
+                employeeId,
             })
-            if (res.ok) {
-                toast.success("Resignation filed successfully")
-                setShowConfirm(false)
-                setPendingData(null)
-                fetchMyResignation()
-            } else {
-                toast.error("Failed to file resignation")
-            }
+            toast.success("Resignation filed successfully")
+            setShowConfirm(false)
+            setPendingData(null)
+            fetchMyResignation()
         } catch {
             toast.error("An error occurred")
         } finally {

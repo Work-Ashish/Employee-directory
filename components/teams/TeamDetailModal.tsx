@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/Button"
 import { Badge } from "@/components/ui/Badge"
 import { Avatar } from "@/components/ui/Avatar"
 import { Pencil1Icon, PlusIcon, Cross2Icon, MagnifyingGlassIcon } from "@radix-ui/react-icons"
+import { EmployeeAPI } from "@/features/employees/api/client"
+import { api } from "@/lib/api-client"
 
 interface Employee {
     id: string
@@ -53,12 +55,10 @@ export function TeamDetailModal({
     React.useEffect(() => {
         if (!addingMember) return
         setLoadingEmp(true)
-        fetch("/api/employees?limit=100")
-            .then(r => r.json())
+        EmployeeAPI.fetchEmployees(1, 100)
             .then(data => {
-                const arr = data.data || data
-                const list = Array.isArray(arr) ? arr : (arr?.employees || [])
-                setAllEmployees(list)
+                const list = data.results || []
+                setAllEmployees(Array.isArray(list) ? list as unknown as Employee[] : [])
             })
             .catch(() => {})
             .finally(() => setLoadingEmp(false))
@@ -88,16 +88,10 @@ export function TeamDetailModal({
     const handleAddMember = async (employeeId: string) => {
         setActionLoading(employeeId)
         try {
-            const res = await fetch(`/api/teams/${team.id}/members`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ employeeId }),
-            })
-            if (res.ok) {
-                onMembersChanged()
-                // Add to local memberIds to hide from available list
-                setAllEmployees(prev => prev) // trigger re-render
-            }
+            await api.post(`/teams/${team.id}/members/`, { employeeId })
+            onMembersChanged()
+            // Add to local memberIds to hide from available list
+            setAllEmployees(prev => prev) // trigger re-render
         } catch { /* empty */ }
         finally { setActionLoading(null) }
     }
@@ -106,12 +100,8 @@ export function TeamDetailModal({
         if (!confirm("Remove this member from the team?")) return
         setActionLoading(employeeId)
         try {
-            const res = await fetch(`/api/teams/${team.id}/members?employeeId=${employeeId}`, {
-                method: "DELETE",
-            })
-            if (res.ok) {
-                onMembersChanged()
-            }
+            await api.delete(`/teams/${team.id}/members/?employeeId=${employeeId}`)
+            onMembersChanged()
         } catch { /* empty */ }
         finally { setActionLoading(null) }
     }

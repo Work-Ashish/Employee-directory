@@ -21,6 +21,7 @@ import { StatCard } from "@/components/ui/StatCard"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Modal } from "@/components/ui/Modal"
+import { ReimbursementAPI } from "@/features/reimbursements/api/client"
 
 type Reimbursement = {
     id: string
@@ -89,10 +90,9 @@ export function AdminReimbursementView() {
             setIsLoading(true)
             const params = new URLSearchParams()
             if (filterStatus) params.set("status", filterStatus)
-            const res = await fetch(`/api/reimbursements?${params}`)
-            if (res.ok) {
-                setRecords(extractArray<Reimbursement>(await res.json()))
-            }
+            const filterStr = params.toString()
+            const data = await ReimbursementAPI.list(filterStr || undefined)
+            setRecords(extractArray<Reimbursement>(data))
         } catch {
             toast.error("Failed to load reimbursement requests")
         } finally {
@@ -105,22 +105,13 @@ export function AdminReimbursementView() {
     const handleAction = async (id: string, status: "APPROVED" | "REJECTED", note?: string) => {
         setProcessing(id)
         try {
-            const res = await fetch(`/api/reimbursements/${id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status, rejectionNote: note }),
-            })
-            if (res.ok) {
-                toast.success(`Request ${status.toLowerCase()}`)
-                setRejectId(null)
-                setRejectionNote("")
-                fetchRecords()
-            } else {
-                const err = await res.json()
-                toast.error(err?.error || "Action failed")
-            }
-        } catch {
-            toast.error("Network error")
+            await ReimbursementAPI.update(id, { status, rejectionNote: note })
+            toast.success(`Request ${status.toLowerCase()}`)
+            setRejectId(null)
+            setRejectionNote("")
+            fetchRecords()
+        } catch (error: any) {
+            toast.error(error.message || "Action failed")
         } finally {
             setProcessing(null)
         }

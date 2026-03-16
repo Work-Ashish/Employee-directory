@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { cn } from "@/lib/utils"
-import { extractArray } from "@/lib/utils"
+import { cn, extractArray } from "@/lib/utils"
+import { EventAPI } from "@/features/events/api/client"
 import { format, isSameDay } from "date-fns"
 import { CalendarIcon, ChevronRightIcon, PlusIcon } from "@radix-ui/react-icons"
 import { Badge } from "@/components/ui/Badge"
@@ -42,15 +42,12 @@ export function GoogleCalendarWidget() {
     const fetchEvents = React.useCallback(async () => {
         try {
             setIsLoading(true)
-            const res = await fetch("/api/events")
-            if (res.ok) {
-                const data = await res.json()
-                const all = extractArray<CalendarEvent>(data)
-                // Show only upcoming events
-                const now = new Date()
-                const upcoming = all.filter(e => new Date(e.end || e.start) >= now)
-                setEvents(upcoming.slice(0, 5))
-            }
+            const data = await EventAPI.list()
+            const all = extractArray<CalendarEvent>(data)
+            // Show only upcoming events
+            const now = new Date()
+            const upcoming = all.filter(e => new Date(e.end || e.start) >= now)
+            setEvents(upcoming.slice(0, 5))
         } catch {
             console.error("Failed to fetch events")
         } finally {
@@ -77,28 +74,19 @@ export function GoogleCalendarWidget() {
         }
         setSubmitting(true)
         try {
-            const res = await fetch("/api/events", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    title,
-                    start: new Date(start).toISOString(),
-                    end: new Date(end).toISOString(),
-                    allDay,
-                    type,
-                }),
+            await EventAPI.create({
+                title,
+                start: new Date(start).toISOString(),
+                end: new Date(end).toISOString(),
+                allDay,
+                type,
             })
-            if (res.ok) {
-                toast.success("Event created")
-                setShowCreate(false)
-                resetForm()
-                fetchEvents()
-            } else {
-                const err = await res.json().catch(() => null)
-                toast.error(err?.message || "Failed to create event")
-            }
-        } catch {
-            toast.error("An error occurred")
+            toast.success("Event created")
+            setShowCreate(false)
+            resetForm()
+            fetchEvents()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to create event")
         } finally {
             setSubmitting(false)
         }

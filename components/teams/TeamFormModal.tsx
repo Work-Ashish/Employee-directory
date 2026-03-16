@@ -5,6 +5,8 @@ import { Modal } from "@/components/ui/Modal"
 import { Button } from "@/components/ui/Button"
 import { Avatar } from "@/components/ui/Avatar"
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons"
+import { EmployeeAPI } from "@/features/employees/api/client"
+import { TeamAPI } from "@/features/teams/api/client"
 
 interface Employee {
     id: string
@@ -61,12 +63,10 @@ export function TeamFormModal({ isOpen, onClose, team, onSaved }: TeamFormModalP
     React.useEffect(() => {
         if (!isOpen) return
         setLoadingEmp(true)
-        fetch("/api/employees?limit=100")
-            .then(r => r.json())
+        EmployeeAPI.fetchEmployees(1, 100)
             .then(data => {
-                const arr = data.data || data
-                const list = Array.isArray(arr) ? arr : (arr?.employees || [])
-                setEmployees(list)
+                const list = data.results || []
+                setEmployees(Array.isArray(list) ? list as unknown as Employee[] : [])
             })
             .catch(() => {})
             .finally(() => setLoadingEmp(false))
@@ -93,17 +93,11 @@ export function TeamFormModal({ isOpen, onClose, team, onSaved }: TeamFormModalP
 
         setSaving(true)
         try {
-            const url = isEdit ? `/api/teams/${team.id}` : "/api/teams"
-            const method = isEdit ? "PUT" : "POST"
-            const res = await fetch(url, {
-                method,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: name.trim(), description: description.trim() || null, leadId }),
-            })
-
-            if (!res.ok) {
-                const data = await res.json()
-                throw new Error(data.error?.message || data.details || "Failed to save team")
+            const body = { name: name.trim(), description: description.trim() || null, leadId }
+            if (isEdit) {
+                await TeamAPI.update(team.id, body)
+            } else {
+                await TeamAPI.create(body)
             }
 
             onSaved()

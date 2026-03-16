@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { cn, extractArray } from "@/lib/utils"
+import { TicketAPI } from "@/features/tickets/api/client"
 import { PlusIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Button } from "@/components/ui/Button"
@@ -105,11 +106,9 @@ export default function HelpDesk() {
             setIsLoading(true)
             const params = new URLSearchParams()
             if (statusFilter) params.set("status", statusFilter)
-            const res = await fetch(`/api/tickets?${params}`)
-            if (res.ok) {
-                const json = await res.json()
-                setTickets(extractArray<Ticket>(json))
-            }
+            const paramStr = params.toString()
+            const data = await TicketAPI.list(paramStr || undefined)
+            setTickets(extractArray<Ticket>(data))
         } catch {
             toast.error("Failed to load tickets")
         } finally {
@@ -138,27 +137,18 @@ export default function HelpDesk() {
 
         try {
             setIsSubmitting(true)
-            const res = await fetch("/api/tickets", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    subject: formSubject.trim(),
-                    category: formCategory,
-                    priority: formPriority,
-                    description: formDescription.trim() || null,
-                }),
+            await TicketAPI.create({
+                subject: formSubject.trim(),
+                category: formCategory,
+                priority: formPriority,
+                description: formDescription.trim() || null,
             })
-            if (res.ok) {
-                toast.success("Ticket created successfully")
-                setIsCreateModalOpen(false)
-                resetForm()
-                fetchTickets()
-            } else {
-                const err = await res.json().catch(() => null)
-                toast.error(err?.message || "Failed to create ticket")
-            }
-        } catch {
-            toast.error("An error occurred")
+            toast.success("Ticket created successfully")
+            setIsCreateModalOpen(false)
+            resetForm()
+            fetchTickets()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to create ticket")
         } finally {
             setIsSubmitting(false)
         }
@@ -166,19 +156,11 @@ export default function HelpDesk() {
 
     const handleStatusUpdate = async (ticketId: string, newStatus: string) => {
         try {
-            const res = await fetch("/api/tickets", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: ticketId, status: newStatus }),
-            })
-            if (res.ok) {
-                toast.success("Ticket updated")
-                fetchTickets()
-            } else {
-                toast.error("Failed to update ticket")
-            }
-        } catch {
-            toast.error("An error occurred")
+            await TicketAPI.update(ticketId, { status: newStatus })
+            toast.success("Ticket updated")
+            fetchTickets()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to update ticket")
         }
     }
 

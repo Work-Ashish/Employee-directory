@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/Button"
 import { Badge } from "@/components/ui/Badge"
 import { Spinner } from "@/components/ui/Spinner"
 import { Card, CardContent } from "@/components/ui/Card"
+import { TrainingAPI } from "@/features/training/api/client"
+import { api } from "@/lib/api-client"
 
 type Training = {
     id: string
@@ -30,11 +32,8 @@ export function EmployeeTrainingView({ employeeId }: { employeeId: string }) {
     const fetchTrainings = React.useCallback(async () => {
         try {
             setIsLoading(true)
-            const res = await fetch('/api/training')
-            if (res.ok) {
-                const data = await res.json()
-                setTrainings(data.data || data)
-            }
+            const data = await TrainingAPI.list()
+            setTrainings((data.results || data) as unknown as Training[])
         } catch {
             toast.error("Failed to load courses")
         } finally {
@@ -48,18 +47,10 @@ export function EmployeeTrainingView({ employeeId }: { employeeId: string }) {
 
     const markAsCompleted = async (trainingId: string) => {
         try {
-            const res = await fetch('/api/training/enroll', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trainingId, employeeId, completed: true, score: 100 })
-            })
-            if (res.ok) {
-                toast.success("Course marked as completed!")
-                fetchTrainings()
-                setSelectedTraining(null)
-            } else {
-                toast.error("Failed to update status")
-            }
+            await api.post('/training/enroll/', { trainingId, employeeId, completed: true, score: 100 })
+            toast.success("Course marked as completed!")
+            fetchTrainings()
+            setSelectedTraining(null)
         } catch {
             toast.error("An error occurred")
         }

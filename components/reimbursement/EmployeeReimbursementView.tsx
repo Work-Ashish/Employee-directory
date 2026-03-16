@@ -18,6 +18,8 @@ import { Dialog, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/c
 import { PageHeader } from "@/components/ui/PageHeader"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
+import { ReimbursementAPI } from "@/features/reimbursements/api/client"
+import { api } from "@/lib/api-client"
 
 const reimbursementSchema = z.object({
     category: z.string().min(1, "Category is required"),
@@ -98,10 +100,8 @@ export function EmployeeReimbursementView() {
     const fetchRecords = React.useCallback(async () => {
         try {
             setIsLoading(true)
-            const res = await fetch("/api/reimbursements")
-            if (res.ok) {
-                setRecords(extractArray<Reimbursement>(await res.json()))
-            }
+            const data = await ReimbursementAPI.list()
+            setRecords(extractArray<Reimbursement>(data))
         } catch {
             toast.error("Failed to load records")
         } finally {
@@ -161,28 +161,19 @@ export function EmployeeReimbursementView() {
             if (receiptFile) {
                 receiptUrl = await uploadReceipt()
             }
-            const res = await fetch("/api/reimbursements", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...data,
-                    receiptUrl,
-                    expenseDate: new Date(data.expenseDate),
-                }),
+            await ReimbursementAPI.create({
+                ...data,
+                receiptUrl,
+                expenseDate: new Date(data.expenseDate),
             })
-            if (res.ok) {
-                toast.success("Reimbursement request submitted")
-                setIsModalOpen(false)
-                form.reset()
-                setReceiptFile(null)
-                setReceiptPreview(null)
-                fetchRecords()
-            } else {
-                const err = await res.json()
-                toast.error(err?.error || "Failed to submit request")
-            }
-        } catch {
-            toast.error("An error occurred")
+            toast.success("Reimbursement request submitted")
+            setIsModalOpen(false)
+            form.reset()
+            setReceiptFile(null)
+            setReceiptPreview(null)
+            fetchRecords()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to submit request")
         } finally {
             setSubmitting(false)
         }
@@ -191,15 +182,11 @@ export function EmployeeReimbursementView() {
     const handleDelete = async (id: string) => {
         if (!confirm("Delete this pending request?")) return
         try {
-            const res = await fetch(`/api/reimbursements/${id}`, { method: "DELETE" })
-            if (res.ok) {
-                toast.success("Request deleted")
-                fetchRecords()
-            } else {
-                toast.error("Failed to delete")
-            }
-        } catch {
-            toast.error("Network error")
+            await api.delete("/reimbursements/" + id + "/")
+            toast.success("Request deleted")
+            fetchRecords()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to delete")
         }
     }
 

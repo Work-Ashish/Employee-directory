@@ -7,17 +7,23 @@ import { DrawingPinFilledIcon } from "@radix-ui/react-icons"
 import { GoogleCalendarWidget } from "./GoogleCalendarWidget"
 import { KudosSidebarWidget } from "./KudosSidebarWidget"
 import { Badge } from "@/components/ui/Badge"
+import { AnnouncementAPI } from "@/features/announcements/api/client"
 
 type Announcement = {
     id: string
     title: string
     content: string
-    author: string
-    category: string
+    author?: string
+    category?: string
     priority: string
-    isPinned: boolean
+    priorityDisplay?: string
+    isPinned?: boolean
+    isActive?: boolean
+    createdBy?: string | null
+    createdByName?: string | null
+    expiresAt?: string | null
     createdAt: string
-    updatedAt: string
+    updatedAt?: string
 }
 
 
@@ -28,11 +34,8 @@ export function EmployeeAnnouncementsView() {
     const fetchAnnouncements = React.useCallback(async () => {
         try {
             setIsLoading(true)
-            const res = await fetch('/api/announcements')
-            if (res.ok) {
-                const data = await res.json()
-                setAnnouncements(data.data || data)
-            }
+            const data = await AnnouncementAPI.list()
+            setAnnouncements(data.results || (data as unknown as Announcement[]))
         } catch {
             console.error("Failed to load announcements")
         } finally {
@@ -81,7 +84,7 @@ export function EmployeeAnnouncementsView() {
                         <div className="p-10 text-center text-text-3 glass">No announcements yet. Check back later!</div>
                     ) : (
                         announcements.map((ann, i) => {
-                            const { icon, color } = getCategoryDetails(ann.category)
+                            const { icon, color } = getCategoryDetails(ann.category || "general")
                             return (
                                 <div key={ann.id} className="glass p-[22px] group hover:-translate-y-[2px] hover:shadow-md transition-all duration-200 animate-[fadeRow_0.4s_both]" style={{ animationDelay: `${i * 0.1}s` }}>
                                     <div className="flex justify-between items-start mb-[12px]">

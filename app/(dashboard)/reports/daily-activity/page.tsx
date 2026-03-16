@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge"
 import { Input } from "@/components/ui/Input"
 import { BarChartIcon, ClockIcon, LaptopIcon } from "@radix-ui/react-icons"
 import { useSearchParams } from "next/navigation"
+import { api } from "@/lib/api-client"
 
 interface Report {
     id: string
@@ -44,18 +45,15 @@ export default function DailyActivityReportPage() {
         setLoading(true)
         setError("")
         try {
-            const res = await fetch(`/api/agent/report/${d}`)
-            if (res.ok) {
-                const json = await res.json()
-                setReport(json.data)
-            } else if (res.status === 404) {
+            const { data } = await api.get<Report>('/agent/report/' + d + '/')
+            setReport(data)
+        } catch (err: any) {
+            if (err?.status === 404) {
                 setReport(null)
                 setError("No report available for this date.")
             } else {
                 setError("Failed to load report.")
             }
-        } catch {
-            setError("Network error.")
         } finally {
             setLoading(false)
         }

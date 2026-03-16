@@ -4,6 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Command } from "cmdk"
 import { MagnifyingGlassIcon, PersonIcon, FileTextIcon, ReaderIcon } from "@radix-ui/react-icons"
+import { api } from "@/lib/api-client"
 
 interface Suggestion {
     entityType: string
@@ -73,13 +74,10 @@ export function SearchAutocomplete({
         debounceRef.current = setTimeout(async () => {
             setLoading(true)
             try {
-                const res = await fetch(`/api/search/suggest?q=${encodeURIComponent(query.trim())}&limit=8`)
-                if (res.ok) {
-                    const json = await res.json()
-                    const items = json.data?.suggestions ?? []
-                    setSuggestions(items)
-                    setOpen(items.length > 0)
-                }
+                const { data } = await api.get<{ suggestions: Suggestion[] }>('/search/suggest/?q=' + encodeURIComponent(query.trim()) + '&limit=8')
+                const items = data?.suggestions ?? []
+                setSuggestions(items)
+                setOpen(items.length > 0)
             } catch {
                 // silently fail
             } finally {

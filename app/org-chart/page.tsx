@@ -31,6 +31,10 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
 import { PlusIcon, Pencil2Icon, TrashIcon } from "@radix-ui/react-icons"
+import { TeamAPI } from "@/features/teams/api/client"
+import { DepartmentAPI } from "@/features/departments/api/client"
+import { EmployeeAPI } from "@/features/employees/api/client"
+import { api } from "@/lib/api-client"
 
 /* ── Types ── */
 
@@ -246,15 +250,12 @@ export default function OrgChartPage() {
     const fetchData = React.useCallback(async () => {
         try {
             setLoading(true)
-            const [chartRes, deptRes] = await Promise.all([
-                fetch("/api/org-chart"),
-                fetch("/api/departments"),
+            const [chartData, deptData] = await Promise.all([
+                TeamAPI.orgChart(),
+                DepartmentAPI.list().catch(() => []),
             ])
-            if (!chartRes.ok) throw new Error("Failed to load org chart data")
-            const chartJson = await chartRes.json()
-            const deptJson = deptRes.ok ? await deptRes.json() : { data: [] }
-            setEmployees(chartJson.data || [])
-            setDepartments(deptJson.data || deptJson || [])
+            setEmployees(chartData as unknown as OrgEmployee[] || [])
+            setDepartments(Array.isArray(deptData) ? deptData : [])
         } catch (err: any) {
             setError(err.message)
         } finally {
@@ -265,9 +266,9 @@ export default function OrgChartPage() {
     const handleDelete = React.useCallback(async (id: string, name: string) => {
         if (!window.confirm(`Delete ${name}? Their direct reports will be unlinked.`)) return
         try {
-            const res = await fetch(`/api/employees/${id}`, { method: "DELETE" })
-            if (res.ok) { toast.success("Employee deleted"); fetchData() }
-            else toast.error("Failed to delete employee")
+            await EmployeeAPI.deleteEmployee(id)
+            toast.success("Employee deleted")
+            fetchData()
         } catch { toast.error("An error occurred") }
     }, [fetchData])
 
@@ -276,20 +277,11 @@ export default function OrgChartPage() {
             const isEdit = modalMode === "EDIT"
             const payload: any = { ...data }
             if (payload.managerId === "") payload.managerId = null
-            const res = await fetch(isEdit ? `/api/employees/${data.id}` : "/api/employees", {
-                method: isEdit ? "PUT" : "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            })
-            if (res.ok) {
-                toast.success(`Employee ${isEdit ? "updated" : "created"} successfully`)
-                setIsModalOpen(false)
-                fetchData()
-            } else {
-                const err = await res.json()
-                toast.error(err.error || "Operation failed")
-            }
-        } catch { toast.error("An error occurred") }
+            await EmployeeAPI.upsertEmployee(isEdit, data.id, payload)
+            toast.success(`Employee ${isEdit ? "updated" : "created"} successfully`)
+            setIsModalOpen(false)
+            fetchData()
+        } catch (err: any) { toast.error(err.message || "An error occurred") }
     }
 
     React.useEffect(() => {
@@ -346,11 +338,7 @@ export default function OrgChartPage() {
             markerEnd: { type: MarkerType.ArrowClosed, color: "var(--border)" },
         }, eds))
         try {
-            await fetch("/api/organization", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify([{ id: params.target, managerId: params.source }]),
-            })
+            await api.put('/organization/', [{ id: params.target, managerId: params.source }])
             toast.success("Manager updated!")
             fetchData()
         } catch { toast.error("Failed to update manager") }

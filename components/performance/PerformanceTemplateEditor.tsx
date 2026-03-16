@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs"
 import { Button } from "@/components/ui/Button"
 import { Cross2Icon, PlusIcon, ArrowUpIcon, ArrowDownIcon } from "@radix-ui/react-icons"
 import { toast } from "sonner"
+import { api } from "@/lib/api-client"
 
 interface PerformanceTemplate {
     dailyMetrics: string[]
@@ -154,23 +155,12 @@ export function PerformanceTemplateEditor({ open, onClose, template, onSaved }: 
 
         setSaving(true)
         try {
-            const res = await fetch("/api/performance/config", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(draft),
-            })
-            if (res.ok) {
-                const json = await res.json()
-                const saved = json.data || json
-                onSaved(saved)
-                toast.success("Performance template saved")
-                onClose()
-            } else {
-                const err = await res.json().catch(() => null)
-                toast.error(err?.message || "Failed to save template")
-            }
-        } catch {
-            toast.error("An error occurred while saving the template")
+            const { data: saved } = await api.put<PerformanceTemplate>('/performance/config/', draft)
+            onSaved(saved)
+            toast.success("Performance template saved")
+            onClose()
+        } catch (err: any) {
+            toast.error(err?.message || "Failed to save template")
         } finally {
             setSaving(false)
         }

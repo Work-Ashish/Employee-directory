@@ -21,6 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { Cross2Icon, PlusIcon, TrashIcon, DragHandleDots2Icon, Pencil1Icon, CheckIcon } from "@radix-ui/react-icons"
 import { toast } from "sonner"
+import { api } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -201,15 +202,10 @@ export function ConfigPanel({ isOpen, onClose, screenName, onFieldsChange }: Con
         if (!screenName) return
         setLoading(true)
         try {
-            const res = await fetch(`/api/workflows/fields?screenName=${encodeURIComponent(screenName)}&active=true`)
-            if (res.ok) {
-                const json = await res.json()
-                const list = json.data?.fields ?? json.fields ?? []
-                setFields(list)
-            } else {
-                toast.error("Failed to load fields")
-            }
-        } catch { toast.error("Network error loading fields") }
+            const { data } = await api.get<any>(`/workflows/fields/?screenName=${encodeURIComponent(screenName)}&active=true`)
+            const list = data?.fields ?? data ?? []
+            setFields(list)
+        } catch { toast.error("Failed to load fields") }
         finally { setLoading(false) }
     }, [screenName])
 
@@ -238,11 +234,7 @@ export function ConfigPanel({ isOpen, onClose, screenName, onFieldsChange }: Con
         // Persist order changes
         for (const field of updated) {
             if (field.displayOrder !== fields.find(f => f.id === field.id)?.displayOrder) {
-                fetch(`/api/workflows/fields/${field.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ displayOrder: field.displayOrder }),
-                }).catch(() => {})
+                api.put('/workflows/fields/' + field.id + '/', { displayOrder: field.displayOrder }).catch(() => {})
             }
         }
     }
@@ -257,32 +249,23 @@ export function ConfigPanel({ isOpen, onClose, screenName, onFieldsChange }: Con
         }
         setSaving(true)
         try {
-            const res = await fetch("/api/workflows/fields", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    screenName,
-                    fieldName: newField.fieldName,
-                    fieldType: newField.fieldType,
-                    label: newField.label,
-                    placeholder: newField.placeholder || undefined,
-                    required: newField.required,
-                    displayOrder: fields.length,
-                }),
+            const { data } = await api.post<any>('/workflows/fields/', {
+                screenName,
+                fieldName: newField.fieldName,
+                fieldType: newField.fieldType,
+                label: newField.label,
+                placeholder: newField.placeholder || undefined,
+                required: newField.required,
+                displayOrder: fields.length,
             })
-            if (res.ok) {
-                const json = await res.json()
-                const created = json.data?.created?.[0] ?? json.created?.[0]
-                if (created) setFields(prev => [...prev, created])
-                setNewField({ fieldName: "", label: "", fieldType: "text", required: false, placeholder: "" })
-                setShowAddForm(false)
-                toast.success("Field added")
-            } else {
-                const err = await res.json().catch(() => null)
-                toast.error(err?.data?.errors?.[0]?.reason || err?.message || "Failed to add field")
-            }
-        } catch { toast.error("Network error") }
-        finally { setSaving(false) }
+            const created = data?.created?.[0] ?? data
+            if (created) setFields(prev => [...prev, created])
+            setNewField({ fieldName: "", label: "", fieldType: "text", required: false, placeholder: "" })
+            setShowAddForm(false)
+            toast.success("Field added")
+        } catch (error: any) {
+            toast.error(error?.data?.errors?.[0]?.reason || error?.message || "Failed to add field")
+        } finally { setSaving(false) }
     }
 
     // ── Edit field ──
@@ -295,40 +278,26 @@ export function ConfigPanel({ isOpen, onClose, screenName, onFieldsChange }: Con
         if (!editingId) return
         setSaving(true)
         try {
-            const res = await fetch(`/api/workflows/fields/${editingId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    label: editState.label,
-                    fieldType: editState.fieldType,
-                    required: editState.required,
-                    placeholder: editState.placeholder || undefined,
-                }),
+            const { data } = await api.put<any>('/workflows/fields/' + editingId + '/', {
+                label: editState.label,
+                fieldType: editState.fieldType,
+                required: editState.required,
+                placeholder: editState.placeholder || undefined,
             })
-            if (res.ok) {
-                const json = await res.json()
-                const updated = json.data ?? json
-                setFields(prev => prev.map(f => f.id === editingId ? { ...f, ...updated } : f))
-                setEditingId(null)
-                toast.success("Field updated")
-            } else {
-                toast.error("Failed to update field")
-            }
-        } catch { toast.error("Network error") }
+            setFields(prev => prev.map(f => f.id === editingId ? { ...f, ...data } : f))
+            setEditingId(null)
+            toast.success("Field updated")
+        } catch { toast.error("Failed to update field") }
         finally { setSaving(false) }
     }
 
     // ── Delete field ──
     const handleDelete = async (id: string) => {
         try {
-            const res = await fetch(`/api/workflows/fields/${id}`, { method: "DELETE" })
-            if (res.ok) {
-                setFields(prev => prev.filter(f => f.id !== id))
-                toast.success("Field removed")
-            } else {
-                toast.error("Failed to remove field")
-            }
-        } catch { toast.error("Network error") }
+            await api.delete('/workflows/fields/' + id + '/')
+            setFields(prev => prev.filter(f => f.id !== id))
+            toast.success("Field removed")
+        } catch { toast.error("Failed to remove field") }
     }
 
     if (!mounted || !isOpen) return null

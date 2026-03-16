@@ -12,6 +12,8 @@ import { ReviewDetailView } from "./ReviewDetailView"
 import { DailySelfReviewForm } from "./DailySelfReviewForm"
 import { toast } from "sonner"
 import { format } from "date-fns"
+import { PerformanceAPI } from "@/features/performance/api/client"
+import { api } from "@/lib/api-client"
 
 type PerformanceReview = {
     id: string
@@ -47,10 +49,8 @@ export function EmployeePerformanceView() {
 
     const fetchReviews = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/performance")
-            if (res.ok) {
-                setReviews(extractArray<PerformanceReview>(await res.json()))
-            }
+            const data = await PerformanceAPI.listReviews()
+            setReviews(extractArray<PerformanceReview>(data.results || data))
         } catch (_error) {
             toast.error("Failed to load performance reviews")
         } finally {
@@ -63,15 +63,11 @@ export function EmployeePerformanceView() {
     const resolveSelfEmployeeId = React.useCallback(async (): Promise<string | null> => {
         if (selfEmployeeId) return selfEmployeeId
         try {
-            const res = await fetch("/api/employee/profile")
-            if (res.ok) {
-                const json = await res.json()
-                const data = json.data || json
-                const empId = data?.employeeId || data?.id
-                if (empId) {
-                    setSelfEmployeeId(empId)
-                    return empId
-                }
+            const { data } = await api.get<any>('/employees/profile/')
+            const empId = data?.employeeId || data?.id
+            if (empId) {
+                setSelfEmployeeId(empId)
+                return empId
             }
         } catch { /* non-critical */ }
         return null
@@ -90,21 +86,12 @@ export function EmployeePerformanceView() {
 
     const handleSubmitSelfReview = async (data: any) => {
         try {
-            const res = await fetch("/api/performance", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            })
-            if (res.ok) {
-                toast.success("Self-review submitted successfully")
-                setDailySelfOpen(false)
-                fetchReviews()
-            } else {
-                const err = await res.json().catch(() => null)
-                toast.error(err?.error?.message || err?.error || "Failed to submit self-review")
-            }
-        } catch {
-            toast.error("Failed to submit self-review")
+            await PerformanceAPI.createReview(data)
+            toast.success("Self-review submitted successfully")
+            setDailySelfOpen(false)
+            fetchReviews()
+        } catch (err: any) {
+            toast.error(err?.message || "Failed to submit self-review")
         }
     }
 
