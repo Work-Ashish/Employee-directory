@@ -5,14 +5,40 @@
 import "server-only"
 
 import { prisma } from "@/lib/prisma"
+import { redis } from "@/lib/redis"
 import { Module, getModulesForRole, type Role } from "@/lib/permissions"
+
+const CACHE_TTL = 300 // 5 minutes
+
+/** Convert Map<string, Set<string>> to plain object for caching/API */
+export function capabilitiesToRecord(caps: Map<string, Set<string>>): Record<string, string[]> {
+    const result: Record<string, string[]> = {}
+    for (const [mod, actions] of caps) {
+        result[mod] = Array.from(actions)
+    }
+    return result
+}
 
 /**
  * Resolve all functional capabilities for an employee.
  * Walks up the parent role chain (max 5 levels) to inherit capabilities.
+ * Results are cached in Redis with a 5-minute TTL.
  * Returns Map<module, Set<action>>
  */
 export async function resolveEmployeeCapabilities(employeeId: string): Promise<Map<string, Set<string>>> {
+    // Check Redis cache first
+    const cacheKey = `func_caps:${employeeId}`
+    try {
+        const cached = await redis.get(cacheKey) as Record<string, string[]> | null
+        if (cached && typeof cached === "object") {
+            const map = new Map<string, Set<string>>()
+            for (const [mod, actions] of Object.entries(cached)) {
+                map.set(mod, new Set(actions))
+            }
+            return map
+        }
+    } catch { /* cache miss — continue to DB */ }
+
     const assignments = await prisma.employeeFunctionalRole.findMany({
         where: { employeeId },
         include: {
@@ -70,7 +96,19 @@ export async function resolveEmployeeCapabilities(employeeId: string): Promise<M
         }
     }
 
+    // Cache the resolved capabilities in Redis
+    try {
+        await redis.set(cacheKey, capabilitiesToRecord(capabilities), { ex: CACHE_TTL })
+    } catch { /* non-critical cache write failure */ }
+
     return capabilities
+}
+
+/** Invalidate cached capabilities for an employee (call after role assignment changes) */
+export async function invalidateCapabilitiesCache(employeeId: string): Promise<void> {
+    try {
+        await redis.set(`func_caps:${employeeId}`, null, { ex: 1 })
+    } catch { /* non-critical */ }
 }
 
 /** Check if an employee has a specific functional capability */

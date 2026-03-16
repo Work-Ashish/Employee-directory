@@ -7,6 +7,7 @@ import crypto from "node:crypto"
 import { employeeSchema } from "@/lib/schemas"
 import { redis } from "@/lib/redis"
 import { indexEmployee } from "@/lib/search-index"
+import { sendEmail } from "@/lib/email"
 
 // GET /api/employees – List all employees (paginated and scoped)
 export const GET = withAuth({ module: Module.EMPLOYEES, action: Action.VIEW }, async (req, ctx) => {
@@ -151,8 +152,17 @@ export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }
 
         console.log(`[NEW_EMPLOYEE] ${employeeCode} created in org ${ctx.organizationId}.`)
 
-        // Fire-and-forget index sync
+        // Fire-and-forget: index sync + welcome email
         indexEmployee(result.id).catch(() => {})
+        sendEmail({
+            to: email,
+            subject: "Welcome to EMS Pro — Your Account is Ready",
+            html: `<h2>Welcome, ${firstName}!</h2>
+<p>Your employee account has been created. Here are your login credentials:</p>
+<p><strong>Email:</strong> ${email}<br/><strong>Temporary Password:</strong> ${tempPassword}</p>
+<p>You will be prompted to change your password on first login.</p>
+<p>— EMS Pro Team</p>`,
+        }).catch((err) => console.error("[WELCOME_EMAIL]", err))
 
         return apiSuccess({ ...result, tempPassword }, undefined, 201)
     } catch (error: unknown) {

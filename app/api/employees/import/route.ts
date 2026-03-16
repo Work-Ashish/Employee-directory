@@ -5,6 +5,7 @@ import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import bcrypt from "bcryptjs"
 import crypto from "node:crypto"
 import { indexEmployee } from "@/lib/search-index"
+import { sendEmail } from "@/lib/email"
 
 const MAX_ROWS = 500
 const VALID_ROLES = ["CEO", "HR", "PAYROLL", "TEAM_LEAD", "EMPLOYEE"]
@@ -315,7 +316,7 @@ export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.IMPORT }
             }
         }
 
-        // Fire-and-forget: reindex imported employees by looking up their IDs
+        // Fire-and-forget: reindex imported employees + send welcome emails
         if (inserted > 0) {
             prisma.employee.findMany({
                 where: { organizationId: ctx.organizationId, email: { in: credentials.map(c => c.email) } },
@@ -323,6 +324,18 @@ export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.IMPORT }
             }).then(emps => {
                 for (const e of emps) indexEmployee(e.id).catch(() => {})
             }).catch(() => {})
+
+            for (const cred of credentials) {
+                sendEmail({
+                    to: cred.email,
+                    subject: "Welcome to EMS Pro — Your Account is Ready",
+                    html: `<h2>Welcome, ${cred.name}!</h2>
+<p>Your employee account has been created. Here are your login credentials:</p>
+<p><strong>Email:</strong> ${cred.email}<br/><strong>Temporary Password:</strong> ${cred.tempPassword}</p>
+<p>You will be prompted to change your password on first login.</p>
+<p>— EMS Pro Team</p>`,
+                }).catch((err) => console.error("[WELCOME_EMAIL]", err))
+            }
         }
 
         return apiSuccess({ inserted, skipped, errors: rowErrors, credentials }, { total: rows.length })

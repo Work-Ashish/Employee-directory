@@ -53,8 +53,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
+  // Fetch functional capabilities from server
+  const fetchCapabilities = React.useCallback(async (): Promise<Record<string, string[]> | undefined> => {
+    try {
+      const token = localStorage.getItem("access_token")
+      if (!token) return undefined
+      const res = await fetch("/api/user/capabilities", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const json = await res.json()
+        const data = json.data || json
+        return data.capabilities || undefined
+      }
+    } catch { /* non-critical */ }
+    return undefined
+  }, [])
+
   // Convert Django AuthUser to our internal User object
-  const mapUser = React.useCallback((authUser: AuthUser, roleSlug?: string): User => {
+  const mapUser = React.useCallback((authUser: AuthUser, roleSlug?: string, capabilities?: Record<string, string[]>): User => {
     const role = ROLE_MAP[roleSlug || "employee"] || "EMPLOYEE"
     return {
       id: authUser.id,
@@ -65,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       employeeId: authUser.employeeId || undefined,
       tenantSlug: authUser.tenantSlug,
       mustChangePassword: authUser.mustChangePassword,
+      functionalCapabilities: capabilities,
     }
   }, [])
 
@@ -77,11 +95,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
       try {
-        const authUser = await getMe()
+        const [authUser, capabilities] = await Promise.all([getMe(), fetchCapabilities()])
         if (!cancelled) {
-          // Role slug comes from JWT or user data — default to admin if tenant admin
           const roleSlug = authUser.isTenantAdmin ? "admin" : "employee"
-          setUser(mapUser(authUser, roleSlug))
+          setUser(mapUser(authUser, roleSlug, capabilities))
         }
       } catch {
         // Token expired or invalid
@@ -107,9 +124,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (payload: LoginPayload) => {
     const result = await authLogin(payload)
-    const authUser = await getMe()
+    const [authUser, capabilities] = await Promise.all([getMe(), fetchCapabilities()])
     const roleSlug = (result.user as Record<string, unknown>)?.role_slug as string | undefined
-    setUser(mapUser(authUser, roleSlug || (authUser.isTenantAdmin ? "admin" : "employee")))
+    setUser(mapUser(authUser, roleSlug || (authUser.isTenantAdmin ? "admin" : "employee"), capabilities))
   }
 
   const logout = async () => {

@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/Badge"
 import { Dialog, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/Dialog"
 import { Spinner } from "@/components/ui/Spinner"
 import { EmptyState } from "@/components/ui/EmptyState"
-import { PlusIcon, Pencil1Icon, TrashIcon, PersonIcon } from "@radix-ui/react-icons"
+import { PlusIcon, Pencil1Icon, TrashIcon, PersonIcon, MixIcon, DashboardIcon } from "@radix-ui/react-icons"
 
 /* ── Types ───────────────────────────────────────── */
 
@@ -53,6 +53,7 @@ export function RoleManagement() {
     const [showCreate, setShowCreate] = React.useState(false)
     const [assignRole, setAssignRole] = React.useState<FunctionalRole | null>(null)
     const [employees, setEmployees] = React.useState<EmployeeOption[]>([])
+    const [viewMode, setViewMode] = React.useState<"grid" | "tree">("grid")
 
     const fetchRoles = React.useCallback(async () => {
         try {
@@ -100,9 +101,25 @@ export function RoleManagement() {
                 title="Functional Roles"
                 description="Create and manage functional roles with granular capabilities for employees."
                 actions={
-                    <Button leftIcon={<PlusIcon className="w-4 h-4" />} onClick={() => setShowCreate(true)}>
-                        New Role
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <div className="flex border border-border rounded-md overflow-hidden">
+                            <button
+                                onClick={() => setViewMode("grid")}
+                                className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${viewMode === "grid" ? "bg-accent/10 text-accent" : "text-text-3 hover:text-text"}`}
+                            >
+                                <DashboardIcon className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                                onClick={() => setViewMode("tree")}
+                                className={`px-2.5 py-1.5 text-xs font-medium transition-colors border-l border-border ${viewMode === "tree" ? "bg-accent/10 text-accent" : "text-text-3 hover:text-text"}`}
+                            >
+                                <MixIcon className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                        <Button leftIcon={<PlusIcon className="w-4 h-4" />} onClick={() => setShowCreate(true)}>
+                            New Role
+                        </Button>
+                    </div>
                 }
             />
 
@@ -113,6 +130,13 @@ export function RoleManagement() {
                     title="No functional roles defined yet"
                     action={<Button variant="secondary" onClick={() => setShowCreate(true)}>Create First Role</Button>}
                     className="border-2 border-dashed border-border rounded-2xl bg-surface"
+                />
+            ) : viewMode === "tree" ? (
+                <RoleHierarchyTree
+                    roles={roles}
+                    onEdit={setEditRole}
+                    onAssign={setAssignRole}
+                    onDelete={handleDelete}
                 />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -186,6 +210,141 @@ export function RoleManagement() {
                 employees={employees}
                 onSaved={fetchRoles}
             />
+        </div>
+    )
+}
+
+/* ── Role Hierarchy Tree ─────────────────────────── */
+
+interface TreeNodeData {
+    role: FunctionalRole
+    children: TreeNodeData[]
+}
+
+function buildTree(roles: FunctionalRole[]): TreeNodeData[] {
+    const map = new Map<string, TreeNodeData>()
+    for (const role of roles) {
+        map.set(role.id, { role, children: [] })
+    }
+    const roots: TreeNodeData[] = []
+    for (const node of map.values()) {
+        if (node.role.parentRoleId && map.has(node.role.parentRoleId)) {
+            map.get(node.role.parentRoleId)!.children.push(node)
+        } else {
+            roots.push(node)
+        }
+    }
+    // Sort by level desc, then name
+    const sortNodes = (nodes: TreeNodeData[]) => {
+        nodes.sort((a, b) => b.role.level - a.role.level || a.role.name.localeCompare(b.role.name))
+        for (const n of nodes) sortNodes(n.children)
+    }
+    sortNodes(roots)
+    return roots
+}
+
+function RoleHierarchyTree({
+    roles,
+    onEdit,
+    onAssign,
+    onDelete,
+}: {
+    roles: FunctionalRole[]
+    onEdit: (r: FunctionalRole) => void
+    onAssign: (r: FunctionalRole) => void
+    onDelete: (r: FunctionalRole) => void
+}) {
+    const tree = React.useMemo(() => buildTree(roles), [roles])
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base">Role Hierarchy</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+                {tree.length === 0 ? (
+                    <p className="text-sm text-text-3 text-center py-4">No roles to display</p>
+                ) : (
+                    <div className="space-y-1">
+                        {tree.map((node) => (
+                            <TreeNode key={node.role.id} node={node} depth={0} onEdit={onEdit} onAssign={onAssign} onDelete={onDelete} />
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
+
+function TreeNode({
+    node,
+    depth,
+    onEdit,
+    onAssign,
+    onDelete,
+}: {
+    node: TreeNodeData
+    depth: number
+    onEdit: (r: FunctionalRole) => void
+    onAssign: (r: FunctionalRole) => void
+    onDelete: (r: FunctionalRole) => void
+}) {
+    const [expanded, setExpanded] = React.useState(true)
+    const { role } = node
+    const hasChildren = node.children.length > 0
+
+    return (
+        <div>
+            <div
+                className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-accent/[0.04] transition-colors group"
+                style={{ paddingLeft: `${depth * 24 + 8}px` }}
+            >
+                {/* Expand toggle */}
+                <button
+                    onClick={() => setExpanded(!expanded)}
+                    className={`w-5 h-5 flex items-center justify-center text-text-3 ${hasChildren ? "cursor-pointer hover:text-text" : "invisible"}`}
+                >
+                    <svg className={`w-3 h-3 transition-transform ${expanded ? "rotate-90" : ""}`} viewBox="0 0 8 8" fill="currentColor">
+                        <path d="M2 1l4 3-4 3z" />
+                    </svg>
+                </button>
+
+                {/* Role info */}
+                <div className="flex-1 flex items-center gap-2 min-w-0">
+                    <span className="font-medium text-sm text-text truncate">{role.name}</span>
+                    <Badge variant="neutral" size="sm">Lv.{role.level}</Badge>
+                    <span className="text-xs text-text-3">{role._count.employees} members</span>
+                    {role.capabilities.length > 0 && (
+                        <span className="text-xs text-text-4">{role.capabilities.length} capabilities</span>
+                    )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="sm" onClick={() => onAssign(role)}>
+                        <PersonIcon className="w-3 h-3" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => onEdit(role)}>
+                        <Pencil1Icon className="w-3 h-3" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => onDelete(role)}>
+                        <TrashIcon className="w-3 h-3 text-danger" />
+                    </Button>
+                </div>
+            </div>
+
+            {/* Children */}
+            {expanded && hasChildren && (
+                <div className="relative">
+                    <div
+                        className="absolute top-0 bottom-0 w-px bg-border"
+                        style={{ left: `${depth * 24 + 18}px` }}
+                    />
+                    {node.children.map((child) => (
+                        <TreeNode key={child.role.id} node={child} depth={depth + 1} onEdit={onEdit} onAssign={onAssign} onDelete={onDelete} />
+                    ))}
+                </div>
+            )}
         </div>
     )
 }
