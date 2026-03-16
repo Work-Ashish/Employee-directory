@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { documentSchema } from "@/lib/schemas"
 import { Module, Action, hasPermission } from "@/lib/permissions"
+import { indexDocument } from "@/lib/search-index"
 
 // GET /api/documents – List documents (scoped by role and organization)
 export const GET = withAuth({ module: Module.DOCUMENTS, action: Action.VIEW }, async (req, ctx) => {
@@ -74,6 +75,7 @@ export const POST = withAuth({ module: Module.DOCUMENTS, action: Action.CREATE }
                     })
                 )
             )
+            for (const doc of docs) { indexDocument(doc.id).catch(() => {}) }
             return apiSuccess(docs, undefined, 201)
         }
 
@@ -107,6 +109,8 @@ export const POST = withAuth({ module: Module.DOCUMENTS, action: Action.CREATE }
             },
             include: { employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } } },
         })
+
+        indexDocument(document.id).catch(() => {})
 
         return apiSuccess(document, undefined, 201)
     } catch (error) {

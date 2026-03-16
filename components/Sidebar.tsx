@@ -57,8 +57,8 @@ const navGroups: NavGroup[] = [
     label: "People",
     items: [
       { name: "Employees", href: "/employees", icon: PersonIcon, module: Module.EMPLOYEES },
+      { name: "Org Chart", href: "/org-chart", icon: GroupIcon, module: Module.EMPLOYEES },
       { name: "Teams", href: "/teams", icon: GroupIcon, module: Module.TEAMS },
-      { name: "Organization", href: "/organization", icon: MixIcon, module: Module.ORGANIZATION },
     ],
   },
   {

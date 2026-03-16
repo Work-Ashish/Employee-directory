@@ -16,8 +16,10 @@ export type EmployeeApiData = {
     dateOfJoining: string
     salary: number
     status: string
+    managerId?: string | null
     avatarUrl?: string | null
     department?: Department
+    manager?: { id: string; firstName: string; lastName: string; designation: string; avatarUrl?: string | null } | null
     createdAt?: string
 }
 
@@ -32,5 +34,7 @@ export type TableEmployee = {
     initials: string
     color: string
     avatarUrl: string | null
+    manager: string | null
+    managerAvatarUrl: string | null
     raw: EmployeeApiData
 }

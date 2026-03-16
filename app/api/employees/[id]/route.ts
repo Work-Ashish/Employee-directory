@@ -3,6 +3,7 @@ import { withAuth, orgFilter } from "@/lib/security"
 import { Module, Action } from "@/lib/permissions"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { z } from "zod"
+import { indexEmployee } from "@/lib/search-index"
 
 const employeeUpdateSchema = z.object({
     employeeCode: z.string().min(1).optional(),
@@ -18,6 +19,14 @@ const employeeUpdateSchema = z.object({
     role: z.enum(["CEO", "HR", "PAYROLL", "TEAM_LEAD", "EMPLOYEE"]).optional(),
     address: z.string().nullable().optional(),
     managerId: z.string().nullable().optional(),
+}).superRefine((val, ctx) => {
+    if (val.role && val.role !== "CEO" && val.managerId === null) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Cannot clear manager for non-CEO employees",
+            path: ["managerId"],
+        })
+    }
 })
 
 // GET /api/employees/[id] – Get single employee
@@ -65,6 +74,17 @@ export const PUT = withAuth({ module: Module.EMPLOYEES, action: Action.UPDATE },
             return apiError("Employee not found", ApiErrorCode.NOT_FOUND, 404)
         }
 
+        // Validate manager exists if provided
+        if (body.managerId) {
+            const manager = await prisma.employee.findFirst({
+                where: { id: body.managerId, organizationId: ctx.organizationId, status: "ACTIVE" },
+                select: { id: true },
+            })
+            if (!manager) {
+                return apiError("Manager not found in your organization", ApiErrorCode.NOT_FOUND, 404)
+            }
+        }
+
         // Update employee + user role in a transaction
         const employee = await prisma.$transaction(async (tx) => {
             const emp = await tx.employee.update({
@@ -96,6 +116,8 @@ export const PUT = withAuth({ module: Module.EMPLOYEES, action: Action.UPDATE },
 
             return emp
         })
+
+        indexEmployee(id).catch(() => {})
 
         return apiSuccess(employee)
     } catch (error) {
@@ -148,6 +170,8 @@ export const DELETE = withAuth({ module: Module.EMPLOYEES, action: Action.DELETE
                 })
             }
         })
+
+        indexEmployee(id).catch(() => {})
 
         return apiSuccess({ message: "Employee archived successfully" })
     } catch (error) {

@@ -96,6 +96,22 @@ export const EmployeeList = React.memo(function EmployeeList({
             cell: ({ row }) => <span className="text-base text-text">{row.getValue("role")}</span>,
         },
         {
+            id: "manager",
+            header: "Reports To",
+            cell: ({ row }) => {
+                const emp = row.original
+                if (!emp.manager) {
+                    return <Badge variant="warning" size="sm" dot>Unassigned</Badge>
+                }
+                return (
+                    <div className="flex items-center gap-2">
+                        <Avatar name={emp.manager} src={emp.managerAvatarUrl} size="xs" />
+                        <span className="text-sm text-text-2">{emp.manager}</span>
+                    </div>
+                )
+            },
+        },
+        {
             accessorKey: "status",
             header: "Status",
             cell: ({ row }) => {

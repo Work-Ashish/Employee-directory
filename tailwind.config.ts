@@ -77,11 +77,21 @@ const config: Config = {
                 'slide-up': 'hero-slide-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                 'pulse-dot': 'pulse-dot 2s infinite',
                 'spin-slow': 'spin 2s linear infinite',
+                'slide-in-right': 'slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) both',
+                'fade-in-overlay': 'fadeIn 0.2s both',
             },
             keyframes: {
                 scaleIn: {
                     from: { opacity: '0', transform: 'scale(0.95)' },
                     to: { opacity: '1', transform: 'scale(1)' },
+                },
+                slideInRight: {
+                    from: { transform: 'translateX(100%)' },
+                    to: { transform: 'translateX(0)' },
+                },
+                fadeIn: {
+                    from: { opacity: '0' },
+                    to: { opacity: '1' },
                 },
             },
         },

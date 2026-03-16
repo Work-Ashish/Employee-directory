@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/security"
 import { Module, Action } from "@/lib/permissions"
 import { candidateSchema } from "@/lib/schemas"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
+import { indexCandidate } from "@/lib/search-index"
 
 // GET /api/recruitment – List candidates (scoped)
 export const GET = withAuth({ module: Module.RECRUITMENT, action: Action.VIEW }, async (req, ctx) => {
@@ -52,6 +53,8 @@ export const POST = withAuth({ module: Module.RECRUITMENT, action: Action.CREATE
             include: { department: true },
         })
 
+        indexCandidate(candidate.id).catch(() => {})
+
         return apiSuccess(candidate, undefined, 201)
     } catch (error) {
         console.error("[RECRUITMENT_POST]", error)
@@ -80,6 +83,8 @@ export const PUT = withAuth({ module: Module.RECRUITMENT, action: Action.UPDATE 
             },
             include: { department: true },
         })
+
+        indexCandidate(candidate.id).catch(() => {})
 
         return apiSuccess(candidate)
     } catch (error) {

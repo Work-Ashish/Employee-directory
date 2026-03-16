@@ -15,6 +15,14 @@ export const employeeSchema = z.object({
     address: z.string().optional().nullable(),
     managerId: z.string().optional().nullable(),
     avatarUrl: z.string().url().optional().nullable(),
+}).superRefine((val, ctx) => {
+    if (val.role !== "CEO" && !val.managerId) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Manager is required for non-CEO employees",
+            path: ["managerId"],
+        })
+    }
 })
 
 export const leaveSchema = z.object({

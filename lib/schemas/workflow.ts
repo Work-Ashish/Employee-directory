@@ -21,3 +21,33 @@ export const workflowActionSchema = z.object({
     action: z.enum(['APPROVE', 'REJECT', 'REQUEST_INFO']),
     comments: z.string().optional()
 })
+
+// ── Workflow Field Config ──
+
+export const FIELD_TYPES = [
+    "text", "number", "date", "dropdown", "multi_select",
+    "file", "rich_text", "user_picker",
+] as const
+
+export const workflowFieldConfigSchema = z.object({
+    screenName: z.string().min(1, "Screen name is required"),
+    fieldName: z.string().min(1, "Field name is required")
+        .regex(/^[a-z][a-z0-9_]*$/, "Field name must be snake_case"),
+    fieldType: z.enum(FIELD_TYPES),
+    label: z.string().min(1, "Label is required"),
+    placeholder: z.string().optional(),
+    required: z.boolean().default(false),
+    validationRules: z.record(z.string(), z.any()).optional(),
+    displayOrder: z.number().int().min(0).default(0),
+    conditionalLogic: z.record(z.string(), z.any()).optional(),
+    defaultValue: z.string().optional(),
+    options: z.array(z.object({
+        value: z.string(),
+        label: z.string(),
+    })).optional(),
+})
+
+export const workflowFieldConfigUpdateSchema = workflowFieldConfigSchema.partial().omit({
+    screenName: true,
+    fieldName: true,
+})

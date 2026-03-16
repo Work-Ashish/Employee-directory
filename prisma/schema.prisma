@@ -38,8 +38,9 @@ model Organization {
   documentEmbeddings DocumentEmbedding[]
 
   // Workflows
-  workflowTemplates  WorkflowTemplate[]
-  workflowInstances  WorkflowInstance[]
+  workflowTemplates    WorkflowTemplate[]
+  workflowInstances    WorkflowInstance[]
+  workflowFieldConfigs WorkflowFieldConfig[]
 
   // RBAC Redesign
   teams              Team[]
@@ -85,6 +86,9 @@ model Organization {
 
   // Functional Roles (Sprint 2)
   functionalRoles    FunctionalRole[]
+
+  // Search Index (Sprint 3)
+  searchIndexEntries SearchIndex[]
 }
 
 model User {
@@ -1259,6 +1263,32 @@ model WorkflowAction {
   @@index([stepId])
 }
 
+model WorkflowFieldConfig {
+  id               String   @id @default(cuid())
+  screenName       String   // e.g. "LEAVE_REQUEST", "ASSET_REQUEST", "EXPENSE_CLAIM"
+  fieldName        String   // internal key, e.g. "reason", "start_date"
+  fieldType        String   // text, number, date, dropdown, multi_select, file, rich_text, user_picker
+  label            String   // display label, e.g. "Reason for Leave"
+  placeholder      String?
+  required         Boolean  @default(false)
+  validationRules  Json?    // JSON schema for validation (min, max, pattern, etc.)
+  displayOrder     Int      @default(0)
+  conditionalLogic Json?    // show/hide rules based on other field values
+  defaultValue     String?
+  options          Json?    // for dropdown/multi_select: [{value, label}]
+  version          Int      @default(1)
+  isActive         Boolean  @default(true)
+  organizationId   String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization     Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, screenName, fieldName])
+  @@index([organizationId, screenName])
+  @@index([organizationId, isActive])
+}
+
 enum WorkflowStatus {
   DRAFT
   PUBLISHED
@@ -1737,4 +1767,24 @@ model EmployeeFunctionalRole {
   @@unique([employeeId, functionalRoleId])
   @@index([employeeId])
   @@index([functionalRoleId])
+}
+
+// ── Search Index (Sprint 3) ───────────────────────────
+
+model SearchIndex {
+  id             String   @id @default(cuid())
+  entityType     String   // EMPLOYEE, CANDIDATE, DOCUMENT
+  entityId       String
+  organizationId String
+  title          String   // Primary display text
+  subtitle       String?  // Secondary display text
+  searchText     String   @db.Text // Concatenated searchable text (lowercased)
+  metadata       Json?    // Extra fields for display (department, status, etc.)
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([entityType, entityId])
+  @@index([organizationId, entityType])
+  @@index([organizationId])
 }

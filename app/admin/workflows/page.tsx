@@ -1,6 +1,6 @@
 "use client"
 import React, { useEffect, useState } from 'react'
-import { PlusIcon, InputIcon } from '@radix-ui/react-icons'
+import { PlusIcon, InputIcon, GearIcon } from '@radix-ui/react-icons'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { WorkflowTemplate } from '@prisma/client'
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ConfigPanel } from '@/components/ui/ConfigPanel'
 
 // Extended interface matches our Prisma return structure
 interface Template extends WorkflowTemplate {
@@ -18,6 +19,7 @@ interface Template extends WorkflowTemplate {
 
 export default function WorkflowsAdmin() {
     const [templates, setTemplates] = useState<Template[]>([])
+    const [configScreen, setConfigScreen] = useState<string | null>(null)
 
     const loadTemplates = async () => {
         try {
@@ -74,6 +76,15 @@ export default function WorkflowsAdmin() {
                                     <InputIcon className="h-4 w-4 text-accent" />
                                     <span>{tpl.steps.length} Step{tpl.steps.length !== 1 && 's'} Configured</span>
                                 </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    leftIcon={<GearIcon className="w-3.5 h-3.5" />}
+                                    onClick={() => setConfigScreen(`${tpl.entityType}_REQUEST`)}
+                                    className="mt-3 w-full text-text-2 hover:text-accent"
+                                >
+                                    Configure Fields
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -92,6 +103,14 @@ export default function WorkflowsAdmin() {
                     </div>
                 )}
             </div>
+
+            {configScreen && (
+                <ConfigPanel
+                    isOpen
+                    onClose={() => setConfigScreen(null)}
+                    screenName={configScreen}
+                />
+            )}
         </div>
     )
 }

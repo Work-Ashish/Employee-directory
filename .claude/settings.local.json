@@ -88,11 +88,15 @@
       "Bash(npx prisma db push --skip-generate)",
       "Bash(node -e \"try{require.resolve\\(''server-only''\\);console.log\\(''installed''\\)}catch{console.log\\(''missing''\\)}\")",
       "Bash(npm install server-only)",
-      "Bash(npx vitest run __tests__/api/payroll-config.test.ts)"
+      "Bash(npx vitest run __tests__/api/payroll-config.test.ts)",
+      "Bash(xargs grep -l -i \"employee\\\\|manager\\\\|EmployeeForm\\\\|EmployeeModal\")",
+      "Bash(npx vitest run __tests__/api/employees.test.ts)",
+      "Read(//c/Users/Ashish Singh/.claude/projects/c--Users-Ashish-Singh-Desktop-Employee-directory/acee1539-eb37-40ec-98a5-88fbe0915e74/tool-results/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\reimbursements",
-      "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\roles\\[id]"
+      "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\roles\\[id]",
+      "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\workflows\\fields"
     ]
   }
 }

@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs"
 import crypto from "node:crypto"
 import { employeeSchema } from "@/lib/schemas"
 import { redis } from "@/lib/redis"
+import { indexEmployee } from "@/lib/search-index"
 
 // GET /api/employees – List all employees (paginated and scoped)
 export const GET = withAuth({ module: Module.EMPLOYEES, action: Action.VIEW }, async (req, ctx) => {
@@ -36,6 +37,7 @@ export const GET = withAuth({ module: Module.EMPLOYEES, action: Action.VIEW }, a
                 include: {
                     department: true,
                     user: { select: { role: true, lastLoginAt: true, mustChangePassword: true } },
+                    manager: { select: { id: true, firstName: true, lastName: true, designation: true, avatarUrl: true } },
                 },
                 orderBy: { createdAt: "desc" },
                 skip,
@@ -92,6 +94,17 @@ export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }
             return apiError("An employee with this code already exists.", ApiErrorCode.CONFLICT, 409)
         }
 
+        // Validate manager exists in same org
+        if (managerId) {
+            const manager = await prisma.employee.findFirst({
+                where: { id: managerId, organizationId: ctx.organizationId, status: "ACTIVE" },
+                select: { id: true },
+            })
+            if (!manager) {
+                return apiError("Manager not found in your organization", ApiErrorCode.NOT_FOUND, 404)
+            }
+        }
+
         // Generate cryptographically random temp password
         const tempPassword = crypto.randomUUID()
         const hashedPassword = await bcrypt.hash(tempPassword, 12)
@@ -137,6 +150,9 @@ export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }
         })
 
         console.log(`[NEW_EMPLOYEE] ${employeeCode} created in org ${ctx.organizationId}.`)
+
+        // Fire-and-forget index sync
+        indexEmployee(result.id).catch(() => {})
 
         return apiSuccess({ ...result, tempPassword }, undefined, 201)
     } catch (error: unknown) {

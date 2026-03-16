@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { PlusIcon, TrashIcon, ArrowRightIcon } from '@radix-ui/react-icons'
+import { PlusIcon, TrashIcon, GearIcon } from '@radix-ui/react-icons'
 import { ROLES } from '@/lib/permissions'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import { Card, CardContent } from '@/components/ui/Card'
+import { ConfigPanel } from '@/components/ui/ConfigPanel'
 
 export default function BuilderPage() {
     const router = useRouter()
@@ -17,6 +18,7 @@ export default function BuilderPage() {
     const [description, setDescription] = useState('')
     const [entityType, setEntityType] = useState('LEAVE')
     const [steps, setSteps] = useState([{ approverType: 'MANAGER', role: '', userId: '', slaHours: 24 }])
+    const [configPanelOpen, setConfigPanelOpen] = useState(false)
 
     const addStep = () => {
         setSteps([...steps, { approverType: 'MANAGER', role: '', userId: '', slaHours: 24 }])
@@ -65,9 +67,14 @@ export default function BuilderPage() {
                 title="Workflow Builder"
                 description="Configure logic layers for automatic approval routing."
                 actions={
-                    <Button onClick={handleSave}>
-                        Save Workflow
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="secondary" leftIcon={<GearIcon className="w-4 h-4" />} onClick={() => setConfigPanelOpen(true)}>
+                            Configure Fields
+                        </Button>
+                        <Button onClick={handleSave}>
+                            Save Workflow
+                        </Button>
+                    </div>
                 }
                 className="mb-8"
             />
@@ -196,6 +203,12 @@ export default function BuilderPage() {
                     </Button>
                 </div>
             </div>
+
+            <ConfigPanel
+                isOpen={configPanelOpen}
+                onClose={() => setConfigPanelOpen(false)}
+                screenName={`${entityType}_REQUEST`}
+            />
         </div>
     )
 }

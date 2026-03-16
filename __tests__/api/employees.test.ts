@@ -60,6 +60,11 @@ describe('Employee API Routes', () => {
         test('creates employee successfully with valid data', async () => {
             prismaMock.organization.findFirst.mockResolvedValue({ id: 'org-1' })
             prismaMock.employee.findUnique.mockResolvedValue(null) // No existing email/code
+            prismaMock.employee.findFirst
+                .mockResolvedValueOnce(null) // withAuth: resolve session employeeId
+                .mockResolvedValueOnce(null) // pre-check: existing email
+                .mockResolvedValueOnce(null) // pre-check: existing code
+                .mockResolvedValueOnce({ id: 'manager-1' }) // manager exists validation
             prismaMock.user.create.mockResolvedValue({ id: 'new-user-1' })
             prismaMock.employee.create.mockResolvedValue({
                 id: 'new-emp-1',
@@ -67,7 +72,7 @@ describe('Employee API Routes', () => {
             })
             prismaMock.user.findUnique.mockResolvedValue(null)
 
-            // Note: the transaction is mocked in setup.ts to execute the cb directly, 
+            // Note: the transaction is mocked in setup.ts to execute the cb directly,
             // so we don't strictly need to mock $transaction here unless it's not setup correctly
 
             const payload = {
@@ -79,7 +84,8 @@ describe('Employee API Routes', () => {
                 departmentId: 'dept-1',
                 dateOfJoining: '2024-01-01',
                 salary: 50000,
-                status: 'ACTIVE'
+                status: 'ACTIVE',
+                managerId: 'manager-1'
             }
 
             const req = new Request('http://localhost:3000/api/employees', {
@@ -116,7 +122,8 @@ describe('Employee API Routes', () => {
                 departmentId: 'dept-1',
                 dateOfJoining: '2024-01-01',
                 salary: 40000,
-                status: 'ACTIVE'
+                status: 'ACTIVE',
+                role: 'CEO'
             }
 
             const req = new Request('http://localhost:3000/api/employees', {
@@ -145,7 +152,7 @@ describe('Employee API Routes', () => {
                 body: JSON.stringify({
                     employeeCode: 'EMP-003', firstName: 'C', lastName: 'D',
                     email: 'c@d.com', designation: 'D', departmentId: 'invalid',
-                    dateOfJoining: '2024-01-01', salary: 1, status: 'ACTIVE'
+                    dateOfJoining: '2024-01-01', salary: 1, status: 'ACTIVE', role: 'CEO'
                 })
             })
 
@@ -168,7 +175,7 @@ describe('Employee API Routes', () => {
                 body: JSON.stringify({
                     employeeCode: 'EMP-003', firstName: 'C', lastName: 'D',
                     email: 'c@d.com', designation: 'D', departmentId: 'valid',
-                    dateOfJoining: '2024-01-01', salary: 1, status: 'ACTIVE'
+                    dateOfJoining: '2024-01-01', salary: 1, status: 'ACTIVE', role: 'CEO'
                 })
             })
 
@@ -188,7 +195,7 @@ describe('Employee API Routes', () => {
                 body: JSON.stringify({
                     employeeCode: 'EMP-004', firstName: 'E', lastName: 'F',
                     email: 'e@f.com', designation: 'D', departmentId: 'valid',
-                    dateOfJoining: '2024-01-01', salary: 1, status: 'ACTIVE'
+                    dateOfJoining: '2024-01-01', salary: 1, status: 'ACTIVE', role: 'CEO'
                 })
             })
 

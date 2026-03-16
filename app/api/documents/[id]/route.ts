@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/security"
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 import { Module, Action, hasPermission } from "@/lib/permissions"
+import { indexDocument } from "@/lib/search-index"
 
 // GET /api/documents/:id — scoped by role
 export const GET = withAuth({ module: Module.DOCUMENTS, action: Action.VIEW }, async (_req, ctx) => {
@@ -54,6 +55,8 @@ export const PUT = withAuth({ module: Module.DOCUMENTS, action: Action.UPDATE },
             include: { employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } } },
         })
 
+        indexDocument(id).catch(() => {})
+
         return apiSuccess(document)
     } catch (error) {
         console.error("[DOCUMENT_PUT]", error)
@@ -72,6 +75,9 @@ export const DELETE = withAuth({ module: Module.DOCUMENTS, action: Action.DELETE
         }
 
         await prisma.document.delete({ where: { id } })
+
+        // Remove from search index (fire-and-forget since entity is already deleted)
+        prisma.searchIndex.deleteMany({ where: { entityType: "DOCUMENT", entityId: id } }).catch(() => {})
 
         return apiSuccess({ message: "Document deleted" })
     } catch (error) {
