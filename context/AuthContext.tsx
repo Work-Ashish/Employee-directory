@@ -11,6 +11,7 @@ interface User {
     email: string
     role: Role
     avatar?: string
+    functionalCapabilities?: Record<string, string[]>
 }
 
 interface AuthContextType {
@@ -28,6 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const isLoading = status === "loading"
 
+    const [funcCaps, setFuncCaps] = React.useState<Record<string, string[]> | undefined>(undefined)
+
     // Map NextAuth session to our internal user object
     const user = React.useMemo(() => {
         if (!session?.user) return null
@@ -37,8 +40,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: session.user.name || "",
             email: session.user.email || "",
             role: (session.user.role as Role) || "EMPLOYEE",
-            avatar: session.user.avatar || session.user.image || undefined
+            avatar: session.user.avatar || session.user.image || undefined,
+            functionalCapabilities: funcCaps,
         }
+    }, [session, funcCaps])
+
+    // Fetch functional capabilities once authenticated
+    React.useEffect(() => {
+        if (!session?.user) return
+        let cancelled = false
+        async function fetchCapabilities() {
+            try {
+                const res = await fetch("/api/employee/profile")
+                if (res.ok) {
+                    const json = await res.json()
+                    const data = json.data || json
+                    if (data?.functionalCapabilities && !cancelled) {
+                        setFuncCaps(data.functionalCapabilities)
+                    }
+                }
+            } catch { /* non-critical */ }
+        }
+        fetchCapabilities()
+        return () => { cancelled = true }
     }, [session])
 
     // Protect routes - although middleware usually handles this, 

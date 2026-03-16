@@ -81,10 +81,18 @@
       "Bash(npx tsx init-buckets.ts)",
       "Bash(npx tsx create-buckets-sql.ts)",
       "mcp__claude_ai_Notion__notion-search",
-      "mcp__claude_ai_Notion__notion-update-data-source"
+      "mcp__claude_ai_Notion__notion-update-data-source",
+      "Read(//c/Users/Ashish/ Singh/Desktop/Employee/ directory/lib/**)",
+      "Bash(ls \"/c/Users/Ashish Singh/Desktop/Employee directory/app/\\(dashboard\\)/admin/\")",
+      "Bash(xargs ls -1)",
+      "Bash(npx prisma db push --skip-generate)",
+      "Bash(node -e \"try{require.resolve\\(''server-only''\\);console.log\\(''installed''\\)}catch{console.log\\(''missing''\\)}\")",
+      "Bash(npm install server-only)",
+      "Bash(npx vitest run __tests__/api/payroll-config.test.ts)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\reimbursements"
+      "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\reimbursements",
+      "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\roles\\[id]"
     ]
   }
 }

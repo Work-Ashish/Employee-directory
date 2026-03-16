@@ -55,7 +55,20 @@ export async function GET() {
             return NextResponse.json({ error: "Employee profile not found" }, { status: 404 })
         }
 
-        return NextResponse.json(flattenEmployee(employee))
+        // Resolve functional role capabilities
+        let functionalCapabilities: Record<string, string[]> | undefined
+        try {
+            const { resolveEmployeeCapabilities } = await import("@/lib/permissions-server")
+            const caps = await resolveEmployeeCapabilities(employee.id)
+            if (caps.size > 0) {
+                functionalCapabilities = {}
+                for (const [mod, actions] of caps) {
+                    functionalCapabilities[mod] = Array.from(actions)
+                }
+            }
+        } catch { /* non-critical */ }
+
+        return NextResponse.json({ ...flattenEmployee(employee), functionalCapabilities })
     } catch (error: any) {
         console.error("[EMPLOYEE_PROFILE_GET] Error:", error?.message || error)
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })

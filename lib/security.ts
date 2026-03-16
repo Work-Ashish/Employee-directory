@@ -5,6 +5,7 @@ import { apiError, ApiErrorCode } from "@/lib/api-response"
 import { logger, logContext } from "@/lib/logger"
 import { MetricsCollector } from "@/lib/metrics"
 import { Role, Module, Action, hasPermission } from "@/lib/permissions"
+import { hasFunctionalPermission } from "@/lib/permissions-server"
 
 export type { Role }
 
@@ -98,6 +99,18 @@ export function withAuth(requirement: AuthRequirement, handler: AuthHandler) {
                 }).catch(() => { })
             }
 
+            // ── Resolve employeeId eagerly ───────────────────────
+            let employeeId: string | undefined
+            try {
+                const emp = await prisma.employee.findFirst({
+                    where: { userId, organizationId },
+                    select: { id: true },
+                })
+                employeeId = emp?.id
+            } catch {
+                // Non-critical — some users (e.g. superadmin) may not have employee records
+            }
+
             // ── Permission / RBAC Check ──────────────────────────
             if (isLegacyAuth(requirement)) {
                 // Legacy path: check role inclusion
@@ -111,31 +124,36 @@ export function withAuth(requirement: AuthRequirement, handler: AuthHandler) {
                     )
                 }
             } else {
-                // New permission path: check permission matrix
+                // New permission path: check permission matrix, then fallback to functional roles
                 const perms = isPermissionArray(requirement) ? requirement : [requirement as PermissionRequirement]
                 const denied = perms.find(p => !hasPermission(role, p.module, p.action))
                 if (denied) {
-                    logger.warn("Forbidden permission", {
-                        userId, role, module: denied.module, action: denied.action, path, requestId
-                    })
-                    return apiError(
-                        `Forbidden. Your role (${role}) does not have ${denied.action} permission on ${denied.module}.`,
-                        ApiErrorCode.FORBIDDEN,
-                        403
-                    )
+                    // Fallback: check functional role capabilities
+                    if (employeeId) {
+                        const hasFuncPerm = await hasFunctionalPermission(employeeId, denied.module, denied.action)
+                        if (hasFuncPerm) {
+                            // Functional role grants access — continue
+                        } else {
+                            logger.warn("Forbidden permission", {
+                                userId, role, module: denied.module, action: denied.action, path, requestId
+                            })
+                            return apiError(
+                                `Forbidden. Your role (${role}) does not have ${denied.action} permission on ${denied.module}.`,
+                                ApiErrorCode.FORBIDDEN,
+                                403
+                            )
+                        }
+                    } else {
+                        logger.warn("Forbidden permission", {
+                            userId, role, module: denied.module, action: denied.action, path, requestId
+                        })
+                        return apiError(
+                            `Forbidden. Your role (${role}) does not have ${denied.action} permission on ${denied.module}.`,
+                            ApiErrorCode.FORBIDDEN,
+                            403
+                        )
+                    }
                 }
-            }
-
-            // ── Resolve employeeId eagerly ───────────────────────
-            let employeeId: string | undefined
-            try {
-                const emp = await prisma.employee.findFirst({
-                    where: { userId, organizationId },
-                    select: { id: true },
-                })
-                employeeId = emp?.id
-            } catch {
-                // Non-critical — some users (e.g. superadmin) may not have employee records
             }
 
             // ── Run handler within log context ───────────────────

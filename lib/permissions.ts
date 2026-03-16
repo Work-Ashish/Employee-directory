@@ -195,6 +195,22 @@ export const PERMISSIONS: PermissionMatrix = {
   },
 }
 
+// ── Functional Role Helpers (client-safe) ──────────────────
+
+/** Check module access via system role OR functional capabilities (frontend use) */
+export function canAccessModuleEffective(
+    role: string,
+    module: Module,
+    functionalCapabilities?: Record<string, string[]>
+): boolean {
+    if (canAccessModule(role, module)) return true
+    if (functionalCapabilities) {
+        const actions = functionalCapabilities[module]
+        return Array.isArray(actions) && actions.length > 0
+    }
+    return false
+}
+
 // ── Helper Functions ───────────────────────────────────────
 
 /** Check if a role has a specific permission on a module */

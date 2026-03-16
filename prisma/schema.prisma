@@ -82,6 +82,9 @@ model Organization {
 
   // Performance Templates
   performanceTemplate PerformanceTemplate?
+
+  // Functional Roles (Sprint 2)
+  functionalRoles    FunctionalRole[]
 }
 
 model User {
@@ -193,6 +196,9 @@ model Employee {
 
   // Reimbursements
   reimbursements         Reimbursement[]
+
+  // Functional Roles (Sprint 2)
+  functionalRoles        EmployeeFunctionalRole[]
 
   @@index([departmentId])
   @@index([userId])
@@ -1680,4 +1686,55 @@ model Reimbursement {
   @@index([organizationId])
   @@index([status])
   @@index([organizationId, status])
+}
+
+// ── Functional Roles (Sprint 2) ───────────────────────────
+
+model FunctionalRole {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  level           Int      @default(0)
+  parentRoleId    String?
+  organizationId  String
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  parentRole      FunctionalRole?          @relation("RoleHierarchy", fields: [parentRoleId], references: [id])
+  childRoles      FunctionalRole[]         @relation("RoleHierarchy")
+  organization    Organization             @relation(fields: [organizationId], references: [id])
+  capabilities    RoleCapability[]
+  employees       EmployeeFunctionalRole[]
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+  @@index([parentRoleId])
+}
+
+model RoleCapability {
+  id               String   @id @default(cuid())
+  functionalRoleId String
+  module           String
+  actions          String[]
+  createdAt        DateTime @default(now())
+
+  functionalRole   FunctionalRole @relation(fields: [functionalRoleId], references: [id], onDelete: Cascade)
+
+  @@unique([functionalRoleId, module])
+  @@index([functionalRoleId])
+}
+
+model EmployeeFunctionalRole {
+  id               String   @id @default(cuid())
+  employeeId       String
+  functionalRoleId String
+  assignedAt       DateTime @default(now())
+
+  employee         Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  functionalRole   FunctionalRole @relation(fields: [functionalRoleId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, functionalRoleId])
+  @@index([employeeId])
+  @@index([functionalRoleId])
 }

@@ -67,8 +67,10 @@ describe('Permission Matrix', () => {
         expect(hasPermission(Roles.HR, Module.PAYROLL, Action.DELETE)).toBe(false)
     })
 
-    test('HR cannot access settings', () => {
-        expect(canAccessModule(Roles.HR, Module.SETTINGS)).toBe(false)
+    test('HR can view settings', () => {
+        expect(canAccessModule(Roles.HR, Module.SETTINGS)).toBe(true)
+        expect(hasPermission(Roles.HR, Module.SETTINGS, Action.VIEW)).toBe(true)
+        expect(hasPermission(Roles.HR, Module.SETTINGS, Action.UPDATE)).toBe(false)
     })
 
     test('HR can manage teams', () => {

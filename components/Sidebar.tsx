@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
-import { canAccessModule, Module, hasPermission, Action } from "@/lib/permissions"
+import { canAccessModule, canAccessModuleEffective, Module, hasPermission, Action } from "@/lib/permissions"
 import type { Role } from "@/lib/permissions"
 import { Avatar } from "@/components/ui/Avatar"
 import {
@@ -104,6 +104,7 @@ const navGroups: NavGroup[] = [
       { name: "Recruitment", href: "/recruitment", icon: IdCardIcon, module: Module.RECRUITMENT },
       { name: "Resignation", href: "/resignation", icon: ExitIcon, module: Module.RESIGNATION },
       { name: "Reports", href: "/admin/reports", icon: BarChartIcon, module: Module.REPORTS },
+      { name: "Roles", href: "/admin/roles", icon: IdCardIcon, module: Module.SETTINGS },
       { name: "Workflows", href: "/admin/workflows", icon: MixIcon, module: Module.WORKFLOWS },
       { name: "Agent Tracking", href: "/admin/agent-tracking", icon: LaptopIcon, module: Module.AGENT_TRACKING },
       { name: "Settings", href: "/settings", icon: GearIcon, module: Module.SETTINGS },
@@ -158,7 +159,7 @@ export function NavContent({
   const visibleGroups = navGroups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => user && canAccessModule(role, item.module)),
+      items: group.items.filter((item) => user && canAccessModuleEffective(role, item.module, user.functionalCapabilities)),
     }))
     .filter((group) => group.items.length > 0)
 

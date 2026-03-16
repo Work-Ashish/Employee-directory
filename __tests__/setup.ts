@@ -1,4 +1,8 @@
 import { vi } from 'vitest'
+
+// Mock server-only module so tests can import server modules
+vi.mock('server-only', () => ({}))
+
 import { Roles } from '@/lib/permissions'
 
 // Mocking Prisma Client

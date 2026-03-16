@@ -177,6 +177,21 @@ export const trainingSchema = z.object({
     participants: z.number().nonnegative().default(0),
 })
 
+export const functionalRoleSchema = z.object({
+    name: z.string().min(1, "Role name is required").max(100),
+    description: z.string().optional().nullable(),
+    level: z.coerce.number().int().min(0).max(10).default(0),
+    parentRoleId: z.string().optional().nullable(),
+    capabilities: z.array(z.object({
+        module: z.string().min(1),
+        actions: z.array(z.string().min(1)),
+    })).optional().default([]),
+})
+
+export const roleAssignSchema = z.object({
+    employeeIds: z.array(z.string().min(1)).min(1, "At least one employee ID is required"),
+})
+
 export const providentFundSchema = z.object({
     month: z.string().min(1, "Month is required"),
     basicSalary: z.coerce.number().positive("Basic salary must be positive"),
