@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Spinner } from "@/components/ui/Spinner"
+import { PayrollAPI } from "@/features/payroll/api/client"
 
 type ConfigFormData = z.infer<typeof payrollConfigSchema>
 
@@ -37,32 +38,29 @@ export function PayrollConfigView() {
     const fetchConfig = React.useCallback(async () => {
         try {
             setIsLoading(true)
-            const res = await fetch('/api/payroll/config')
-            if (res.ok) {
-                const data = await res.json()
-                if (data.data && data.data.id) {
-                    form.reset({
-                        regimeName: data.data.regimeName || "Old Regime",
-                        pfPercentage: data.data.pfPercentage,
-                        standardDeduction: data.data.standardDeduction,
-                        healthCess: data.data.healthCess,
-                        isActive: data.data.isActive ?? true,
-                        taxSlabs: data.data.taxSlabs || []
-                    })
-                } else {
-                    form.reset({
-                        regimeName: "Old Regime",
-                        pfPercentage: 12,
-                        standardDeduction: 50000,
-                        healthCess: 4,
-                        isActive: true,
-                        taxSlabs: [
-                            { minIncome: 0, maxIncome: 300000, taxRate: 0, baseTax: 0 },
-                            { minIncome: 300001, maxIncome: 600000, taxRate: 5, baseTax: 0 },
-                            { minIncome: 600001, maxIncome: 900000, taxRate: 10, baseTax: 15000 }
-                        ]
-                    })
-                }
+            const data = await PayrollAPI.getConfig()
+            if (data && 'id' in data && data.id) {
+                form.reset({
+                    regimeName: data.regimeName || "Old Regime",
+                    pfPercentage: data.pfPercentage,
+                    standardDeduction: data.standardDeduction,
+                    healthCess: data.healthCess,
+                    isActive: data.isActive ?? true,
+                    taxSlabs: data.taxSlabs || []
+                })
+            } else {
+                form.reset({
+                    regimeName: "Old Regime",
+                    pfPercentage: 12,
+                    standardDeduction: 50000,
+                    healthCess: 4,
+                    isActive: true,
+                    taxSlabs: [
+                        { minIncome: 0, maxIncome: 300000, taxRate: 0, baseTax: 0 },
+                        { minIncome: 300001, maxIncome: 600000, taxRate: 5, baseTax: 0 },
+                        { minIncome: 600001, maxIncome: 900000, taxRate: 10, baseTax: 15000 }
+                    ]
+                })
             }
         } catch (error) {
             toast.error("Failed to load configuration")
@@ -86,17 +84,9 @@ export function PayrollConfigView() {
                 }))
             }
 
-            const res = await fetch('/api/payroll/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
-            if (res.ok) {
-                toast.success("Compliance configuration saved!")
-                fetchConfig()
-            } else {
-                toast.error("Failed to save configuration")
-            }
+            await PayrollAPI.saveConfig(payload)
+            toast.success("Compliance configuration saved!")
+            fetchConfig()
         } catch (error) {
             toast.error("An error occurred")
         } finally {

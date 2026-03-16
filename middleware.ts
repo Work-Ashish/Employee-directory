@@ -55,35 +55,9 @@ function addSecurityHeaders(response: NextResponse) {
     return response
 }
 
-// Parse the NextAuth.js session token cookie to get role info.
-// The JWT is a JWE token — we decode the payload portion to read claims.
-// Full verification happens at the route level via auth().
-function getSessionFromCookie(req: NextRequest): { role?: string } | null {
-    // NextAuth v5 uses these cookie names
-    const cookieName =
-        process.env.NODE_ENV === "production"
-            ? "__Secure-authjs.session-token"
-            : "authjs.session-token"
-
-    const token = req.cookies.get(cookieName)?.value
-    if (!token) return null
-
-    // Token exists = user is authenticated (route-level auth() will fully verify)
-    // Try to extract role from the JWT payload (middle segment)
-    try {
-        const parts = token.split(".")
-        if (parts.length >= 2) {
-            // Standard JWT — decode the payload
-            const payload = JSON.parse(atob(parts[1]))
-            return { role: payload.role }
-        }
-    } catch {
-        // JWE token (encrypted) — we can't decode it here but we know user is logged in
-    }
-
-    // Token exists but we can't read role — treat as authenticated non-admin
-    return { role: undefined }
-}
+// Auth is now handled client-side by AuthProvider (Django JWT in localStorage).
+// Django backend enforces auth on every API call via JWT validation.
+// Middleware only handles rate limiting and security headers.
 
 export default async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl
@@ -104,39 +78,6 @@ export default async function middleware(req: NextRequest) {
         }
     }
 
-    // Allow public routes
-    if (publicRoutes.some((route) => pathname.startsWith(route))) {
-        return addSecurityHeaders(response)
-    }
-
-    // Allow static files and Next.js internals (with security headers)
-    if (
-        pathname.startsWith("/_next") ||
-        pathname.startsWith("/favicon") ||
-        pathname.includes(".")
-    ) {
-        return addSecurityHeaders(response)
-    }
-
-    // Check session cookie (Edge-compatible — no Node.js modules)
-    const session = getSessionFromCookie(req)
-
-    // Redirect unauthenticated users to login
-    if (!session) {
-        if (pathname.startsWith("/api/")) {
-            return addSecurityHeaders(
-                NextResponse.json(
-                    { error: "Unauthorized" },
-                    { status: 401 }
-                )
-            )
-        }
-        const loginUrl = new URL("/login", req.url)
-        loginUrl.searchParams.set("callbackUrl", pathname)
-        return NextResponse.redirect(loginUrl)
-    }
-
-    // All permission checks happen at route level via withAuth()
     return addSecurityHeaders(response)
 }
 

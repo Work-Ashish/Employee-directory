@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from "recharts"
 import { DashboardStatCard, DeptRow, HireRow } from "./DashboardComponents"
 import { tooltipStyle, axisStyle, chartColors } from "@/lib/chart-theme"
+import { DashboardAPI } from "@/features/dashboard/api/client"
 
 export function AdminDashboard() {
     const [loading, setLoading] = React.useState(true)
@@ -25,24 +26,12 @@ export function AdminDashboard() {
     const fetchDashboardData = React.useCallback(async () => {
         try {
             if (isFirstLoad.current) setLoading(true)
-            const [dashRes, loginRes] = await Promise.all([
-                fetch("/api/dashboard", { cache: "no-store" }),
-                fetch("/api/dashboard/logins", { cache: "no-store" }),
+            const [dashData, loginStats] = await Promise.all([
+                DashboardAPI.getStats(),
+                DashboardAPI.getLogins(),
             ])
-            if (dashRes.ok) {
-                const dashJson = await dashRes.json()
-                setData(dashJson.data || (typeof dashJson === "object" && !Array.isArray(dashJson) ? dashJson : null))
-            } else {
-                const errorJson = await dashRes.json().catch(() => ({}))
-                console.error("Dashboard API error:", dashRes.status, errorJson.error?.message || dashRes.statusText)
-            }
-            if (loginRes.ok) {
-                const loginJson = await loginRes.json()
-                setLoginData(loginJson.data || (typeof loginJson === "object" && !Array.isArray(loginJson) ? loginJson : null))
-            } else {
-                const errorJson = await loginRes.json().catch(() => ({}))
-                console.error("Login API error:", loginRes.status, errorJson.error?.message || loginRes.statusText)
-            }
+            setData(dashData)
+            setLoginData(loginStats)
         } catch (error) {
             console.error("Dashboard fetch error:", error)
         } finally {

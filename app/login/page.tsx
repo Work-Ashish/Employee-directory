@@ -1,18 +1,19 @@
 "use client"
 
 import * as React from "react"
-import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/context/AuthContext"
 import { cn } from "@/lib/utils"
 import { EnvelopeClosedIcon, LockClosedIcon, CheckIcon } from "@radix-ui/react-icons"
 import { motion } from "framer-motion"
 
 export default function LoginPage() {
     const router = useRouter()
+    const { login } = useAuth()
+    const [tenantSlug, setTenantSlug] = React.useState("")
     const [email, setEmail] = React.useState("")
     const [password, setPassword] = React.useState("")
     const [loading, setLoading] = React.useState(false)
-    const [googleLoading, setGoogleLoading] = React.useState(false)
     const [error, setError] = React.useState("")
     const [rememberMe, setRememberMe] = React.useState(true)
 
@@ -21,31 +22,17 @@ export default function LoginPage() {
         setError("")
         setLoading(true)
         try {
-            const result = await signIn("credentials", {
+            await login({
+                tenantSlug: tenantSlug.trim(),
                 email: email.trim(),
                 password,
-                redirect: false,
             })
-            if (result?.error) {
-                setError("Invalid Employee ID / email or password")
-            } else {
-                // Check if user must change password (will be in session after redirect)
-                router.push("/")
-            }
-        } catch {
-            setError("Login failed. Please try again.")
+            router.push("/")
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Login failed"
+            setError(message.includes("Invalid") ? "Invalid credentials" : message)
         } finally {
             setLoading(false)
-        }
-    }
-
-    const handleGoogleSignIn = async () => {
-        setGoogleLoading(true)
-        try {
-            await signIn("google", { callbackUrl: "/dashboard" })
-        } catch {
-            setError("Google sign-in failed")
-            setGoogleLoading(false)
         }
     }
 
@@ -165,6 +152,24 @@ export default function LoginPage() {
                 {/* Body */}
                 <div className="p-7">
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Tenant Slug Field */}
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 flex items-center pt-2 pointer-events-none text-gray-400">
+                                <svg className="w-[18px] h-[18px] ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                            </div>
+                            <input
+                                type="text"
+                                value={tenantSlug}
+                                onChange={(e) => setTenantSlug(e.target.value)}
+                                className="w-full bg-transparent border-b border-[#364259] py-[10px] pl-9 text-[14px] text-[#e2e8f0] focus:border-[#44ceb3] focus:outline-none transition-all placeholder:text-[#64748b]"
+                                placeholder="Organization ID"
+                                required
+                                autoComplete="organization"
+                            />
+                        </div>
+
                         {/* Email Field */}
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 flex items-center pt-2 pointer-events-none text-gray-400">
@@ -230,10 +235,8 @@ export default function LoginPage() {
                             </button>
                         </div>
 
-                        {/* Google Sign In text separator */}
-                        <div className="mt-8 flex items-center justify-center space-x-2 opacity-0 h-0 overflow-hidden">
-                            {/* Keep the Google sign in invisible but functional if needed, or we just remove it to match UI strictly. Since the UI given doesn't have it, I'll keep it disabled visually or hidden, or let's just make a very subtle text link. Let's match the image exactly and put a dot indicating something at the bottom. */}
-                        </div>
+                        {/* Spacer */}
+                        <div className="mt-4" />
 
                         <div className="flex justify-center -mb-2 pb-1">
                             <div className="w-1 h-1 rounded-full bg-[#41ccb1]/40"></div>
@@ -243,8 +246,8 @@ export default function LoginPage() {
 
                 {/* Dev quick-fill helper – hover top-right corner */}
                 <div className="absolute top-0 right-0 opacity-0 hover:opacity-100 p-2 text-[10px] text-white/50 bg-black/50 rounded-bl-lg transition-opacity pointer-events-auto">
-                    <div className="cursor-pointer hover:text-white" onClick={() => { setEmail("admin@emspro.com"); setPassword("admin") }}>Admin</div>
-                    <div className="cursor-pointer hover:text-white" onClick={() => { setEmail("user@emspro.com"); setPassword("user") }}>User</div>
+                    <div className="cursor-pointer hover:text-white" onClick={() => { setTenantSlug("demo"); setEmail("admin@emspro.com"); setPassword("admin123!") }}>Admin</div>
+                    <div className="cursor-pointer hover:text-white" onClick={() => { setTenantSlug("demo"); setEmail("user@emspro.com"); setPassword("user123!") }}>User</div>
                 </div>
             </motion.div>
         </div>

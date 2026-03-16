@@ -4,6 +4,38 @@ All notable changes to EMS Pro are documented here.
 
 ---
 
+## [5.0.0] - 2026-03-16
+
+### Added
+
+- **Django Backend** (`backend/`) — Full Django 5.1 + DRF backend adopting HiringNow platform architecture
+  - Schema-per-tenant PostgreSQL multi-tenancy
+  - `apps.departments` — Department CRUD with employee count annotations and delete guards
+  - `apps.dashboard` — Stats API (department split, status counts, recent hires, salary, login analytics)
+  - `apps.employees` — Extended with salary, date_of_joining, avatar_url, soft-delete, sub-profiles (EmployeeProfile, EmployeeAddress, EmployeeBanking), pagination, search, credentials reset, manager list
+  - `apps.users` — Extended with avatar, bio, accent_color, must_change_password, last_login_at, UserSession model
+  - `apps.rbac` — Extended from 5 to 10 roles (admin, ceo, hr_manager, payroll_admin, team_lead, employee, etc.) and 14 permissions
+  - JWT claims now include `must_change_password` and `employee_id`
+  - CORS configuration for frontend-backend communication
+- **Frontend Django Integration**
+  - `lib/api-client.ts` — Centralized HTTP client with JWT auth and tenant slug headers
+  - `lib/transform.ts` — camelCase/snake_case transform layer for Django API
+  - `lib/django-auth.ts` — Login, register, refresh, logout, getMe helpers
+  - `context/AuthContext.tsx` — Rewritten from NextAuth to Django JWT with role mapping
+  - `features/employees/api/client.ts` — Rewired to Django REST API with pagination
+  - `app/login/page.tsx` — Added tenant slug (Organization ID) field, uses Django JWT auth
+- **Data Migration Script** (`backend/scripts/migrate_ems_data.py`) — Supabase to Django tenant DBs with dry-run support
+- **Docker Compose** — Added backend and frontend services
+
+### Changed
+
+- Login page now requires Organization ID (tenant slug) for multi-tenant auth
+- Employee list endpoint returns paginated `{ results, total, page, limit, totalPages }` format
+- Employee deletion is now soft-delete (sets deleted_at, is_archived, status=ARCHIVED)
+- Credentials reset returns email instead of username
+
+---
+
 ## [4.2.0] - 2026-03-16
 
 ### Added

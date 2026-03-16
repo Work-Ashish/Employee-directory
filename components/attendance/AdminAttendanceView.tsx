@@ -16,6 +16,7 @@ import { StatCard } from "@/components/ui/StatCard"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
+import { AttendanceAPI } from "@/features/attendance/api/client"
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "HALF_DAY" | "ON_LEAVE" | "WEEKEND"
 
@@ -86,10 +87,8 @@ export function AdminAttendanceView() {
 
     const fetchRecords = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/attendance")
-            if (!res.ok) throw new Error("Failed to fetch")
-            const data = await res.json()
-            setRecords(extractArray<AttendanceRecord>(data))
+            const response = await AttendanceAPI.list()
+            setRecords(response.results as unknown as AttendanceRecord[])
         } catch {
             toast.error("Failed to load attendance records")
         } finally {

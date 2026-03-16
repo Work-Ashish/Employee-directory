@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
+import { PayrollAPI } from "@/features/payroll/api/client"
 
 type Payslip = {
     id: string
@@ -56,14 +57,12 @@ export function EmployeePayrollView() {
     const fetchData = React.useCallback(async () => {
         try {
             setIsLoading(true)
-            const [payRes, pfRes] = await Promise.all([
-                fetch('/api/payroll'),
-                fetch('/api/pf')
+            const [payData, pfData] = await Promise.all([
+                PayrollAPI.list(),
+                PayrollAPI.listPF(),
             ])
-            if (payRes.ok && pfRes.ok) {
-                setPayslips(extractArray<Payslip>(await payRes.json()))
-                setPfRecords(extractArray<PFRecord>(await pfRes.json()))
-            }
+            setPayslips(payData.results as unknown as Payslip[])
+            setPfRecords(pfData.results as unknown as PFRecord[])
         } catch (error) {
             toast.error("Failed to load your financial data")
         } finally {

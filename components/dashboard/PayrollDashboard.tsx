@@ -10,6 +10,7 @@ import { CalendarIcon, ClockIcon, BackpackIcon, RocketIcon } from "@radix-ui/rea
 import { TimeTracker } from "./TimeTracker"
 import Link from "next/link"
 import { useAuth } from "@/context/AuthContext"
+import { DashboardAPI } from "@/features/dashboard/api/client"
 
 interface PayrollStats {
     totalPayout: number
@@ -59,13 +60,8 @@ export function PayrollDashboard() {
     const fetchDashboardData = React.useCallback(async () => {
         try {
             if (isFirstLoad.current) setLoading(true)
-            const res = await fetch("/api/dashboard", { cache: "no-store" })
-            if (res.ok) {
-                const json = await res.json()
-                setData(json.data || json)
-            } else {
-                console.error("Dashboard API error:", res.status)
-            }
+            const dashData = await DashboardAPI.getStats()
+            setData(dashData as unknown as DashboardData)
         } catch (error) {
             console.error("Dashboard fetch error:", error)
         } finally {

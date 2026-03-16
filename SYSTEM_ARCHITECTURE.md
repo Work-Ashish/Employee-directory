@@ -2,60 +2,65 @@
 
 ## Overview
 
-EMS Pro is a multi-tenant HRMS built on Next.js 16, React 19, Prisma 7.4, and PostgreSQL. The current system includes 5 roles, 19 permissioned modules, 100+ API routes, 63 database models, AI-assisted workflows, and a desktop agent telemetry/reporting pipeline.
+EMS Pro is a multi-tenant HRMS undergoing migration to a unified platform. The **frontend** is built on Next.js 16, React 19, and TailwindCSS 3.4. The **backend** is being migrated from Next.js API Routes + Prisma to a **Django 5.1 + Django REST Framework** backend (located in `backend/`) with schema-per-tenant PostgreSQL isolation, SimpleJWT authentication, and dynamic RBAC. The system includes 10 roles, 19+ permissioned modules, 100+ legacy API routes (being migrated), 63+ database models, AI-assisted workflows, and a desktop agent telemetry/reporting pipeline.
 
 ---
 
-## Architecture Diagram
+## Architecture Diagram (Target)
 
 ```mermaid
 graph TB
     subgraph Client Layer
-        Browser["Browser / React Client"]
+        Browser["Next.js Frontend (port 3000)"]
         DesktopAgent["Desktop Agent"]
     end
 
-    subgraph App Layer
-        Middleware["Auth Middleware"]
-        WithAuth["withAuth()"]
-        AgentAuth["withAgentAuth()"]
-        APIRoutes["Session API Routes"]
-        AgentRoutes["Agent API Routes"]
-        CronWorkers["Cron / Worker Routes"]
-        Logger["Logger + Metrics"]
+    subgraph API Gateway
+        APIClient["lib/api-client.ts"]
+        Transform["lib/transform.ts (camelCase <-> snake_case)"]
+        DjangoAuth["lib/django-auth.ts (JWT)"]
+    end
+
+    subgraph Django Backend ["Django Backend (port 8000)"]
+        TenantMW["TenantMiddleware"]
+        JWTAuth["TenantJWTAuthentication"]
+        HasPerm["HasPermission"]
+        DRFViews["DRF APIViews"]
+        DBRouter["TenantDatabaseRouter"]
     end
 
     subgraph Data Layer
-        Prisma["Prisma ORM"]
-        PostgreSQL["PostgreSQL"]
+        RegistryDB["Registry DB (tenants, permissions)"]
+        TenantDB["Tenant DBs (users, employees, departments)"]
         Redis["Redis Cache / Queue"]
+    end
+
+    subgraph Legacy Layer ["Legacy (being migrated)"]
+        NextAPIRoutes["Next.js API Routes"]
+        Prisma["Prisma ORM"]
+        LegacyDB["Supabase PostgreSQL"]
     end
 
     subgraph External Services
         Gemini["Gemini 2.5 Flash"]
-        Supabase["Supabase Storage"]
         Resend["Resend Email"]
-        Google["Google OAuth"]
-        Auth0["Auth0"]
     end
 
-    Browser --> Middleware
-    Middleware --> WithAuth
-    WithAuth --> APIRoutes
-    DesktopAgent --> AgentAuth
-    AgentAuth --> AgentRoutes
-    APIRoutes --> Prisma
-    APIRoutes --> Redis
-    APIRoutes --> Logger
-    AgentRoutes --> Prisma
-    AgentRoutes --> Redis
-    CronWorkers --> Prisma
-    CronWorkers --> Redis
-    CronWorkers --> Gemini
-    CronWorkers --> Resend
-    Prisma --> PostgreSQL
-    Browser --> Supabase
-    Browser --> Google
+    Browser --> APIClient
+    APIClient --> Transform
+    APIClient --> DjangoAuth
+    APIClient --> TenantMW
+    TenantMW --> JWTAuth
+    JWTAuth --> HasPerm
+    HasPerm --> DRFViews
+    DRFViews --> DBRouter
+    DBRouter --> RegistryDB
+    DBRouter --> TenantDB
+    DRFViews --> Redis
+    Browser --> NextAPIRoutes
+    NextAPIRoutes --> Prisma
+    Prisma --> LegacyDB
+    DesktopAgent --> NextAPIRoutes
 ```
 
 ---
@@ -236,12 +241,14 @@ These flows are implemented in `lib/queue.ts`, worker routes, and webhook dispat
 
 ## Security Model
 
-- Multi-tenant scoping via `organizationId`
-- Session auth with NextAuth v5
-- Route-level RBAC with `withAuth()`
-- Device-level auth with `withAgentAuth()`
+- **Schema-per-tenant** PostgreSQL isolation (target) — each tenant gets a separate database
+- **Legacy**: Multi-tenant scoping via `organizationId` (shared schema)
+- JWT auth via Django SimpleJWT with tenant-aware token claims
+- Route-level RBAC with `HasPermission` (Django) and `withAuth()` (legacy Next.js)
+- Device-level auth with `withAgentAuth()` for desktop agent routes
+- First-login password change enforcement (`must_change_password` flag)
 - Structured logging and request tracing
-- Rate limiting via Redis with in-memory fallback
+- Rate limiting: 5 login/min, 3 register/hour, 1000 API/hour
 - Webhook signing via HMAC
 - Session revocation through `UserSession`
 
@@ -251,9 +258,12 @@ These flows are implemented in `lib/queue.ts`, worker routes, and webhook dispat
 
 | File | Purpose |
 | --- | --- |
-| `lib/auth.ts` | NextAuth config |
-| `lib/security.ts` | Session route authorization |
+| `lib/api-client.ts` | Centralized HTTP client for Django backend |
+| `lib/django-auth.ts` | Django JWT login, register, refresh, logout, getMe |
+| `lib/transform.ts` | camelCase/snake_case transforms for API communication |
 | `lib/permissions.ts` | RBAC matrix and scoping helpers |
+| `lib/auth.ts` | Legacy NextAuth config (being phased out) |
+| `lib/security.ts` | Legacy session route authorization |
 | `lib/agent-auth.ts` | Device auth for desktop agent routes |
 | `lib/queue.ts` | Background job queue |
 | `lib/webhooks.ts` | Outbound webhook dispatch |
@@ -262,3 +272,87 @@ These flows are implemented in `lib/queue.ts`, worker routes, and webhook dispat
 | `lib/email.ts` | Email sending |
 | `lib/logger.ts` | Structured logging |
 | `lib/metrics.ts` | Metrics collection |
+
+---
+
+## Django Backend (`backend/`)
+
+The new backend follows the HiringNow platform architecture:
+
+### Apps
+
+| App | Purpose | Status |
+| --- | --- | --- |
+| `apps.tenants` | Multi-tenant registry, tenant DB management | From HiringNow |
+| `apps.users` | User model + UserSession + JWT auth | Extended |
+| `apps.rbac` | Dynamic roles, permissions, UserRole | Extended (10 roles, 14 permissions) |
+| `apps.employees` | Employee CRUD + sub-profiles (Profile, Address, Banking) | Extended |
+| `apps.departments` | Department CRUD with employee count guards | New |
+| `apps.dashboard` | Stats API (department split, status counts, salary, logins) | New |
+| `apps.features` | Feature flags per tenant | From HiringNow |
+
+### API Endpoints (Django)
+
+| Endpoint | Method | Purpose |
+| --- | --- | --- |
+| `/api/v1/auth/register/` | POST | Tenant + admin user registration |
+| `/api/v1/auth/login/` | POST | JWT login with tenant slug |
+| `/api/v1/auth/refresh/` | POST | Token refresh |
+| `/api/v1/auth/logout/` | POST | Token blacklist |
+| `/api/v1/auth/me/` | GET/PUT | Current user profile |
+| `/api/v1/auth/change-password/` | POST | Password change (supports first-login) |
+| `/api/v1/employees/` | GET/POST | List (paginated) / Create employee |
+| `/api/v1/employees/{id}/` | GET/PUT/DELETE | Detail / Update / Soft-delete |
+| `/api/v1/employees/{id}/credentials/` | POST | Reset password, return temp_password |
+| `/api/v1/employees/managers/` | GET | Active employees for manager dropdown |
+| `/api/v1/departments/` | GET/POST | List / Create department |
+| `/api/v1/departments/{id}/` | GET/DELETE | Detail / Delete (guarded) |
+| `/api/v1/dashboard/` | GET | Dashboard aggregated stats |
+| `/api/v1/dashboard/logins/` | GET | Login analytics |
+
+### Data Migration
+
+A migration script at `backend/scripts/migrate_ems_data.py` handles:
+
+- Supabase PostgreSQL → Django tenant DBs
+- User role mapping (EMS roles → Django roles)
+- Department, Employee, and sub-profile migration
+- bcrypt hash format adaptation
+- Dry-run mode for validation
+
+---
+
+## Future Roadmap
+
+### Phase 1 (Complete): Django Backend MVP
+
+- Departments app, Employee extensions, User extensions, RBAC seed, Dashboard API
+- Schema-per-tenant database routing
+- JWT claims with employee_id and must_change_password
+
+### Phase 2 (Complete): Frontend Adaptation
+
+- API client with camelCase/snake_case transforms
+- Django JWT auth helpers replacing NextAuth
+- AuthContext rewrite for Django backend
+- Employee page and login page adapted
+
+### Phase 3 (Next): Data Migration
+
+- Run migration script against Supabase
+- Validate counts and integrity
+- Parallel operation period (both backends live)
+
+### Phase 4 (Planned): Full Migration
+
+- Migrate remaining Next.js API routes to Django (attendance, payroll, leave, etc.)
+- Remove Prisma and Supabase dependencies
+- Migrate agent tracking APIs to Django
+- Add FastAPI AI microservice for Gemini integration
+
+### Phase 5 (Planned): Production Hardening
+
+- End-to-end and integration tests
+- CI/CD pipeline (pytest + ruff + vitest)
+- Docker Compose with all services
+- Performance benchmarking and optimization

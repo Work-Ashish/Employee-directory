@@ -15,6 +15,7 @@ import { TodoList } from "./TodoList"
 import Link from "next/link"
 import { useAuth } from "@/context/AuthContext"
 import { cn } from "@/lib/utils"
+import { DashboardAPI } from "@/features/dashboard/api/client"
 
 const MOTIVATIONAL_QUOTES = [
     { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
@@ -108,13 +109,8 @@ export function TeamLeadDashboard() {
     const fetchDashboardData = React.useCallback(async () => {
         try {
             if (isFirstLoad.current) setLoading(true)
-            const res = await fetch("/api/dashboard", { cache: "no-store" })
-            if (res.ok) {
-                const json = await res.json()
-                setData(json.data || json)
-            } else {
-                console.error("Dashboard API error:", res.status)
-            }
+            const dashData = await DashboardAPI.getStats()
+            setData(dashData as unknown as DashboardData)
         } catch (error) {
             console.error("Dashboard fetch error:", error)
         } finally {

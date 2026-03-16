@@ -2,11 +2,11 @@
 
 ## Overview
 
-EMS Pro is a production-grade, multi-tenant Employee Management System built with **Next.js 16**, **React 19**, **Prisma 7.4 ORM**, **PostgreSQL (Supabase)**, **NextAuth.js v5**, and **Google Gemini AI**. The current codebase includes 5 roles, 19 permissioned modules, 100+ API routes, structured performance reviews, and a new desktop agent-based workforce activity tracking surface.
+EMS Pro is a production-grade, multi-tenant Employee Management System. The **frontend** is built with **Next.js 16**, **React 19**, and **TailwindCSS 3.4**. The **backend** is being migrated to **Django 5.1 + Django REST Framework** with schema-per-tenant PostgreSQL isolation (adopting the HiringNow platform architecture). The system includes 10 roles, 19+ permissioned modules, 100+ API routes, structured performance reviews, and a desktop agent-based workforce activity tracking surface.
 
 ## Build Status
 
-**TypeScript checks pass. 100+ API routes compile cleanly. 63 database models, 38 enums.**
+**TypeScript checks pass. 131/136 tests pass. Frontend build clean. Django backend models and views ready.**
 
 ---
 
@@ -15,16 +15,19 @@ EMS Pro is a production-grade, multi-tenant Employee Management System built wit
 | Layer | Technology |
 | --- | --- |
 | Frontend | Next.js 16 (App Router), React 19, TailwindCSS 3.4, Radix UI |
-| Backend | Next.js API Routes, Prisma 7.4 |
-| Database | PostgreSQL via Supabase |
-| Auth | NextAuth.js v5, Google OAuth, Auth0 |
+| Backend (New) | Django 5.1, Django REST Framework, SimpleJWT |
+| Backend (Legacy) | Next.js API Routes, Prisma 7.4 |
+| Database (New) | PostgreSQL — schema-per-tenant isolation |
+| Database (Legacy) | PostgreSQL via Supabase (shared schema) |
+| Auth (New) | Django SimpleJWT with tenant-aware claims |
+| Auth (Legacy) | NextAuth.js v5, Google OAuth, Auth0 |
 | AI | Google Gemini 2.5 Flash |
 | Cache / Queue | Upstash Redis with in-memory fallback |
 | File Storage | Supabase Storage |
 | Email | Resend |
-| Validation | Zod + react-hook-form |
+| Validation | Zod + react-hook-form (frontend), DRF serializers (backend) |
 | Export | XLSX, jsPDF |
-| Testing | Vitest, Playwright |
+| Testing | Vitest, Playwright, pytest |
 
 ---
 
@@ -112,27 +115,46 @@ RBAC is defined in `lib/permissions.ts` and enforced through `withAuth({ module,
 
 ## Getting Started
 
+### Frontend
+
 ```bash
 npm install
 cp .env.example .env
-npx prisma db push
-node scripts/create_admin.js
 npm run dev
+```
+
+### Django Backend
+
+```bash
+cd backend
+pip install -r requirements.txt
+cp .env.example .env  # configure DB_NAME, DB_USER, DB_PASSWORD, SECRET_KEY
+python manage.py migrate
+python manage.py seed_rbac --tenant-slug demo
+python manage.py runserver
+```
+
+### Docker (Full Stack)
+
+```bash
+cd backend
+docker-compose up -d
 ```
 
 ## Important Environment Variables
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `AUTH_SECRET` | NextAuth signing secret |
-| `NEXTAUTH_URL` | App base URL |
+| `NEXT_PUBLIC_API_URL` | Django backend URL (default: `http://localhost:8000`) |
+| `DB_NAME` / `DB_USER` / `DB_PASSWORD` | Django PostgreSQL connection |
+| `SECRET_KEY` | Django secret key |
+| `DATABASE_URL` | Legacy Prisma/Supabase connection string |
+| `AUTH_SECRET` | Legacy NextAuth signing secret |
 | `GEMINI_API_KEY` | Gemini API access |
 | `CRON_SECRET` | Auth for cron routes |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Cache, rate limiting, and queue backend |
 | `RESEND_API_KEY` | Email delivery for activity reports |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth |
-| `AUTH0_CLIENT_ID` / `AUTH0_CLIENT_SECRET` / `AUTH0_ISSUER` | Optional Auth0 support |
+| `CORS_ALLOWED_ORIGINS` | Allowed frontend origins for Django CORS |
 
 ---
 

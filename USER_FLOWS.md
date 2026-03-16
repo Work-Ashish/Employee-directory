@@ -98,16 +98,29 @@
 
 ## Authentication
 
-### Login Flow
+### Login Flow (Django JWT)
 
 1. Navigate to `/login`.
-2. Log in with email or employee code and password.
-3. Optionally use Google or Auth0.
-4. If `mustChangePassword` is true, complete the password-change flow.
-5. The user lands on a role-specific dashboard.
+2. Enter Organization ID (tenant slug), email, and password.
+3. The frontend calls `POST /api/v1/auth/login/` with tenant_slug, email, password.
+4. Django authenticates against the tenant database and returns JWT tokens.
+5. Tokens are stored in localStorage; tenant slug is persisted.
+6. If `mustChangePassword` is true in the JWT claims, redirect to `/change-password`.
+7. The user lands on a role-specific dashboard.
+
+### First-Login Password Change
+
+1. Employee is created via admin with auto-generated temporary password.
+2. On first login, JWT includes `must_change_password: true`.
+3. Frontend detects this and redirects to `/change-password`.
+4. User submits new password (old_password not required for first-login).
+5. Django clears `must_change_password` flag and blacklists the old refresh token.
+6. User is redirected to login again with the new password.
 
 ### Session Management
 
-- JWT-based sessions via NextAuth v5
-- Session records stored in `UserSession`
+- JWT-based sessions via Django SimpleJWT (15-min access, 7-day refresh)
+- Refresh token rotation with blacklisting after rotation
+- Session records stored in `UserSession` model
 - Admin session revocation via `/admin/identity`
+- Tenant context resolved from JWT claims on every request

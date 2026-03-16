@@ -15,6 +15,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/c
 import { PageHeader } from "@/components/ui/PageHeader"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
+import { LeaveAPI } from "@/features/leave/api/client"
 
 type LeaveType = "CASUAL" | "SICK" | "EARNED" | "MATERNITY" | "PATERNITY" | "UNPAID"
 type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED"
@@ -81,10 +82,8 @@ export function EmployeeLeaveView() {
 
     const fetchLeaves = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/leaves")
-            if (!res.ok) throw new Error("Failed to fetch")
-            const data = await res.json()
-            setLeaves(Array.isArray(data) ? data : data.data || [])
+            const response = await LeaveAPI.list()
+            setLeaves(response.results as unknown as LeaveRequest[])
         } catch {
             toast.error("Failed to load leave history")
         } finally {
@@ -107,20 +106,12 @@ export function EmployeeLeaveView() {
         }
         setSaving(true)
         try {
-            const res = await fetch("/api/leaves", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    type: formData.type,
-                    startDate: formData.startDate,
-                    endDate: formData.endDate,
-                    reason: formData.reason || null,
-                }),
+            await LeaveAPI.create({
+                type: formData.type,
+                startDate: formData.startDate,
+                endDate: formData.endDate,
+                reason: formData.reason || null,
             })
-            if (!res.ok) {
-                const err = await res.json()
-                throw new Error(err.error || "Failed to apply")
-            }
             toast.success("Leave request submitted")
             setIsModalOpen(false)
             setFormData({ type: "CASUAL", startDate: "", endDate: "", reason: "" })

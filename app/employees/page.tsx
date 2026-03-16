@@ -14,6 +14,7 @@ import { format } from "date-fns"
 import { EmployeeList } from "@/features/employees/components/EmployeeList"
 import { EmployeeFormModal } from "@/features/employees/components/EmployeeFormModal"
 import { EmployeeAPI } from "@/features/employees/api/client"
+import { DepartmentAPI } from "@/features/departments/api/client"
 import { TableEmployee, Department, EmployeeApiData } from "@/features/employees/types"
 import { Modal } from "@/components/ui/Modal"
 import { PageHeader } from "@/components/ui/PageHeader"
@@ -113,24 +114,12 @@ function EmployeesContent() {
             setIsDeptCreating(true)
             const randomColors = ["from-[#ff9a9e] to-[#fecfef]", "from-[#a18cd1] to-[#fbc2eb]", "from-[#84fab0] to-[#8fd3f4]", "from-[#a6c0fe] to-[#f68084]", "from-[#fccb90] to-[#d57eeb]"]
             const color = randomColors[Math.floor(Math.random() * randomColors.length)]
-            const res = await fetch('/api/departments', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newDeptName, color })
-            })
-            if (res.ok) {
-                const response = await res.json()
-                const newDept = response.data || response
-                setDepartments(prev => [...prev, newDept])
-                form.setValue('departmentId', newDept.id)
-                toast.success('Department created successfully')
-                setIsDeptModalOpen(false)
-                setNewDeptName("")
-            } else {
-                const errorData = await res.json()
-                const errorMessage = errorData.error?.message || errorData.error || 'Failed to create department'
-                toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to create department')
-            }
+            const newDept = await DepartmentAPI.create({ name: newDeptName, color })
+            setDepartments(prev => [...prev, newDept])
+            form.setValue('departmentId', newDept.id)
+            toast.success('Department created successfully')
+            setIsDeptModalOpen(false)
+            setNewDeptName("")
         } catch (err: any) {
             toast.error(err.message || 'An error occurred')
         } finally {
@@ -141,14 +130,9 @@ function EmployeesContent() {
     const handleDeleteDepartment = async (deptId: string, deptName: string) => {
         if (!window.confirm(`Delete department "${deptName}"? Employees in this department must be reassigned first.`)) return
         try {
-            const res = await fetch(`/api/departments/${deptId}`, { method: 'DELETE' })
-            if (res.ok) {
-                setDepartments(prev => prev.filter(d => d.id !== deptId))
-                toast.success(`Department "${deptName}" deleted`)
-            } else {
-                const errorData = await res.json()
-                toast.error(errorData.details || errorData.error || 'Failed to delete department')
-            }
+            await DepartmentAPI.delete(deptId)
+            setDepartments(prev => prev.filter(d => d.id !== deptId))
+            toast.success(`Department "${deptName}" deleted`)
         } catch (err: any) {
             toast.error(err.message || 'An error occurred')
         }
@@ -185,14 +169,14 @@ function EmployeesContent() {
             setIsLoading(true)
             const [empRes, deptRes, mgrRes] = await Promise.all([
                 EmployeeAPI.fetchEmployees(page, limit),
-                fetch('/api/departments').then(r => r.json()),
-                fetch('/api/employees/managers').then(r => r.json()),
+                DepartmentAPI.list(),
+                EmployeeAPI.fetchManagers(),
             ])
             setTotalRows(empRes.total)
             setPageCount(Math.ceil(empRes.total / limit))
-            setDepartments(deptRes.data || [])
-            setManagers(mgrRes.data || [])
-            setEmployees(mapApiToTableData(empRes.data))
+            setDepartments(deptRes)
+            setManagers(mgrRes || [])
+            setEmployees(mapApiToTableData(empRes.results))
         } catch (error) {
             toast.error("An error occurred while fetching data")
         } finally {
@@ -238,7 +222,7 @@ function EmployeesContent() {
         setIsResettingCreds(emp.id)
         try {
             const data = await EmployeeAPI.resetCredentials(emp.id)
-            setCredCard({ username: data.username, password: data.tempPassword, name: `${emp.firstName} ${emp.lastName}` })
+            setCredCard({ username: data.email, password: data.tempPassword, name: `${emp.firstName} ${emp.lastName}` })
         } catch {
             toast.error('An error occurred')
         } finally {
@@ -249,11 +233,11 @@ function EmployeesContent() {
     const onSubmit = async (data: EmployeeFormData) => {
         try {
             const isEdit = modalMode === "EDIT"
-            const result = await EmployeeAPI.upsertEmployee(isEdit, data.id, data)
+            const result = await EmployeeAPI.upsertEmployee(isEdit, data.id, data) as EmployeeApiData & { tempPassword?: string }
             setIsModalOpen(false)
             fetchData()
             if (!isEdit && result.tempPassword) {
-                setCredCard({ username: result.employeeCode, password: result.tempPassword, name: `${result.firstName} ${result.lastName}` })
+                setCredCard({ username: result.employeeCode || result.email, password: result.tempPassword, name: `${result.firstName} ${result.lastName}` })
             } else {
                 toast.success(`Employee ${isEdit ? 'updated' : 'created'} successfully`)
             }

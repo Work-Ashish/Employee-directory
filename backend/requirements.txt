@@ -1,0 +1,13 @@
+
+Django>5.1,<5.2
+djangorestframework
+django-tenants
+django-cors-headers
+drf-spectacular
+celery
+redis
+djangorestframework-simplejwt
+psycopg2-binary
+python-dotenv
+pip-audit
+bandit

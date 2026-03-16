@@ -91,12 +91,35 @@
       "Bash(npx vitest run __tests__/api/payroll-config.test.ts)",
       "Bash(xargs grep -l -i \"employee\\\\|manager\\\\|EmployeeForm\\\\|EmployeeModal\")",
       "Bash(npx vitest run __tests__/api/employees.test.ts)",
-      "Read(//c/Users/Ashish Singh/.claude/projects/c--Users-Ashish-Singh-Desktop-Employee-directory/acee1539-eb37-40ec-98a5-88fbe0915e74/tool-results/**)"
+      "Read(//c/Users/Ashish Singh/.claude/projects/c--Users-Ashish-Singh-Desktop-Employee-directory/acee1539-eb37-40ec-98a5-88fbe0915e74/tool-results/**)",
+      "Bash(gh repo view SourceOne9/hiringnow-platform)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "Read(//c/Users/Ashish Singh/Desktop/HiringNow/**)",
+      "Bash(ls -d \"c:/Users/Ashish Singh/Desktop/Employee directory/\"*/)",
+      "Bash(python -m pytest --tb=short -q)",
+      "Bash(pip install pytest pytest-django)",
+      "Bash(pip install -r requirements.txt)",
+      "Bash(pip install django-environ)",
+      "Bash(SECRET_KEY=test DB_NAME=test DB_USER=test DB_PASSWORD=test python -m pytest --tb=short -q)",
+      "Bash(python -c \"import sys; sys.path.insert\\(0, ''hiringnow''\\); from common.models import BaseModel; print\\(''OK''\\)\")",
+      "Bash(PYTHONPATH=hiringnow SECRET_KEY=test DB_NAME=test DB_USER=test DB_PASSWORD=test python -m pytest --tb=short -q)",
+      "Bash(python -m pytest --tb=long -q)",
+      "Bash(python -c \":*)",
+      "Bash(python -m pytest -p conftest --tb=short -q)",
+      "Bash(export PYTHONPATH=\"c:/Users/Ashish Singh/Desktop/Employee directory/backend/hiringnow\")",
+      "Bash(python -c \"import sys; print\\([p for p in sys.path[:5]]\\)\")",
+      "Bash(python -m pytest hiringnow/apps/employees/tests/test_views.py -k \"test_credentials_reset or test_manager_list\" --tb=long -q)",
+      "Bash(xargs grep -l \"dashboard\\\\|Dashboard\")",
+      "Bash(xargs grep -l \"AdminDashboard\\\\|EmployeeDashboard\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\reimbursements",
       "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\roles\\[id]",
-      "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\workflows\\fields"
+      "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\workflows\\fields",
+      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\departments",
+      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\employees",
+      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\users"
     ]
   }
 }

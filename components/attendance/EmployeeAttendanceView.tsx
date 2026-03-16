@@ -12,6 +12,7 @@ import { StatCard } from "@/components/ui/StatCard"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
+import { AttendanceAPI } from "@/features/attendance/api/client"
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "HALF_DAY" | "ON_LEAVE" | "WEEKEND"
 
@@ -54,10 +55,8 @@ export function EmployeeAttendanceView() {
 
     const fetchRecords = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/attendance")
-            if (!res.ok) throw new Error("Failed to fetch")
-            const resJson = await res.json()
-            const data = extractArray<AttendanceRecord>(resJson)
+            const response = await AttendanceAPI.list()
+            const data = response.results as unknown as AttendanceRecord[]
             setRecords(data)
 
             const todayStr = format(new Date(), "yyyy-MM-dd")
@@ -78,19 +77,11 @@ export function EmployeeAttendanceView() {
         setChecking(true)
         try {
             const now = new Date()
-            const res = await fetch("/api/attendance", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    date: now.toISOString(),
-                    checkIn: now.toISOString(),
-                    status: "PRESENT",
-                }),
+            await AttendanceAPI.create({
+                date: now.toISOString(),
+                checkIn: now.toISOString(),
+                status: "PRESENT",
             })
-            if (!res.ok) {
-                const err = await res.json()
-                throw new Error(err.error || "Failed to check in")
-            }
             toast.success("Checked in successfully!")
             fetchRecords()
         } catch (error: any) {
@@ -109,16 +100,11 @@ export function EmployeeAttendanceView() {
             const hours = differenceInMinutes(now, checkInTime) / 60
             const status: AttendanceStatus = hours < 5 ? "HALF_DAY" : "PRESENT"
 
-            const res = await fetch(`/api/attendance/${todayRecord.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    checkOut: now.toISOString(),
-                    workHours: parseFloat(hours.toFixed(2)),
-                    status,
-                }),
+            await AttendanceAPI.update(todayRecord.id, {
+                checkOut: now.toISOString(),
+                workHours: parseFloat(hours.toFixed(2)),
+                status,
             })
-            if (!res.ok) throw new Error("Failed to check out")
             toast.success("Checked out successfully!")
             fetchRecords()
         } catch {

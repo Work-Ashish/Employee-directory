@@ -19,6 +19,7 @@ import { StatCard } from "@/components/ui/StatCard"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
+import { LeaveAPI } from "@/features/leave/api/client"
 
 type LeaveType = "CASUAL" | "SICK" | "EARNED" | "MATERNITY" | "PATERNITY" | "UNPAID"
 type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED"
@@ -113,16 +114,10 @@ export function AdminLeaveView() {
 
     const fetchLeaves = React.useCallback(async () => {
         try {
-            const res = await fetch(`/api/leaves?page=${page}&limit=${limit}`)
-            if (!res.ok) throw new Error("Failed to fetch")
-            const json = await res.json()
-            const data = Array.isArray(json) ? json : (json.data || [])
-            setLeaves(data)
-
-            if (json.total !== undefined) {
-                setTotalRows(json.total)
-                setPageCount(Math.ceil(json.total / limit))
-            }
+            const response = await LeaveAPI.list(`page=${page}&limit=${limit}`)
+            setLeaves(response.results as unknown as LeaveRequest[])
+            setTotalRows(response.total)
+            setPageCount(Math.ceil(response.total / limit))
         } catch {
             toast.error("Failed to load leave requests")
         } finally {
@@ -136,12 +131,7 @@ export function AdminLeaveView() {
 
     const handleAction = async (id: string, status: LeaveStatus) => {
         try {
-            const res = await fetch(`/api/leaves/${id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status }),
-            })
-            if (!res.ok) throw new Error("Failed to update")
+            await LeaveAPI.update(id, { status })
             toast.success(`Leave ${STATUS_LABELS[status].toLowerCase()}`)
             fetchLeaves()
         } catch {
@@ -156,15 +146,7 @@ export function AdminLeaveView() {
         }
         setSaving(true)
         try {
-            const res = await fetch("/api/leaves", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
-            })
-            if (!res.ok) {
-                const err = await res.json()
-                throw new Error(err.error || "Failed to create")
-            }
+            await LeaveAPI.create(formData)
             toast.success("Leave request created")
             setIsModalOpen(false)
             setFormData({ type: "CASUAL", startDate: "", endDate: "", reason: "", employeeId: "" })

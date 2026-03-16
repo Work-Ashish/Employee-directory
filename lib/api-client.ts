@@ -1,0 +1,119 @@
+/**
+ * Centralized HTTP client for Django REST Framework backend.
+ * Handles JWT auth, tenant slug header, and camelCase/snake_case transforms.
+ */
+
+import { toSnakeCase, toCamelCase } from "./transform";
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+export interface ApiResponse<T> {
+  data: T;
+  status: number;
+}
+
+export interface PaginatedResponse<T> {
+  results: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+function getAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("access_token");
+}
+
+function getTenantSlug(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("tenant_slug");
+}
+
+export async function apiClient<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<ApiResponse<T>> {
+  const url = `${BASE_URL}/api/v1${path}`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+
+  const token = getAccessToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const slug = getTenantSlug();
+  if (slug) {
+    headers["X-Tenant-Slug"] = slug;
+  }
+
+  // Transform request body to snake_case
+  let body = options.body;
+  if (body && typeof body === "string") {
+    try {
+      const parsed = JSON.parse(body);
+      body = JSON.stringify(toSnakeCase(parsed));
+    } catch {
+      // Not JSON, send as-is
+    }
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+    body,
+  });
+
+  // Handle 401 → redirect to login
+  if (response.status === 401) {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+    throw new Error("Unauthorized");
+  }
+
+  // Handle 429 → rate limit
+  if (response.status === 429) {
+    throw new Error("Rate limit exceeded. Please try again later.");
+  }
+
+  // Handle 204 No Content
+  if (response.status === 204) {
+    return { data: null as T, status: 204 };
+  }
+
+  const json = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(json.detail || "Request failed") as Error & {
+      status: number;
+      data: unknown;
+    };
+    error.status = response.status;
+    error.data = toCamelCase(json);
+    throw error;
+  }
+
+  // Transform response to camelCase
+  return {
+    data: toCamelCase<T>(json),
+    status: response.status,
+  };
+}
+
+// Convenience methods
+export const api = {
+  get: <T>(path: string) => apiClient<T>(path, { method: "GET" }),
+  post: <T>(path: string, data?: unknown) =>
+    apiClient<T>(path, { method: "POST", body: data ? JSON.stringify(data) : undefined }),
+  put: <T>(path: string, data?: unknown) =>
+    apiClient<T>(path, { method: "PUT", body: data ? JSON.stringify(data) : undefined }),
+  patch: <T>(path: string, data?: unknown) =>
+    apiClient<T>(path, { method: "PATCH", body: data ? JSON.stringify(data) : undefined }),
+  delete: <T>(path: string) => apiClient<T>(path, { method: "DELETE" }),
+};

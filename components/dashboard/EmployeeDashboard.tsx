@@ -14,6 +14,7 @@ import { AgentActivityWidget } from "@/components/agent/AgentActivityWidget"
 import { TodoList } from "./TodoList"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { DashboardAPI } from "@/features/dashboard/api/client"
 
 const MOTIVATIONAL_QUOTES = [
     { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
@@ -79,14 +80,8 @@ export function EmployeeDashboard() {
     const fetchDashboardData = React.useCallback(async () => {
         try {
             if (isFirstLoad.current) setLoading(true)
-            const res = await fetch("/api/dashboard", { cache: "no-store" })
-            if (res.ok) {
-                const json = await res.json()
-                setData(json.data || json)
-            } else {
-                const errorJson = await res.json().catch(() => ({}))
-                console.error("Dashboard API error:", res.status, errorJson.error?.message || res.statusText)
-            }
+            const dashData = await DashboardAPI.getStats()
+            setData(dashData)
         } catch (error) {
             console.error("Dashboard fetch error:", error)
         } finally {

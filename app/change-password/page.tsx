@@ -1,13 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { LockClosedIcon, CheckIcon } from "@radix-ui/react-icons"
 import { motion } from "framer-motion"
 
 export default function ChangePasswordPage() {
-    const { data: session, update } = useSession()
+    const { user } = useAuth()
     const router = useRouter()
 
     const [newPassword, setNewPassword] = React.useState("")
@@ -16,12 +16,12 @@ export default function ChangePasswordPage() {
     const [error, setError] = React.useState("")
     const [success, setSuccess] = React.useState(false)
 
-    // If session doesn't require password change, redirect home
+    // If user doesn't require password change, redirect home
     React.useEffect(() => {
-        if (session && !session.user?.mustChangePassword && !success) {
+        if (user && !user.mustChangePassword && !success) {
             router.replace("/")
         }
-    }, [session, success, router])
+    }, [user, success, router])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -46,8 +46,7 @@ export default function ChangePasswordPage() {
 
             if (res.ok) {
                 setSuccess(true)
-                // Update session to clear mustChangePassword flag
-                await update({ mustChangePassword: false })
+                // User state will refresh on dashboard load via getMe()
                 setTimeout(() => router.replace("/"), 2000)
             } else {
                 const data = await res.json()

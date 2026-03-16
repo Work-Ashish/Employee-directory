@@ -22,6 +22,7 @@ import { StatCard } from "@/components/ui/StatCard"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs"
 import { EmptyState } from "@/components/ui/EmptyState"
+import { PayrollAPI } from "@/features/payroll/api/client"
 
 // ----------------------------------------------------------------------------
 // Zod Schema for Validation
@@ -160,14 +161,14 @@ export function AdminPayrollView() {
     const fetchAll = React.useCallback(async () => {
         try {
             setIsLoading(true)
-            const [payRes, pfRes, empRes] = await Promise.all([
-                fetch('/api/payroll'),
-                fetch('/api/pf'),
+            const [payData, pfData, empRes] = await Promise.all([
+                PayrollAPI.list(),
+                PayrollAPI.listPF(),
                 fetch('/api/employees?limit=100')
             ])
-            if (payRes.ok && pfRes.ok && empRes.ok) {
-                setRecords(extractArray<PayrollRecord>(await payRes.json()))
-                setPfRecords(extractArray<PFRecord>(await pfRes.json()))
+            setRecords(payData.results as unknown as PayrollRecord[])
+            setPfRecords(pfData.results as unknown as PFRecord[])
+            if (empRes.ok) {
                 setEmployees(extractArray<Employee>(await empRes.json()))
             }
         } catch (error) {
@@ -232,19 +233,11 @@ export function AdminPayrollView() {
 
     const onSubmit: SubmitHandler<PayrollFormData> = async (data) => {
         try {
-            const res = await fetch('/api/payroll/run', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-            if (res.ok) {
-                toast.success("Payroll record calculated and created")
-                setIsModalOpen(false)
-                fetchAll()
-                form.reset()
-            } else {
-                toast.error("Failed to execute payroll run (Check active compliance config)")
-            }
+            await PayrollAPI.run(data)
+            toast.success("Payroll record calculated and created")
+            setIsModalOpen(false)
+            fetchAll()
+            form.reset()
         } catch (error) {
             toast.error("An error occurred")
         }
@@ -253,17 +246,9 @@ export function AdminPayrollView() {
     const handleFinalize = async (id: string) => {
         if (!confirm("Are you sure? This will lock the payslip forever.")) return;
         try {
-            const res = await fetch(`/api/payroll/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'FINALIZE' })
-            })
-            if (res.ok) {
-                toast.success("Payroll finalized")
-                fetchAll()
-            } else {
-                toast.error("Failed to finalize")
-            }
+            await PayrollAPI.finalize(id)
+            toast.success("Payroll finalized")
+            fetchAll()
         } catch (e) {
             toast.error("Network error")
         }
@@ -275,19 +260,11 @@ export function AdminPayrollView() {
 
     const onPFSubmit: SubmitHandler<PFFormData> = async (data) => {
         try {
-            const res = await fetch('/api/pf', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-            if (res.ok) {
-                toast.success("PF record created")
-                setIsPFModalOpen(false)
-                fetchAll()
-                pfForm.reset()
-            } else {
-                toast.error("Failed to create record")
-            }
+            await PayrollAPI.createPF(data)
+            toast.success("PF record created")
+            setIsPFModalOpen(false)
+            fetchAll()
+            pfForm.reset()
         } catch (error) {
             toast.error("An error occurred")
         }

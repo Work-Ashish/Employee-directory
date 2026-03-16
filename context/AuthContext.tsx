@@ -1,102 +1,134 @@
 "use client"
 
 import * as React from "react"
-import { useSession, signOut } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
+import {
+  getMe,
+  login as authLogin,
+  logout as authLogout,
+  isAuthenticated,
+  type AuthUser,
+  type LoginPayload,
+} from "@/lib/django-auth"
 import type { Role } from "@/lib/permissions"
 
+// Map Django role slugs to EMS Pro role enum
+const ROLE_MAP: Record<string, Role> = {
+  admin: "CEO",
+  ceo: "CEO",
+  hr_manager: "HR",
+  recruiter: "HR",
+  payroll_admin: "PAYROLL",
+  team_lead: "TEAM_LEAD",
+  employee: "EMPLOYEE",
+  viewer: "EMPLOYEE",
+  interviewer: "EMPLOYEE",
+  hiring_manager: "HR",
+}
+
 interface User {
-    id: string
-    name: string
-    email: string
-    role: Role
-    avatar?: string
-    functionalCapabilities?: Record<string, string[]>
+  id: string
+  name: string
+  email: string
+  role: Role
+  avatar?: string
+  employeeId?: string
+  tenantSlug?: string
+  mustChangePassword?: boolean
+  functionalCapabilities?: Record<string, string[]>
 }
 
 interface AuthContextType {
-    user: User | null
-    isLoading: boolean
-    logout: () => void
+  user: User | null
+  isLoading: boolean
+  login: (payload: LoginPayload) => Promise<void>
+  logout: () => Promise<void>
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const { data: session, status } = useSession()
-    const router = useRouter()
-    const pathname = usePathname()
+  const router = useRouter()
+  const pathname = usePathname()
+  const [user, setUser] = React.useState<User | null>(null)
+  const [isLoading, setIsLoading] = React.useState(true)
 
-    const isLoading = status === "loading"
-
-    const [funcCaps, setFuncCaps] = React.useState<Record<string, string[]> | undefined>(undefined)
-
-    // Map NextAuth session to our internal user object
-    const user = React.useMemo(() => {
-        if (!session?.user) return null
-
-        return {
-            id: session.user.id || "",
-            name: session.user.name || "",
-            email: session.user.email || "",
-            role: (session.user.role as Role) || "EMPLOYEE",
-            avatar: session.user.avatar || session.user.image || undefined,
-            functionalCapabilities: funcCaps,
-        }
-    }, [session, funcCaps])
-
-    // Fetch functional capabilities once authenticated
-    React.useEffect(() => {
-        if (!session?.user) return
-        let cancelled = false
-        async function fetchCapabilities() {
-            try {
-                const res = await fetch("/api/employee/profile")
-                if (res.ok) {
-                    const json = await res.json()
-                    const data = json.data || json
-                    if (data?.functionalCapabilities && !cancelled) {
-                        setFuncCaps(data.functionalCapabilities)
-                    }
-                }
-            } catch { /* non-critical */ }
-        }
-        fetchCapabilities()
-        return () => { cancelled = true }
-    }, [session])
-
-    // Protect routes - although middleware usually handles this, 
-    // we keep it here to match the previous logic and handle loops
-    React.useEffect(() => {
-        if (isLoading) return
-
-        const isLoginPage = pathname === "/login"
-        const isAuthCallback = pathname.startsWith("/api/auth")
-
-        if (isAuthCallback) return
-
-        if (!user && !isLoginPage) {
-            router.push("/login")
-        } else if (user && isLoginPage) {
-            router.push("/")
-        }
-    }, [user, isLoading, pathname, router])
-
-    const logout = async () => {
-        await signOut({ callbackUrl: "/login" })
+  // Convert Django AuthUser to our internal User object
+  const mapUser = React.useCallback((authUser: AuthUser, roleSlug?: string): User => {
+    const role = ROLE_MAP[roleSlug || "employee"] || "EMPLOYEE"
+    return {
+      id: authUser.id,
+      name: `${authUser.firstName} ${authUser.lastName}`.trim() || authUser.email,
+      email: authUser.email,
+      role,
+      avatar: authUser.avatar || undefined,
+      employeeId: authUser.employeeId || undefined,
+      tenantSlug: authUser.tenantSlug,
+      mustChangePassword: authUser.mustChangePassword,
     }
+  }, [])
 
-    return (
-        <AuthContext.Provider value={{ user, isLoading, logout }}>
-            {children}
-        </AuthContext.Provider>
-    )
+  // Load user on mount if token exists
+  React.useEffect(() => {
+    let cancelled = false
+    async function loadUser() {
+      if (!isAuthenticated()) {
+        setIsLoading(false)
+        return
+      }
+      try {
+        const authUser = await getMe()
+        if (!cancelled) {
+          // Role slug comes from JWT or user data — default to admin if tenant admin
+          const roleSlug = authUser.isTenantAdmin ? "admin" : "employee"
+          setUser(mapUser(authUser, roleSlug))
+        }
+      } catch {
+        // Token expired or invalid
+        if (!cancelled) setUser(null)
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+    loadUser()
+    return () => { cancelled = true }
+  }, [mapUser])
+
+  // Route protection
+  React.useEffect(() => {
+    if (isLoading) return
+    const isLoginPage = pathname === "/login"
+    if (!user && !isLoginPage) {
+      router.push("/login")
+    } else if (user && isLoginPage) {
+      router.push("/")
+    }
+  }, [user, isLoading, pathname, router])
+
+  const login = async (payload: LoginPayload) => {
+    const result = await authLogin(payload)
+    const authUser = await getMe()
+    const roleSlug = (result.user as Record<string, unknown>)?.role_slug as string | undefined
+    setUser(mapUser(authUser, roleSlug || (authUser.isTenantAdmin ? "admin" : "employee")))
+  }
+
+  const logout = async () => {
+    await authLogout()
+    setUser(null)
+    router.push("/login")
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
-    const context = React.useContext(AuthContext)
-    if (context === undefined) {
-        throw new Error("useAuth must be used within an AuthProvider")
-    }
-    return context
+  const context = React.useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider")
+  }
+  return context
 }
