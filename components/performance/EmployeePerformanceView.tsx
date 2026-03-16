@@ -9,6 +9,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/D
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Spinner } from "@/components/ui/Spinner"
 import { ReviewDetailView } from "./ReviewDetailView"
+import { DailySelfReviewForm } from "./DailySelfReviewForm"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
@@ -22,6 +23,7 @@ type PerformanceReview = {
     formType: string | null
     formData: any
     reviewPeriod: string | null
+    reviewType?: string | null
     employee: {
         id: string
         firstName: string
@@ -40,32 +42,89 @@ export function EmployeePerformanceView() {
     const [reviews, setReviews] = React.useState<PerformanceReview[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
     const [viewReview, setViewReview] = React.useState<PerformanceReview | null>(null)
+    const [dailySelfOpen, setDailySelfOpen] = React.useState(false)
+    const [selfEmployeeId, setSelfEmployeeId] = React.useState<string | null>(null)
 
-    React.useEffect(() => {
-        const fetchReviews = async () => {
-            try {
-                const res = await fetch("/api/performance")
-                if (res.ok) {
-                    setReviews(extractArray<PerformanceReview>(await res.json()))
-                }
-            } catch (_error) {
-                toast.error("Failed to load performance reviews")
-            } finally {
-                setIsLoading(false)
+    const fetchReviews = React.useCallback(async () => {
+        try {
+            const res = await fetch("/api/performance")
+            if (res.ok) {
+                setReviews(extractArray<PerformanceReview>(await res.json()))
             }
+        } catch (_error) {
+            toast.error("Failed to load performance reviews")
+        } finally {
+            setIsLoading(false)
         }
-        fetchReviews()
     }, [])
 
-    const avgRating = reviews.length > 0
-        ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    React.useEffect(() => { fetchReviews() }, [fetchReviews])
+
+    const resolveSelfEmployeeId = React.useCallback(async (): Promise<string | null> => {
+        if (selfEmployeeId) return selfEmployeeId
+        try {
+            const res = await fetch("/api/employee/profile")
+            if (res.ok) {
+                const json = await res.json()
+                const data = json.data || json
+                const empId = data?.employeeId || data?.id
+                if (empId) {
+                    setSelfEmployeeId(empId)
+                    return empId
+                }
+            }
+        } catch { /* non-critical */ }
+        return null
+    }, [selfEmployeeId])
+
+    React.useEffect(() => { resolveSelfEmployeeId() }, [resolveSelfEmployeeId])
+
+    const handleOpenSelfReview = async () => {
+        const empId = await resolveSelfEmployeeId()
+        if (empId) {
+            setDailySelfOpen(true)
+        } else {
+            toast.error("Could not find your employee profile. Please contact your admin.")
+        }
+    }
+
+    const handleSubmitSelfReview = async (data: any) => {
+        try {
+            const res = await fetch("/api/performance", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            })
+            if (res.ok) {
+                toast.success("Self-review submitted successfully")
+                setDailySelfOpen(false)
+                fetchReviews()
+            } else {
+                const err = await res.json().catch(() => null)
+                toast.error(err?.error?.message || err?.error || "Failed to submit self-review")
+            }
+        } catch {
+            toast.error("Failed to submit self-review")
+        }
+    }
+
+    const managerReviews = reviews.filter(r => r.reviewType !== "SELF")
+    const selfReviews = reviews.filter(r => r.reviewType === "SELF")
+
+    const avgRating = managerReviews.length > 0
+        ? (managerReviews.reduce((sum, r) => sum + r.rating, 0) / managerReviews.length).toFixed(1)
         : "0.0"
 
-    const latest = reviews[0]
+    const latest = managerReviews[0]
 
     return (
         <div className="space-y-6 animate-page-in">
-            <PageHeader title="My Performance" description="Review your evaluations and feedback from your manager" />
+            <div className="flex items-center justify-between">
+                <PageHeader title="My Performance" description="Review your evaluations and submit self-reviews" />
+                <Button size="sm" onClick={handleOpenSelfReview}>
+                    Submit Self-Review
+                </Button>
+            </div>
 
             {/* Hero Stats */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
@@ -99,16 +158,16 @@ export function EmployeePerformanceView() {
                     </Card>
                     <Card className="flex-1 flex flex-col justify-center items-center text-center p-6">
                         <div className="w-12 h-12 rounded-full bg-info/10 flex items-center justify-center text-2xl mb-3">💬</div>
-                        <div className="text-2xl font-extrabold text-text">{reviews.length}</div>
+                        <div className="text-2xl font-extrabold text-text">{managerReviews.length}</div>
                         <div className="text-sm text-text-3">Reviews Received</div>
                     </Card>
                 </div>
             </div>
 
-            {/* Review List */}
+            {/* Manager Reviews */}
             <Card>
                 <CardHeader className="border-b border-border">
-                    <CardTitle>Review History</CardTitle>
+                    <CardTitle>Manager Reviews</CardTitle>
                 </CardHeader>
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
@@ -122,9 +181,9 @@ export function EmployeePerformanceView() {
                         <tbody>
                             {isLoading ? (
                                 <tr><td colSpan={7} className="p-10 text-center"><Spinner size="lg" className="mx-auto" /></td></tr>
-                            ) : reviews.length === 0 ? (
+                            ) : managerReviews.length === 0 ? (
                                 <tr><td colSpan={7} className="p-10 text-center text-text-3">No reviews yet. Your manager will submit reviews here.</td></tr>
-                            ) : reviews.map((rev) => (
+                            ) : managerReviews.map((rev) => (
                                 <tr
                                     key={rev.id}
                                     className="border-b border-border/30 last:border-0 hover:bg-accent/[0.03] transition-colors cursor-pointer"
@@ -169,11 +228,88 @@ export function EmployeePerformanceView() {
                 </div>
             </Card>
 
+            {/* My Self-Reviews */}
+            <Card>
+                <CardHeader className="border-b border-border flex flex-row items-center justify-between">
+                    <CardTitle>My Self-Reviews</CardTitle>
+                    <Badge variant="neutral" size="sm">{selfReviews.length} submitted</Badge>
+                </CardHeader>
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="border-b border-border bg-surface-2">
+                                {["Date", "Type", "Rating", "Period", "Status", ""].map((h) => (
+                                    <th key={h} className="px-4 py-3 text-xs font-bold text-text-3 text-left uppercase tracking-wider">{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {isLoading ? (
+                                <tr><td colSpan={6} className="p-10 text-center"><Spinner size="lg" className="mx-auto" /></td></tr>
+                            ) : selfReviews.length === 0 ? (
+                                <tr><td colSpan={6} className="p-10 text-center text-text-3">
+                                    You haven&apos;t submitted any self-reviews yet. Click &quot;Submit Self-Review&quot; to get started.
+                                </td></tr>
+                            ) : selfReviews.map((rev) => (
+                                <tr
+                                    key={rev.id}
+                                    className="border-b border-border/30 last:border-0 hover:bg-accent/[0.03] transition-colors cursor-pointer"
+                                    onClick={() => setViewReview(rev)}
+                                >
+                                    <td className="px-4 py-3.5 text-sm text-text font-mono">{format(new Date(rev.reviewDate), "MMM d, yyyy")}</td>
+                                    <td className="px-4 py-3.5">
+                                        <div className="flex items-center gap-1.5">
+                                            <Badge variant="default" size="sm">DAILY</Badge>
+                                            <Badge variant="neutral" size="sm">Self</Badge>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-warning tracking-wider">{"★".repeat(Math.floor(rev.rating))}</span>
+                                            <span className="text-text-4 tracking-wider">{"★".repeat(5 - Math.floor(rev.rating))}</span>
+                                            <span className="text-sm text-text-3 ml-2 font-mono">{rev.rating.toFixed(1)}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3.5 text-sm text-text-3">{rev.reviewPeriod || "—"}</td>
+                                    <td className="px-4 py-3.5">
+                                        <Badge
+                                            variant={rev.status === "EXCELLENT" ? "success" : rev.status === "GOOD" ? "default" : rev.status === "PENDING" ? "warning" : "neutral"}
+                                            size="sm"
+                                        >
+                                            {rev.status}
+                                        </Badge>
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                        <Button variant="ghost" size="sm">View</Button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+
+            {/* Self-Review Form Dialog */}
+            <Dialog open={dailySelfOpen} onClose={() => setDailySelfOpen(false)} size="full">
+                <DialogHeader>
+                    <DialogTitle>Submit Self-Review</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                    {selfEmployeeId && (
+                        <DailySelfReviewForm
+                            employeeId={selfEmployeeId}
+                            onSubmit={handleSubmitSelfReview}
+                            onCancel={() => setDailySelfOpen(false)}
+                        />
+                    )}
+                </DialogBody>
+            </Dialog>
+
             {/* View Review Detail */}
             <Dialog open={!!viewReview} onClose={() => setViewReview(null)} size="full">
                 <DialogHeader>
                     <DialogTitle>
-                        Review Details — {viewReview?.formType || "Legacy"} Review
+                        Review Details — {viewReview?.reviewType === "SELF" ? "Self" : viewReview?.formType || "Legacy"} Review
                     </DialogTitle>
                 </DialogHeader>
                 <DialogBody>

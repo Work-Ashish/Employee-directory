@@ -32,7 +32,7 @@ graph TB
     end
 
     subgraph External Services
-        Gemini["Gemini 2.0 Flash"]
+        Gemini["Gemini 2.5 Flash"]
         Supabase["Supabase Storage"]
         Resend["Resend Email"]
         Google["Google OAuth"]
@@ -64,7 +64,7 @@ graph TB
 
 - App Router-based UI with role-aware dashboards
 - Shared design system components for cards, dialogs, inputs, tables, tabs, and status surfaces
-- Employee dashboard now includes an activity tracker widget powered by the agent reporting pipeline
+- Employee and Team Lead dashboards now include a personal To-Do list widget and an activity tracker widget
 - Admin dashboard area now includes an agent-tracking page for workforce monitoring
 
 ---
@@ -76,7 +76,7 @@ The repository currently contains 100+ route handlers.
 ### Main route groups
 
 | Prefix | Description |
-|---|---|
+| --- | --- |
 | `/api/employees` | Employee CRUD, credentials, profile, documents |
 | `/api/attendance` | Attendance, shifts, holidays, regularization, policies |
 | `/api/time-tracker` | Check-in/out, heartbeat, break, history, status |
@@ -88,12 +88,14 @@ The repository currently contains 100+ route handlers.
 | `/api/admin` | Sessions, metrics, analytics, performance, assets, agent management |
 
 All session-auth routes use:
+
 - `withAuth({ module, action })`
 - `apiSuccess()` / `apiError()`
 - organization scoping
 - Zod validation for mutations
 
 Desktop agent routes use:
+
 - `withAgentAuth()`
 - device API keys
 - Zod validation via `lib/schemas/agent.ts`
@@ -103,6 +105,7 @@ Desktop agent routes use:
 ## RBAC
 
 Roles:
+
 - CEO
 - HR
 - PAYROLL
@@ -110,6 +113,7 @@ Roles:
 - EMPLOYEE
 
 Modules:
+
 - EMPLOYEES
 - PAYROLL
 - TEAMS
@@ -132,6 +136,7 @@ Modules:
 - AGENT_TRACKING
 
 Actions:
+
 - VIEW
 - CREATE
 - UPDATE
@@ -148,6 +153,7 @@ Actions:
 The current Prisma schema has **63 models** and **38 enums**.
 
 ### Core HR models
+
 - `Organization`
 - `User`
 - `Employee`
@@ -159,6 +165,7 @@ The current Prisma schema has **63 models** and **38 enums**.
 - `TeamMember`
 
 ### Operations models
+
 - `Attendance`
 - `TimeSession`
 - `BreakEntry`
@@ -173,6 +180,7 @@ The current Prisma schema has **63 models** and **38 enums**.
 - `CalendarEvent`
 
 ### Workflow and reporting
+
 - `WorkflowTemplate`
 - `WorkflowStep`
 - `WorkflowInstance`
@@ -184,6 +192,7 @@ The current Prisma schema has **63 models** and **38 enums**.
 - `AuditLog`
 
 ### AI and monitoring
+
 - `PerformanceMetrics`
 - `WeeklyScores`
 - `AgentExecutionLogs`
@@ -191,6 +200,7 @@ The current Prisma schema has **63 models** and **38 enums**.
 - `AdminAlerts`
 
 ### Agent tracking
+
 - `AgentDevice`
 - `AgentCommand`
 - `AgentActivitySnapshot`
@@ -204,6 +214,7 @@ The current Prisma schema has **63 models** and **38 enums**.
 ## Queue and Async Work
 
 Redis-backed queue jobs currently include:
+
 - webhook delivery
 - agent aggregation
 - agent report generation
@@ -239,7 +250,7 @@ These flows are implemented in `lib/queue.ts`, worker routes, and webhook dispat
 ## Key Libraries
 
 | File | Purpose |
-|---|---|
+| --- | --- |
 | `lib/auth.ts` | NextAuth config |
 | `lib/security.ts` | Session route authorization |
 | `lib/permissions.ts` | RBAC matrix and scoping helpers |
