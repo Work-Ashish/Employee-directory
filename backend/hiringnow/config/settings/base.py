@@ -229,11 +229,15 @@ SPECTACULAR_SETTINGS = {
 # The REDIS_URL setting is the URL that is used to connect to the Redis database.
 REDIS_URL = env('REDIS_URL', default='redis://localhost:6379/0')
 
-# CORS — allow the Next.js frontend to talk to the Django backend
+# CORS — allow the Next.js frontend and API gateway to talk to the Django backend
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+    'http://localhost',
 ])
+CORS_ALLOWED_ORIGIN_REGEXES = env.list('CORS_ALLOWED_ORIGIN_REGEXES', default=[])
 CORS_ALLOW_HEADERS = [
     'accept',
     'authorization',
@@ -242,3 +246,10 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+# CSRF trusted origins (for gateway/reverse-proxy setups)
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[
+    'http://localhost',
+    'http://localhost:3000',
+    'http://localhost:3001',
+])

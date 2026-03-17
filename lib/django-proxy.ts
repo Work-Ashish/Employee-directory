@@ -7,9 +7,11 @@
  * migrated to call Django directly via the feature API clients.
  */
 
-/** Lazily resolve the Django base URL so env vars set after module load are respected. */
+/** Lazily resolve the Django base URL so env vars set after module load are respected.
+ *  Priority: DJANGO_GATEWAY_URL (API gateway) > DJANGO_INTERNAL_URL (direct) > NEXT_PUBLIC_API_URL > default */
 function getDjangoBase(): string {
   return (
+    process.env.DJANGO_GATEWAY_URL ||
     process.env.DJANGO_INTERNAL_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
     "http://127.0.0.1:8000"

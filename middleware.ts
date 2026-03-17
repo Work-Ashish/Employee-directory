@@ -79,7 +79,7 @@ function isPublicRoute(pathname: string): boolean {
 // All role/permission checks happen server-side in each API handler.
 
 function addSecurityHeaders(response: NextResponse) {
-    response.headers.set("X-Frame-Options", "DENY")
+    response.headers.set("X-Frame-Options", "SAMEORIGIN")
     response.headers.set("X-Content-Type-Options", "nosniff")
     response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.set("X-XSS-Protection", "1; mode=block")
@@ -110,7 +110,13 @@ export default async function middleware(req: NextRequest) {
         const hasCookieToken = req.cookies.has("access_token")
 
         if (!hasHeaderToken && !hasCookieToken) {
-            const loginUrl = new URL("/login", req.url)
+            // Embedded mode: redirect to parent platform's login
+            const embeddedLoginUrl = process.env.NEXT_PUBLIC_EMBEDDED === "true"
+                ? process.env.NEXT_PUBLIC_PLATFORM_LOGIN_URL
+                : null
+            const loginUrl = embeddedLoginUrl
+                ? new URL(embeddedLoginUrl)
+                : new URL("/login", req.url)
             loginUrl.searchParams.set("callbackUrl", pathname)
             return addSecurityHeaders(NextResponse.redirect(loginUrl))
         }

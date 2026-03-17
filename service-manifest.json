@@ -1,0 +1,23 @@
+{
+  "service": "hrms",
+  "name": "HRMS",
+  "version": "1.0.0",
+  "basePath": "/hrms",
+  "apiPrefix": "/api/v1/hrms",
+  "icon": "Users",
+  "sidebar": [
+    { "label": "Dashboard", "path": "/hrms/dashboard", "icon": "LayoutDashboard" },
+    { "label": "Employees", "path": "/hrms/employees", "icon": "Users" },
+    { "label": "Attendance", "path": "/hrms/attendance", "icon": "Clock" },
+    { "label": "Leave", "path": "/hrms/leave", "icon": "Calendar" },
+    { "label": "Payroll", "path": "/hrms/payroll", "icon": "DollarSign" },
+    { "label": "Performance", "path": "/hrms/performance", "icon": "TrendingUp" },
+    { "label": "Training", "path": "/hrms/training", "icon": "GraduationCap" },
+    { "label": "Documents", "path": "/hrms/documents", "icon": "FileText" },
+    { "label": "Help Desk", "path": "/hrms/help-desk", "icon": "HelpCircle" },
+    { "label": "Reports", "path": "/hrms/reports", "icon": "BarChart" },
+    { "label": "Settings", "path": "/hrms/settings", "icon": "Settings" }
+  ],
+  "permissions": ["employees.view", "attendance.view", "payroll.view"],
+  "healthCheck": "/api/v1/health/"
+}

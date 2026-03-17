@@ -9,9 +9,27 @@ import { AuthProvider } from "@/context/AuthContext"
 import { AIChatbot } from "@/components/AIChatbot"
 import { TooltipProvider } from "@/components/ui/Tooltip"
 
+// When embedded in HiringNow Platform, the parent app owns the primary sidebar.
+// Set NEXT_PUBLIC_EMBEDDED=true to hide local sidebar/topbar and render content only.
+const isEmbedded = process.env.NEXT_PUBLIC_EMBEDDED === "true"
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isLoginPage = pathname === "/login" || pathname === "/signup"
+
+  if (isEmbedded && !isLoginPage) {
+    return (
+      <AuthProvider>
+        <TooltipProvider>
+          <div className="flex-1 flex flex-col overflow-hidden relative z-10 w-full">
+            <main className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-bg-3 scrollbar-track-transparent p-6 lg:p-7">
+              <div className="animate-page-in">{children}</div>
+            </main>
+          </div>
+        </TooltipProvider>
+      </AuthProvider>
+    )
+  }
 
   return (
     <AuthProvider>

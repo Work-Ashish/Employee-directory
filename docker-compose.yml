@@ -1,0 +1,74 @@
+# HRMS Microservice — Docker Compose
+#
+# Standalone mode:   docker compose up
+# Platform mode:     docker compose --profile gateway up
+#
+# In platform mode, the Nginx gateway routes traffic between
+# HiringNow Platform and this HRMS service.
+
+services:
+  # --- HRMS Django Backend ---
+  hrms-django:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hrms-django
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./backend/hiringnow/.env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.base
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - hrms-internal
+      - hiringnow-network
+
+  # --- HRMS Next.js Frontend ---
+  hrms-next:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
+        NEXT_PUBLIC_EMBEDDED: ${NEXT_PUBLIC_EMBEDDED:-false}
+    container_name: hrms-next
+    ports:
+      - "3001:3001"
+    environment:
+      - DJANGO_INTERNAL_URL=http://hrms-django:8001
+      - NEXT_PUBLIC_API_URL=http://hrms-django:8001
+    depends_on:
+      hrms-django:
+        condition: service_healthy
+    networks:
+      - hrms-internal
+      - hiringnow-network
+
+  # --- API Gateway (platform mode only) ---
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: hiringnow-gateway
+    profiles:
+      - gateway
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - hrms-django
+      - hrms-next
+    networks:
+      - hiringnow-network
+
+networks:
+  hrms-internal:
+    driver: bridge
+  hiringnow-network:
+    name: hiringnow-network
+    external: true
