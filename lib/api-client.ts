@@ -5,7 +5,7 @@
 
 import { toSnakeCase, toCamelCase } from "./transform";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export interface ApiResponse<T> {
   data: T;
@@ -30,11 +30,17 @@ function getTenantSlug(): string | null {
   return localStorage.getItem("tenant_slug");
 }
 
+/** Remap 'limit' query param to 'per_page' for Django pagination compatibility */
+function remapPaginationParams(path: string): string {
+  if (!path.includes("limit=")) return path;
+  return path.replace(/([?&])limit=(\d+)/g, "$1per_page=$2");
+}
+
 export async function apiClient<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
-  const url = `${BASE_URL}/api/v1${path}`;
+  const url = `${BASE_URL}/api/v1${remapPaginationParams(path)}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
@@ -90,18 +96,23 @@ export async function apiClient<T>(
   const json = await response.json();
 
   if (!response.ok) {
-    const error = new Error(json.detail || "Request failed") as Error & {
+    // Django wraps errors as {"data":null,"error":{"detail":[...]},"meta":{}}
+    const errObj = json.error || json;
+    const detail = errObj.detail;
+    const message = Array.isArray(detail) ? detail.join(". ") : (typeof detail === "string" ? detail : null);
+    const error = new Error(message || json.detail || "Request failed") as Error & {
       status: number;
       data: unknown;
     };
     error.status = response.status;
-    error.data = toCamelCase(json);
+    error.data = toCamelCase(errObj);
     throw error;
   }
 
-  // Transform response to camelCase
+  // Unwrap Django {"data":{...},"error":null,"meta":{}} envelope and transform to camelCase
+  const payload = json.data !== undefined ? json.data : json;
   return {
-    data: toCamelCase<T>(json),
+    data: toCamelCase<T>(payload),
     status: response.status,
   };
 }

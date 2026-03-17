@@ -1,8 +1,11 @@
 /**
  * RBAC Permission System — Single Source of Truth
  *
- * Role → Module → Action permission matrix.
- * All role/permission logic for the entire app lives here.
+ * Dual-mode permission checks:
+ *   1. Django codename-based (primary) — e.g. "employees.view", "payroll.manage"
+ *   2. Static matrix fallback (offline/local) — PERMISSIONS[role][module]
+ *
+ * The codenames align with the HiringNow Django platform's RBAC system.
  */
 
 // ── Roles ──────────────────────────────────────────────────
@@ -17,6 +20,59 @@ export const Roles: Readonly<Record<Role, Role>> = {
   TEAM_LEAD: "TEAM_LEAD",
   EMPLOYEE: "EMPLOYEE",
 } as const
+
+/**
+ * Maps Django role slugs → EMS system roles.
+ * Django's RBAC uses dynamic slug-based roles; we map them to our static enum.
+ */
+export const DJANGO_ROLE_MAP: Record<string, Role> = {
+  admin: "CEO",
+  ceo: "CEO",
+  hr_manager: "HR",
+  recruiter: "HR",
+  hiring_manager: "HR",
+  payroll_admin: "PAYROLL",
+  team_lead: "TEAM_LEAD",
+  employee: "EMPLOYEE",
+  viewer: "EMPLOYEE",
+  interviewer: "EMPLOYEE",
+}
+
+/**
+ * Maps Module enum → Django feature flag key.
+ * Used to check if a module is enabled for the tenant.
+ * Modules not listed here are always enabled (e.g. DASHBOARD, SETTINGS).
+ */
+export const MODULE_FEATURE_FLAG: Partial<Record<string, string>> = {
+  EMPLOYEES: "employees",
+  PAYROLL: "payroll",
+  ATTENDANCE: "attendance",
+  LEAVES: "leave",
+  PERFORMANCE: "performance",
+  TRAINING: "training",
+  RECRUITMENT: "recruitment",
+  DOCUMENTS: "documents",
+  ASSETS: "assets",
+  TICKETS: "help_desk",
+  ANNOUNCEMENTS: "announcements",
+  REIMBURSEMENT: "reimbursement",
+  WORKFLOWS: "workflows",
+  TEAMS: "teams",
+  FEEDBACK: "feedback",
+  RESIGNATION: "resignation",
+  REPORTS: "reports",
+}
+
+/**
+ * Check if a module is enabled for the tenant based on feature flags.
+ * Returns true if: no flags provided (default), no flag for this module, or flag is true.
+ */
+export function isModuleEnabled(module: string, featureFlags?: Record<string, boolean>): boolean {
+  if (!featureFlags || Object.keys(featureFlags).length === 0) return true
+  const flagKey = MODULE_FEATURE_FLAG[module]
+  if (!flagKey) return true // No flag = always enabled (DASHBOARD, SETTINGS, etc.)
+  return featureFlags[flagKey] !== false
+}
 
 // ── Modules ────────────────────────────────────────────────
 export enum Module {
@@ -193,6 +249,92 @@ export const PERMISSIONS: PermissionMatrix = {
     [Module.AGENT_TRACKING]: [VIEW],
     [Module.REIMBURSEMENT]: [VIEW, CREATE],
   },
+}
+
+// ── Django Codename Mapping ────────────────────────────────
+// Maps Module + Action → Django permission codename (e.g. "employees.view")
+// These align with HiringNow's `apps.tenants.models.Permission` codenames.
+
+/** Module name → Django module prefix mapping */
+const DJANGO_MODULE_MAP: Record<string, string> = {
+  EMPLOYEES: "employees",
+  PAYROLL: "payroll",
+  TEAMS: "teams",
+  PERFORMANCE: "performance",
+  FEEDBACK: "feedback",
+  DASHBOARD: "dashboard",
+  REPORTS: "reports",
+  ATTENDANCE: "attendance",
+  LEAVES: "leaves",
+  TRAINING: "training",
+  ANNOUNCEMENTS: "announcements",
+  ASSETS: "assets",
+  DOCUMENTS: "documents",
+  TICKETS: "tickets",
+  RECRUITMENT: "recruitment",
+  RESIGNATION: "resignation",
+  ORGANIZATION: "organization",
+  SETTINGS: "settings",
+  WORKFLOWS: "workflows",
+  AGENT_TRACKING: "agent_tracking",
+  REIMBURSEMENT: "reimbursement",
+}
+
+/** Action → Django action suffix mapping */
+const DJANGO_ACTION_MAP: Record<string, string> = {
+  VIEW: "view",
+  CREATE: "manage",  // Django uses "manage" for create/update/delete
+  UPDATE: "manage",
+  DELETE: "manage",
+  REVIEW: "review",
+  ASSIGN: "assign",
+  EXPORT: "export",
+  IMPORT: "import",
+}
+
+/**
+ * Convert Module + Action to a Django codename.
+ * e.g. (Module.EMPLOYEES, Action.VIEW) → "employees.view"
+ */
+export function toCodename(module: Module, action: Action): string {
+  const mod = DJANGO_MODULE_MAP[module] || module.toLowerCase()
+  const act = DJANGO_ACTION_MAP[action] || action.toLowerCase()
+  return `${mod}.${act}`
+}
+
+/**
+ * Check permission via Django codenames (primary) with matrix fallback.
+ * If userCodenames is provided, checks against those first.
+ * Falls back to static PERMISSIONS matrix if codenames are unavailable.
+ */
+export function hasPermissionWithCodenames(
+  role: string,
+  module: Module,
+  action: Action,
+  userCodenames?: Set<string>
+): boolean {
+  // If user has Django codenames loaded, check those first
+  if (userCodenames && userCodenames.size > 0) {
+    const codename = toCodename(module, action)
+    if (userCodenames.has(codename)) return true
+    // Also check wildcard manage (covers create/update/delete)
+    const mod = DJANGO_MODULE_MAP[module] || module.toLowerCase()
+    if (userCodenames.has(`${mod}.manage`)) {
+      if (action === Action.CREATE || action === Action.UPDATE || action === Action.DELETE) {
+        return true
+      }
+    }
+  }
+  // Fallback: check static matrix
+  return hasPermission(role, module, action)
+}
+
+/**
+ * Check if user is a tenant admin (bypasses all permission checks).
+ * Maps to Django's `is_tenant_admin` flag.
+ */
+export function isTenantAdmin(role: string): boolean {
+  return role === Roles.CEO || role === Roles.HR
 }
 
 // ── Functional Role Helpers (client-safe) ──────────────────

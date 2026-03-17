@@ -11,7 +11,7 @@ import { TooltipProvider } from "@/components/ui/Tooltip"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const isLoginPage = pathname === "/login"
+  const isLoginPage = pathname === "/login" || pathname === "/signup"
 
   return (
     <AuthProvider>

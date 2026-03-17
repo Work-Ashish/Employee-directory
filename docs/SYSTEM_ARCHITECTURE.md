@@ -109,13 +109,28 @@ Desktop agent routes use:
 
 ## RBAC
 
-Roles:
+### Next.js Static Roles (Fallback)
 
 - CEO
 - HR
 - PAYROLL
 - TEAM_LEAD
 - EMPLOYEE
+
+### Django Dynamic Roles (Primary — 7 roles, 63 codenames)
+
+| Role | Permissions | Count |
+| --- | --- | --- |
+| admin | All 63 codenames | 63 |
+| hr_manager | employees, attendance, leaves, performance, training, documents, tickets, recruitment, resignation, reimbursement, reports, teams, calendar, feedback, announcements, dashboard, users.view | 39 |
+| payroll_admin | payroll (all), employees.view, attendance.view, leaves.view, reimbursement, reports.view/export, dashboard.view | 11 |
+| team_lead | employees.view, attendance.view, leaves.view/approve, performance.view/review, training.view, teams, feedback, calendar.view, dashboard.view | 13 |
+| recruiter | employees.view, recruitment, calendar, dashboard.view | 6 |
+| hiring_manager | employees.view, recruitment.view, calendar.view, dashboard.view | 4 |
+| interviewer | employees.view, recruitment.view, feedback, dashboard.view | 5 |
+| viewer | employees.view, attendance.view, leaves.view, reports.view, dashboard.view | 5 |
+
+Permission check chain: `withAuth()` → static matrix → Django codenames → functional roles → tenant admin bypass.
 
 Modules:
 
@@ -239,18 +254,37 @@ These flows are implemented in `lib/queue.ts`, worker routes, and webhook dispat
 
 ---
 
+## Feature Flags
+
+Django's feature flag system controls Next.js UI module visibility:
+
+- Global `FeatureFlag` catalog in registry DB (14 flags: employees, attendance, leave, payroll, performance, training, recruitment, documents, assets, help_desk, announcements, reimbursement, workflows, teams)
+- Per-tenant `TenantFeature` overrides in tenant DB
+- `fetchFeatureFlags()` in AuthContext converts Django array → `Record<string, boolean>`
+- Sidebar checks `isModuleEnabled()` before showing nav items
+- Route protection in AuthContext redirects to `/` for disabled modules
+- Seeded via: `python manage.py seed_features`
+
+## Audit Logging
+
+- `auditLog()` in `lib/logger.ts` fires events to Django `/api/v1/audit-logs/` (POST, fire-and-forget)
+- Django `apps/audit/` stores: action, resource, resource_id, user_id, organization_id, source, details (JSON), ip_address, timestamp
+- Also logs locally via structured JSON logger
+
 ## Security Model
 
-- **Schema-per-tenant** PostgreSQL isolation (target) — each tenant gets a separate database
-- **Legacy**: Multi-tenant scoping via `organizationId` (shared schema)
-- JWT auth via Django SimpleJWT with tenant-aware token claims
-- Route-level RBAC with `HasPermission` (Django) and `withAuth()` (legacy Next.js)
+- **Schema-per-tenant** PostgreSQL isolation — each tenant gets a separate database
+- **Legacy**: Multi-tenant scoping via `organizationId` (shared schema) for Prisma-only models
+- JWT auth via Django SimpleJWT with tenant-aware token claims (`tenant_id`, `tenant_slug`, `employee_id`)
+- Tenant context from JWT: `decodeJwtPayload()` + `persistTenantFromJwt()` extract and store tenant info
+- `X-Tenant-Slug` header sent on every request via `api-client.ts`, allowed via `CORS_ALLOW_HEADERS`
+- Route-level RBAC with `HasPermission` (Django) and `withAuth()` (Next.js) with Django codename fallback
 - Device-level auth with `withAgentAuth()` for desktop agent routes
 - First-login password change enforcement (`must_change_password` flag)
-- Structured logging and request tracing
-- Rate limiting: 5 login/min, 3 register/hour, 1000 API/hour
+- Structured logging and request tracing + Django audit log dispatch
+- Rate limiting: per-IP 60/min (Next.js middleware) + per-user 1000/hr (matches Django throttle) + 5 login/min, 3 register/hour (Django)
 - Webhook signing via HMAC
-- Session revocation through `UserSession`
+- Session revocation through `UserSession` + Django token blacklist
 
 ---
 
@@ -283,13 +317,21 @@ The new backend follows the HiringNow platform architecture:
 
 | App | Purpose | Status |
 | --- | --- | --- |
-| `apps.tenants` | Multi-tenant registry, tenant DB management | From HiringNow |
+| `apps.tenants` | Multi-tenant registry, tenant DB management, Permission + FeatureFlag models | From HiringNow |
 | `apps.users` | User model + UserSession + JWT auth | Extended |
-| `apps.rbac` | Dynamic roles, permissions, UserRole | Extended (10 roles, 14 permissions) |
+| `apps.rbac` | Dynamic roles, permissions, UserRole. `seed_rbac` command: 7 roles, 63 codenames, 18 modules | Extended |
 | `apps.employees` | Employee CRUD + sub-profiles (Profile, Address, Banking) | Extended |
 | `apps.departments` | Department CRUD with employee count guards | New |
 | `apps.dashboard` | Stats API (department split, status counts, salary, logins) | New |
-| `apps.features` | Feature flags per tenant | From HiringNow |
+| `apps.features` | Feature flags per tenant. `seed_features` command: 14 module flags | Extended |
+| `apps.audit` | AuditLog model + REST API. Receives events from Next.js `auditLog()` | New |
+
+### Management Commands
+
+| Command | Purpose |
+| --- | --- |
+| `python manage.py seed_rbac --tenant-slug <slug>` | Seed 63 permission codenames + 7 roles in tenant DB |
+| `python manage.py seed_features` | Seed 14 module feature flags in registry DB |
 
 ### API Endpoints (Django)
 
@@ -337,20 +379,34 @@ A migration script at `backend/scripts/migrate_ems_data.py` handles:
 - AuthContext rewrite for Django backend
 - Employee page and login page adapted
 
-### Phase 3 (Next): Data Migration
+### Phase 3 (Complete): HiringNow Integration (9 Sprints)
+
+- RBAC alignment: Django codenames + Next.js static matrix dual-layer
+- API path alignment: All feature API clients → Django `/api/v1/` endpoints
+- Multi-tenancy: JWT tenant claim extraction, `X-Tenant-Slug` header, CORS config
+- Middleware: Per-user rate limiting, audit log dispatch to Django
+- Data contracts: Envelope match, pagination remap, snake_case transform
+- Feature flags: Django feature flag system → Sidebar + route gating
+- Django RBAC expansion: 7 roles, 63 codenames, 18 modules
+- Django feature flag seeding: 14 module flags
+- Django audit logs: New `apps/audit/` app + REST API + CORS headers
+
+### Phase 4 (Next): Data Migration
 
 - Run migration script against Supabase
 - Validate counts and integrity
+- Run Django migrations: `makemigrations audit` + `migrate`
+- Run seed commands: `seed_rbac` + `seed_features`
 - Parallel operation period (both backends live)
 
-### Phase 4 (Planned): Full Migration
+### Phase 5 (Planned): Full Migration
 
 - Migrate remaining Next.js API routes to Django (attendance, payroll, leave, etc.)
 - Remove Prisma and Supabase dependencies
 - Migrate agent tracking APIs to Django
 - Add FastAPI AI microservice for Gemini integration
 
-### Phase 5 (Planned): Production Hardening
+### Phase 6 (Planned): Production Hardening
 
 - End-to-end and integration tests
 - CI/CD pipeline (pytest + ruff + vitest)

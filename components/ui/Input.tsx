@@ -33,11 +33,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             className={cn(
               "input-base",
-              leftIcon && "pl-10",
-              rightIcon && "pr-10",
               error && "border-danger focus:ring-danger/20 focus:border-danger",
               className
             )}
+            style={{
+              ...(leftIcon ? { paddingLeft: 40 } : {}),
+              ...(rightIcon ? { paddingRight: 40 } : {}),
+              ...props.style,
+            }}
             {...props}
           />
           {rightIcon && (

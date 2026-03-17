@@ -56,8 +56,7 @@ __pycache__/
 *.egg-info/
 *.egg
 .pytest_cache/
-backend/hiringnow/db.sqlite3
-backend/hiringnow/.coverage
+backend/hiringnow/
 
 # ── Temp / generated ──────────────────────────────────────
 /tmp/

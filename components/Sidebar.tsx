@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
-import { canAccessModule, canAccessModuleEffective, Module, hasPermission, Action } from "@/lib/permissions"
+import { canAccessModule, canAccessModuleEffective, Module, hasPermission, Action, isModuleEnabled } from "@/lib/permissions"
 import type { Role } from "@/lib/permissions"
 import { Avatar } from "@/components/ui/Avatar"
 import {
@@ -159,7 +159,11 @@ export function NavContent({
   const visibleGroups = navGroups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => user && canAccessModuleEffective(role, item.module, user.functionalCapabilities)),
+      items: group.items.filter((item) =>
+        user &&
+        canAccessModuleEffective(role, item.module, user.functionalCapabilities) &&
+        isModuleEnabled(item.module, user.featureFlags)
+      ),
     }))
     .filter((group) => group.items.length > 0)
 

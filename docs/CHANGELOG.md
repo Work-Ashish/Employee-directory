@@ -4,6 +4,31 @@ All notable changes to EMS Pro are documented here.
 
 ---
 
+## [5.1.0] - 2026-03-17
+
+### Added — HiringNow Django Integration (9 Sprints)
+
+- **RBAC Alignment (S1)** — `DJANGO_ROLE_MAP`, `DJANGO_MODULE_MAP`, `toCodename()`, `hasPermissionWithCodenames()` in `lib/permissions.ts`. `fetchUserPermissions()` in AuthContext fetches Django codenames on login/mount
+- **Feature Flags (S2/S6)** — `fetchFeatureFlags()` in AuthContext, `MODULE_FEATURE_FLAG` map + `isModuleEnabled()` in permissions.ts, Sidebar module gating, route protection via `ROUTE_MODULE_MAP`
+- **Multi-Tenancy (S3)** — `decodeJwtPayload()` + `persistTenantFromJwt()` in `django-auth.ts` extract tenant context from JWT claims
+- **Middleware Security (S4)** — Per-user 1000/hr rate limiting in `middleware.ts` alongside per-IP 60/min. `auditLog()` in `logger.ts` dispatching to Django `/api/v1/audit-logs/`
+- **Data Contract (S5)** — `remapPaginationParams()` in `api-client.ts` auto-converts `limit=` → `per_page=` for Django. Extended `ApiResponse.meta` with `perPage`, `totalPages`
+- **Django RBAC Expansion (S7)** — `seed_rbac.py` expanded: 18 modules, 63 permission codenames, 7 roles (admin, hr_manager, payroll_admin, team_lead, recruiter, hiring_manager, interviewer, viewer)
+- **Django Feature Flags (S8)** — New `seed_features` management command with 14 module flags (employees, attendance, leave, payroll, performance, training, recruitment, documents, assets, help_desk, announcements, reimbursement, workflows, teams)
+- **Django Audit Logs (S9)** — New `apps/audit/` app: AuditLog model, serializer, REST API at `/api/v1/audit-logs/`, registered in DB router
+- **Django CORS (S9)** — `CORS_ALLOW_HEADERS` with `x-tenant-slug` in `config/settings/base.py`
+
+### Changed
+
+- `context/AuthContext.tsx` — Now fetches permissions + feature flags + capabilities in parallel on login/mount. Feature flags response parsing handles Django array format
+- `lib/security.ts` — Added tenant admin bypass + Django codename fallback chain
+- `components/Sidebar.tsx` — Now checks feature flags for module visibility
+- `app/settings/page.tsx` — Change-password path fixed to `/auth/change-password/`
+- `config/db_router.py` — Added `audit` to `tenant_scoped_apps`
+- `config/urls.py` — Added audit URL include
+
+---
+
 ## [5.0.0] - 2026-03-16
 
 ### Added

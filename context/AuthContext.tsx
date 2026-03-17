@@ -11,21 +11,8 @@ import {
   type LoginPayload,
 } from "@/lib/django-auth"
 import type { Role } from "@/lib/permissions"
+import { DJANGO_ROLE_MAP, isModuleEnabled } from "@/lib/permissions"
 import { api } from "@/lib/api-client"
-
-// Map Django role slugs to EMS Pro role enum
-const ROLE_MAP: Record<string, Role> = {
-  admin: "CEO",
-  ceo: "CEO",
-  hr_manager: "HR",
-  recruiter: "HR",
-  payroll_admin: "PAYROLL",
-  team_lead: "TEAM_LEAD",
-  employee: "EMPLOYEE",
-  viewer: "EMPLOYEE",
-  interviewer: "EMPLOYEE",
-  hiring_manager: "HR",
-}
 
 interface User {
   id: string
@@ -35,8 +22,14 @@ interface User {
   avatar?: string
   employeeId?: string
   tenantSlug?: string
+  tenantId?: string
+  isTenantAdmin?: boolean
   mustChangePassword?: boolean
   functionalCapabilities?: Record<string, string[]>
+  /** Django permission codenames resolved from user's assigned roles */
+  permissionCodenames?: string[]
+  /** Tenant's enabled feature flags from Django */
+  featureFlags?: Record<string, boolean>
 }
 
 interface AuthContextType {
@@ -47,6 +40,43 @@ interface AuthContextType {
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined)
+
+/** Fetch user's permission codenames from Django RBAC */
+async function fetchUserPermissions(): Promise<string[]> {
+  try {
+    const token = localStorage.getItem("access_token")
+    if (!token) return []
+    const { data } = await api.get<{ codename: string; name: string; module: string }[]>('/permissions/')
+    if (Array.isArray(data)) {
+      return data.map((p) => p.codename)
+    }
+  } catch { /* non-critical — permissions endpoint may not exist yet */ }
+  return []
+}
+
+/** Fetch tenant's feature flags from Django.
+ *  Django returns an array of enabled features: [{codename, name, config}, ...].
+ *  We convert it to Record<string, boolean> where each enabled codename → true. */
+async function fetchFeatureFlags(): Promise<Record<string, boolean>> {
+  try {
+    const token = localStorage.getItem("access_token")
+    if (!token) return {}
+    const { data } = await api.get<
+      { codename: string; name: string; config?: Record<string, unknown> }[]
+    >('/features/')
+    // Django returns only enabled features as an array
+    if (Array.isArray(data)) {
+      const map: Record<string, boolean> = {}
+      for (const f of data) {
+        if (f.codename) map[f.codename] = true
+      }
+      return map
+    }
+    // Fallback: if response is already a map (future-proofing)
+    if (data && typeof data === "object") return data as unknown as Record<string, boolean>
+  } catch { /* non-critical — features endpoint may not exist yet */ }
+  return {}
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -66,8 +96,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // Convert Django AuthUser to our internal User object
-  const mapUser = React.useCallback((authUser: AuthUser, roleSlug?: string, capabilities?: Record<string, string[]>): User => {
-    const role = ROLE_MAP[roleSlug || "employee"] || "EMPLOYEE"
+  const mapUser = React.useCallback((
+    authUser: AuthUser,
+    roleSlug?: string,
+    capabilities?: Record<string, string[]>,
+    codenames?: string[],
+    flags?: Record<string, boolean>
+  ): User => {
+    const role = DJANGO_ROLE_MAP[roleSlug || "employee"] || "EMPLOYEE"
     return {
       id: authUser.id,
       name: `${authUser.firstName} ${authUser.lastName}`.trim() || authUser.email,
@@ -76,8 +112,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       avatar: authUser.avatar || undefined,
       employeeId: authUser.employeeId || undefined,
       tenantSlug: authUser.tenantSlug,
+      tenantId: authUser.tenantId,
+      isTenantAdmin: authUser.isTenantAdmin,
       mustChangePassword: authUser.mustChangePassword,
       functionalCapabilities: capabilities,
+      permissionCodenames: codenames,
+      featureFlags: flags,
     }
   }, [])
 
@@ -90,10 +130,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
       try {
-        const [authUser, capabilities] = await Promise.all([getMe(), fetchCapabilities()])
+        const [authUser, capabilities, codenames, flags] = await Promise.all([
+          getMe(),
+          fetchCapabilities(),
+          fetchUserPermissions(),
+          fetchFeatureFlags(),
+        ])
         if (!cancelled) {
           const roleSlug = authUser.isTenantAdmin ? "admin" : "employee"
-          setUser(mapUser(authUser, roleSlug, capabilities))
+          setUser(mapUser(authUser, roleSlug, capabilities, codenames, flags))
         }
       } catch {
         // Token expired or invalid
@@ -104,24 +149,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     loadUser()
     return () => { cancelled = true }
-  }, [mapUser])
+  }, [mapUser, fetchCapabilities])
 
-  // Route protection
+  // Route protection + feature flag gating
   React.useEffect(() => {
     if (isLoading) return
-    const isLoginPage = pathname === "/login"
-    if (!user && !isLoginPage) {
+    const isPublicPage = pathname === "/login" || pathname === "/signup"
+    if (!user && !isPublicPage) {
       router.push("/login")
-    } else if (user && isLoginPage) {
+    } else if (user && pathname === "/login") {
       router.push("/")
+    } else if (user?.featureFlags && Object.keys(user.featureFlags).length > 0) {
+      // Block navigation to disabled feature pages
+      const ROUTE_MODULE_MAP: Record<string, string> = {
+        "/employees": "EMPLOYEES", "/org-chart": "EMPLOYEES",
+        "/attendance": "ATTENDANCE", "/leave": "LEAVES",
+        "/payroll": "PAYROLL", "/reimbursement": "REIMBURSEMENT",
+        "/performance": "PERFORMANCE", "/training": "TRAINING",
+        "/feedback": "FEEDBACK", "/recruitment": "RECRUITMENT",
+        "/resignation": "RESIGNATION", "/announcements": "ANNOUNCEMENTS",
+        "/help-desk": "TICKETS", "/documents": "DOCUMENTS",
+        "/admin/documents": "DOCUMENTS", "/employee/documents": "DOCUMENTS",
+        "/admin/assets": "ASSETS", "/employee/assets": "ASSETS",
+        "/teams": "TEAMS", "/reports": "REPORTS", "/admin/reports": "REPORTS",
+        "/admin/workflows": "WORKFLOWS", "/calendar": "CALENDAR",
+      }
+      const module = ROUTE_MODULE_MAP[pathname]
+      if (module && !isModuleEnabled(module, user.featureFlags)) {
+        router.push("/")
+      }
     }
   }, [user, isLoading, pathname, router])
 
   const login = async (payload: LoginPayload) => {
     const result = await authLogin(payload)
-    const [authUser, capabilities] = await Promise.all([getMe(), fetchCapabilities()])
-    const roleSlug = (result.user as Record<string, unknown>)?.role_slug as string | undefined
-    setUser(mapUser(authUser, roleSlug || (authUser.isTenantAdmin ? "admin" : "employee"), capabilities))
+    const [authUser, capabilities, codenames, flags] = await Promise.all([
+      getMe(),
+      fetchCapabilities(),
+      fetchUserPermissions(),
+      fetchFeatureFlags(),
+    ])
+    const roleSlug = (result.user as Record<string, unknown>)?.roleSlug as string | undefined
+    setUser(mapUser(
+      authUser,
+      roleSlug || (authUser.isTenantAdmin ? "admin" : "employee"),
+      capabilities,
+      codenames,
+      flags
+    ))
   }
 
   const logout = async () => {

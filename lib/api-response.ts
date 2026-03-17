@@ -15,6 +15,10 @@ export interface ApiResponse<T = unknown> {
         total?: number
         page?: number
         limit?: number
+        perPage?: number  // Django pagination alias
+        totalPages?: number
+        requestId?: string
+        timestamp?: string
         [key: string]: unknown
     }
 }

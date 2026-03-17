@@ -2,15 +2,28 @@
 
 ## Authentication
 
-### Session-auth routes
+### Django JWT Auth (Primary)
 
-Protected application routes use `withAuth()` and enforce:
+All frontend API calls go through `lib/api-client.ts` → Django `/api/v1/` endpoints:
 
-1. valid NextAuth session
-2. module/action permission check
-3. session revocation check
-4. organization scoping
-5. employee resolution where required
+1. `Authorization: Bearer <access_token>` header (JWT from localStorage)
+2. `X-Tenant-Slug` header for multi-tenant routing
+3. `api-client.ts` auto-transforms request bodies to snake_case and responses to camelCase
+4. 401 responses → auto-redirect to `/login`, clear tokens
+5. Pagination: `limit=` auto-remapped to `per_page=` for Django compatibility
+
+JWT claims contain: `user_id`, `tenant_id`, `tenant_slug`, `employee_id`, `is_tenant_admin`, `must_change_password`
+
+### Session-auth routes (Legacy Next.js API)
+
+Protected Next.js API routes use `withAuth()` and enforce:
+
+1. valid session (NextAuth or Django JWT fallback)
+2. module/action permission check (static matrix → Django codenames → functional roles)
+3. tenant admin bypass via `isTenantAdmin()`
+4. session revocation check
+5. organization scoping
+6. employee resolution where required
 
 ### Agent routes
 
@@ -28,6 +41,8 @@ Authorization: Bearer {CRON_SECRET}
 
 ## Roles
 
+### Next.js Static Roles (Fallback)
+
 | Role | Summary |
 | --- | --- |
 | CEO | Full access across all 19 modules |
@@ -36,13 +51,30 @@ Authorization: Bearer {CRON_SECRET}
 | TEAM_LEAD | Team, review, leave, ticket, limited agent visibility |
 | EMPLOYEE | Own data, self-service, personal activity visibility |
 
+### Django Dynamic Roles (Primary — via `seed_rbac`)
+
+| Role | Codenames | Summary |
+| --- | --- | --- |
+| admin | 63 | Full access to all modules |
+| hr_manager | 39 | HR, employees, attendance, leave, performance, training, recruitment, documents, tickets, reports |
+| payroll_admin | 11 | Payroll processing, reimbursement, reporting |
+| team_lead | 13 | Team management, leave approval, performance reviews |
+| recruiter | 6 | Recruitment pipeline management |
+| hiring_manager | 4 | View candidates and feedback |
+| interviewer | 5 | Assigned candidates + feedback |
+| viewer | 5 | Read-only employee/attendance/leave/reports |
+
+Role mapping: `DJANGO_ROLE_MAP` in `lib/permissions.ts` maps Django slugs → Next.js roles.
+
 ---
 
 ## Response Envelope
 
+Both Django and Next.js use the same envelope:
+
 ```json
-{ "success": true, "data": {} }
-{ "success": false, "error": { "message": "Validation Error", "code": "VALIDATION_ERROR" } }
+{ "data": {}, "error": null, "meta": { "requestId": "...", "timestamp": "..." } }
+{ "data": null, "error": { "code": "VALIDATION_ERROR", "message": "...", "details": {} }, "meta": {} }
 ```
 
 ---
@@ -158,6 +190,28 @@ Defined in `lib/schemas/agent.ts`:
 - `adminAgentCommandSchema`
 - `adminDeviceListSchema`
 - `adminDeviceUpdateSchema`
+
+---
+
+## Django Integration Endpoints
+
+| Endpoint | Method | Purpose | Called By |
+| --- | --- | --- | --- |
+| `/api/v1/auth/login/` | POST | JWT login with tenant slug | `django-auth.ts` |
+| `/api/v1/auth/register/` | POST | Tenant + admin registration | `django-auth.ts` |
+| `/api/v1/auth/refresh/` | POST | Token refresh | `django-auth.ts` |
+| `/api/v1/auth/logout/` | POST | Token blacklist | `django-auth.ts` |
+| `/api/v1/auth/me/` | GET/PUT | Current user profile | `django-auth.ts` |
+| `/api/v1/auth/change-password/` | POST | Password change | `app/settings/page.tsx` |
+| `/api/v1/permissions/` | GET | User's permission codenames | `AuthContext.tsx` |
+| `/api/v1/features/` | GET | Enabled feature flags (array) | `AuthContext.tsx` |
+| `/api/v1/roles/capabilities/` | GET | Functional capabilities | `AuthContext.tsx` |
+| `/api/v1/audit-logs/` | POST/GET | Audit event ingestion/listing | `lib/logger.ts` |
+| `/api/v1/employees/` | GET/POST | Employee CRUD | `features/employees/api/client.ts` |
+| `/api/v1/leaves/` | GET/POST | Leave management | `features/leave/api/client.ts` |
+| `/api/v1/dashboard/` | GET | Dashboard stats | Dashboard components |
+
+All feature API clients in `features/*/api/client.ts` call Django via `api.get/post/put/delete` from `lib/api-client.ts`.
 
 ---
 

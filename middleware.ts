@@ -3,27 +3,62 @@ import type { NextRequest } from "next/server"
 import { redis } from "@/lib/redis"
 
 // K11: Distributed fixed-window rate limiter (Redis-backed)
-const RATE_LIMIT_WINDOW = 60 // 60 seconds
-const RATE_LIMIT_MAX = 60    // max requests per window per IP
 
-async function isRateLimited(ip: string): Promise<boolean> {
+// Per-IP: 60 req / 60s (DoS protection)
+const IP_RATE_LIMIT_WINDOW = 60
+const IP_RATE_LIMIT_MAX = 60
+
+// Per-user: 1000 req / 3600s (matches Django's throttle: 1000/hour)
+const USER_RATE_LIMIT_WINDOW = 3600
+const USER_RATE_LIMIT_MAX = 1000
+
+async function isIpRateLimited(ip: string): Promise<boolean> {
     if (ip === "127.0.0.1" || ip === "::1" || ip.includes("localhost")) {
-        return false // Bypass rate limiting for localhost/load testing
+        return false
     }
 
-    const currentWindow = Math.floor(Date.now() / (RATE_LIMIT_WINDOW * 1000))
-    const key = `ratelimit:${ip}:${currentWindow}`
+    const currentWindow = Math.floor(Date.now() / (IP_RATE_LIMIT_WINDOW * 1000))
+    const key = `ratelimit:ip:${ip}:${currentWindow}`
 
     try {
         const count = await redis.incr(key)
         if (count === 1) {
-            await redis.expire(key, RATE_LIMIT_WINDOW + 10) // Add buffer to expiry
+            await redis.expire(key, IP_RATE_LIMIT_WINDOW + 10)
         }
-        return count > RATE_LIMIT_MAX
+        return count > IP_RATE_LIMIT_MAX
     } catch (e) {
-        // If Redis errors out, bypass rate limiting to prevent bringing down the app
         console.warn("[Rate Limiting Error]", e)
         return false
+    }
+}
+
+async function isUserRateLimited(userId: string): Promise<boolean> {
+    const currentWindow = Math.floor(Date.now() / (USER_RATE_LIMIT_WINDOW * 1000))
+    const key = `ratelimit:user:${userId}:${currentWindow}`
+
+    try {
+        const count = await redis.incr(key)
+        if (count === 1) {
+            await redis.expire(key, USER_RATE_LIMIT_WINDOW + 10)
+        }
+        return count > USER_RATE_LIMIT_MAX
+    } catch (e) {
+        console.warn("[User Rate Limiting Error]", e)
+        return false
+    }
+}
+
+/** Extract user ID from JWT without verification (for rate limiting only) */
+function extractUserIdFromJwt(authHeader: string | null): string | null {
+    if (!authHeader?.startsWith("Bearer ")) return null
+    try {
+        const token = authHeader.slice(7)
+        const parts = token.split(".")
+        if (parts.length !== 3) return null
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")))
+        return payload.user_id || payload.sub || null
+    } catch {
+        return null
     }
 }
 
@@ -68,11 +103,24 @@ export default async function middleware(req: NextRequest) {
     // K11: Rate limiting for API routes
     if (pathname.startsWith("/api/")) {
         const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown"
-        if (await isRateLimited(ip)) {
+
+        // Per-IP rate limit (DoS protection)
+        if (await isIpRateLimited(ip)) {
             return addSecurityHeaders(
                 NextResponse.json(
                     { error: "Too many requests. Please slow down." },
                     { status: 429, headers: { "Retry-After": "60" } }
+                )
+            )
+        }
+
+        // Per-user rate limit (matches Django 1000/hr throttle)
+        const userId = extractUserIdFromJwt(req.headers.get("authorization"))
+        if (userId && await isUserRateLimited(userId)) {
+            return addSecurityHeaders(
+                NextResponse.json(
+                    { error: "Rate limit exceeded. Please try again later.", detail: "User throttle: 1000 requests per hour." },
+                    { status: 429, headers: { "Retry-After": "300" } }
                 )
             )
         }

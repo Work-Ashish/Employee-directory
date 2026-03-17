@@ -20,8 +20,8 @@ export function NotificationCenter() {
         try {
             const data = await NotificationAPI.list()
             setNotifications(data.results || (data as any).data || [])
-        } catch (error) {
-            console.error("Failed to fetch notifications")
+        } catch {
+            // Silently ignore — backend may not be running
         } finally {
             setLoading(false)
         }

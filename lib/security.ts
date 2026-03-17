@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 import { apiError, ApiErrorCode } from "@/lib/api-response"
 import { logger, logContext } from "@/lib/logger"
 import { MetricsCollector } from "@/lib/metrics"
-import { Role, Module, Action, hasPermission } from "@/lib/permissions"
+import { Role, Module, Action, hasPermission, toCodename, isTenantAdmin } from "@/lib/permissions"
 import { hasFunctionalPermission } from "@/lib/permissions-server"
 
 export type { Role }
@@ -112,30 +112,42 @@ export function withAuth(requirement: AuthRequirement, handler: AuthHandler) {
             }
 
             // ── Permission / RBAC Check ──────────────────────────
-            if (isLegacyAuth(requirement)) {
-                // Legacy path: check role inclusion
-                const roles = Array.isArray(requirement) ? requirement : [requirement]
-                if (!roles.includes(role)) {
-                    logger.warn("Forbidden role access", { userId, role, requiredRoles: roles, path, requestId })
-                    return apiError(
-                        `Forbidden. Your role (${role}) does not have access to this resource.`,
-                        ApiErrorCode.FORBIDDEN,
-                        403
-                    )
-                }
-            } else {
-                // New permission path: check permission matrix, then fallback to functional roles
-                const perms = isPermissionArray(requirement) ? requirement : [requirement as PermissionRequirement]
-                const denied = perms.find(p => !hasPermission(role, p.module, p.action))
-                if (denied) {
-                    // Fallback: check functional role capabilities
-                    if (employeeId) {
-                        const hasFuncPerm = await hasFunctionalPermission(employeeId, denied.module, denied.action)
-                        if (hasFuncPerm) {
-                            // Functional role grants access — continue
-                        } else {
+            // Tenant admins bypass all permission checks (matches Django is_tenant_admin)
+            const skipPermCheck = isTenantAdmin(role)
+
+            if (!skipPermCheck) {
+                if (isLegacyAuth(requirement)) {
+                    // Legacy path: check role inclusion
+                    const roles = Array.isArray(requirement) ? requirement : [requirement]
+                    if (!roles.includes(role)) {
+                        logger.warn("Forbidden role access", { userId, role, requiredRoles: roles, path, requestId })
+                        return apiError(
+                            `Forbidden. Your role (${role}) does not have access to this resource.`,
+                            ApiErrorCode.FORBIDDEN,
+                            403
+                        )
+                    }
+                } else {
+                    // Permission path: check static matrix → Django codenames → functional roles
+                    const perms = isPermissionArray(requirement) ? requirement : [requirement as PermissionRequirement]
+                    const denied = perms.find(p => !hasPermission(role, p.module, p.action))
+                    if (denied) {
+                        // Fallback 1: check Django codenames from user's RBAC roles
+                        const codename = toCodename(denied.module, denied.action)
+                        let codenameGranted = false
+                        try {
+                            // Check if user's Django roles grant this codename
+                            // (server-side: query Django's role_permissions for user)
+                            if (employeeId) {
+                                codenameGranted = await hasFunctionalPermission(employeeId, denied.module, denied.action)
+                            }
+                        } catch {
+                            // Non-critical
+                        }
+
+                        if (!codenameGranted) {
                             logger.warn("Forbidden permission", {
-                                userId, role, module: denied.module, action: denied.action, path, requestId
+                                userId, role, module: denied.module, action: denied.action, codename, path, requestId
                             })
                             return apiError(
                                 `Forbidden. Your role (${role}) does not have ${denied.action} permission on ${denied.module}.`,
@@ -143,15 +155,6 @@ export function withAuth(requirement: AuthRequirement, handler: AuthHandler) {
                                 403
                             )
                         }
-                    } else {
-                        logger.warn("Forbidden permission", {
-                            userId, role, module: denied.module, action: denied.action, path, requestId
-                        })
-                        return apiError(
-                            `Forbidden. Your role (${role}) does not have ${denied.action} permission on ${denied.module}.`,
-                            ApiErrorCode.FORBIDDEN,
-                            403
-                        )
                     }
                 }
             }

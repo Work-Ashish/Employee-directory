@@ -235,8 +235,19 @@ export default function LoginPage() {
                             </button>
                         </div>
 
-                        {/* Spacer */}
-                        <div className="mt-4" />
+                        {/* Sign Up Link */}
+                        <div className="mt-4 text-center">
+                            <p className="text-[12px] text-[#64748b]">
+                                Don&apos;t have an account?{" "}
+                                <a
+                                    href="/signup"
+                                    onClick={(e) => { e.preventDefault(); router.push("/signup") }}
+                                    className="text-[#44ceb3] hover:text-[#5be0c4] font-medium transition-colors"
+                                >
+                                    Sign Up
+                                </a>
+                            </p>
+                        </div>
 
                         <div className="flex justify-center -mb-2 pb-1">
                             <div className="w-1 h-1 rounded-full bg-[#41ccb1]/40"></div>
