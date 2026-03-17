@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MetricsCollector } from './metrics'
 import { redis } from './redis'
-import { prisma } from './prisma'
-import { Roles } from '@/lib/permissions'
 
 vi.mock('./redis', () => ({
     redis: {
@@ -13,20 +11,20 @@ vi.mock('./redis', () => ({
     }
 }))
 
-vi.mock('./prisma', () => ({
-    prisma: {
-        employee: {
-            findFirst: vi.fn()
-        },
-        adminAlerts: {
-            create: vi.fn()
-        }
-    }
-}))
+// Mock global fetch for Django API calls
+const mockFetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve({ data: { id: 'alert-1' } }),
+})
+vi.stubGlobal('fetch', mockFetch)
 
 describe('MetricsCollector', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        mockFetch.mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({ data: { id: 'alert-1' } }),
+        })
     })
 
     describe('recordRequest', () => {
@@ -43,18 +41,15 @@ describe('MetricsCollector', () => {
             expect(redis.incr).toHaveBeenCalledWith(expect.stringContaining('path:/api/test:hits'))
         })
 
-        it('should create an admin alert when 5xx errors exceed threshold', async () => {
+        it('should create an admin alert via Django API when 5xx errors exceed threshold', async () => {
             // Mock redis to return count = 5 for triggering logic
-            ; (redis.incr as any).mockImplementation((key: string) => {
+            ;(redis.incr as any).mockImplementation((key: string) => {
                 if (key.includes('errors')) return Promise.resolve(5)
                 return Promise.resolve(1)
             })
 
-                // Mock to ensure no existing alert inhibit
-                ; (redis.get as any).mockResolvedValue(null)
-
-            const mockAdmin = { id: 'admin-1', organizationId: 'org-1' }
-                ; (prisma.employee.findFirst as any).mockResolvedValue(mockAdmin)
+            // Mock to ensure no existing alert inhibit
+            ;(redis.get as any).mockResolvedValue(null)
 
             await MetricsCollector.recordRequest({
                 path: '/api/critical',
@@ -64,17 +59,21 @@ describe('MetricsCollector', () => {
                 organizationId: 'org-1'
             })
 
-            expect(prisma.employee.findFirst).toHaveBeenCalledWith({
-                where: { organizationId: 'org-1', user: { role: Roles.CEO } }
-            })
-            expect(prisma.adminAlerts.create).toHaveBeenCalled()
+            // Verify Django API was called to create alert
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/api/v1/admin/alerts/'),
+                expect.objectContaining({
+                    method: 'POST',
+                    body: expect.stringContaining('org-1'),
+                })
+            )
             expect(redis.set).toHaveBeenCalledWith(expect.stringContaining('alert_inhibited'), true, { ex: 14400 })
         })
 
         it('should skip creating admin alert when inhibited', async () => {
-            ; (redis.incr as any).mockResolvedValue(5)
-                // Mock to return true for existing alert inhibit
-                ; (redis.get as any).mockResolvedValue(true)
+            ;(redis.incr as any).mockResolvedValue(5)
+            // Mock to return true for existing alert inhibit
+            ;(redis.get as any).mockResolvedValue(true)
 
             await MetricsCollector.recordRequest({
                 path: '/api/inhibited',
@@ -84,11 +83,14 @@ describe('MetricsCollector', () => {
                 organizationId: 'org-2'
             })
 
-            expect(prisma.adminAlerts.create).not.toHaveBeenCalled()
+            // Django alert API should NOT have been called
+            expect(mockFetch).not.toHaveBeenCalledWith(
+                expect.stringContaining('/api/v1/admin/alerts/'),
+                expect.anything()
+            )
         })
 
         it('should log a warning for slow requests', async () => {
-            // Spy on console.warn or logger directly in a real setup, here we just invoke it to cover the branch
             await MetricsCollector.recordRequest({
                 path: '/api/slow',
                 method: 'GET',
@@ -96,13 +98,11 @@ describe('MetricsCollector', () => {
                 latencyMs: 6000,
                 organizationId: 'org-1'
             })
-            // Since logger is mocked in real app we'd expect it, but here we just need to execute it for coverage.
-            // Branch: latencyMs > 5000 && organizationId
             expect(redis.incr).toHaveBeenCalled()
         })
 
         it('should fail silently on error', async () => {
-            ; (redis.incr as any).mockRejectedValue(new Error('Redis is down'))
+            ;(redis.incr as any).mockRejectedValue(new Error('Redis is down'))
             // Should not throw
             await expect(MetricsCollector.recordRequest({
                 path: '/api/fail',
@@ -115,7 +115,7 @@ describe('MetricsCollector', () => {
 
     describe('getDailyStats', () => {
         it('should aggregate metrics', async () => {
-            ; (redis.get as any).mockImplementation((key: string) => {
+            ;(redis.get as any).mockImplementation((key: string) => {
                 if (key.includes('total_hits')) return Promise.resolve('100')
                 if (key.includes('status:2xx')) return Promise.resolve('90')
                 if (key.includes('status:4xx')) return Promise.resolve('5')

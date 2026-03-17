@@ -1,45 +1,29 @@
-import { NextRequest } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { withAuth, orgFilter } from "@/lib/security"
-import { Module, Action } from "@/lib/permissions"
-import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
-import { webhookUpdateSchema } from "@/lib/schemas/integrations"
+/**
+ * /api/settings/webhooks/[id] — Django proxy (Sprint 14).
+ */
+import { proxyToDjango } from "@/lib/django-proxy"
+import { deprecatedRoute } from "@/lib/route-deprecation"
 
-export const PATCH = withAuth({ module: Module.SETTINGS, action: Action.UPDATE }, async (req, ctx) => {
-    try {
-        const resolvedParams = await ctx.params
-        const { id } = resolvedParams
+export async function GET(req: Request) {
+    const url = new URL(req.url)
+    const segments = url.pathname.split("/")
+    const id = segments[segments.indexOf("webhooks") + 1]
+    deprecatedRoute(`/api/settings/webhooks/${id} GET`, `Django /api/v1/webhooks/${id}/`)
+    return proxyToDjango(req, `/webhooks/${id}/`)
+}
 
-        const body = await req.json()
-        const validatedData = webhookUpdateSchema.parse(body)
+export async function PUT(req: Request) {
+    const url = new URL(req.url)
+    const segments = url.pathname.split("/")
+    const id = segments[segments.indexOf("webhooks") + 1]
+    deprecatedRoute(`/api/settings/webhooks/${id} PUT`, `Django /api/v1/webhooks/${id}/`)
+    return proxyToDjango(req, `/webhooks/${id}/`)
+}
 
-        const webhook = await prisma.webhook.update({
-            where: { id, ...orgFilter(ctx) },
-            data: validatedData
-        })
-
-        return apiSuccess(webhook, { message: "Webhook updated successfully" })
-    } catch (error: any) {
-        console.error("[WEBHOOK_PATCH]", error)
-        if (error.name === "ZodError") {
-            return apiError(error.errors[0].message, ApiErrorCode.BAD_REQUEST, 400)
-        }
-        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
-    }
-})
-
-export const DELETE = withAuth({ module: Module.SETTINGS, action: Action.DELETE }, async (req, ctx) => {
-    try {
-        const resolvedParams = await ctx.params
-        const { id } = resolvedParams
-
-        await prisma.webhook.delete({
-            where: { id, ...orgFilter(ctx) }
-        })
-
-        return apiSuccess(null, { message: "Webhook deleted successfully" })
-    } catch (error) {
-        console.error("[WEBHOOK_DELETE]", error)
-        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
-    }
-})
+export async function DELETE(req: Request) {
+    const url = new URL(req.url)
+    const segments = url.pathname.split("/")
+    const id = segments[segments.indexOf("webhooks") + 1]
+    deprecatedRoute(`/api/settings/webhooks/${id} DELETE`, `Django /api/v1/webhooks/${id}/`)
+    return proxyToDjango(req, `/webhooks/${id}/`)
+}

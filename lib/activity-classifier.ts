@@ -1,4 +1,15 @@
-import type { ActivityCategory } from "@prisma/client"
+/**
+ * Local type definition replacing @prisma/client ActivityCategory.
+ * Matches the Django ActivityCategory choices.
+ */
+export type ActivityCategory =
+    | "PRODUCTIVITY"
+    | "COMMUNICATION"
+    | "DESIGN"
+    | "RESEARCH"
+    | "ENTERTAINMENT"
+    | "SOCIAL_MEDIA"
+    | "OTHER"
 
 // ── App Name → Category Maps ────────────────────────────
 
@@ -97,7 +108,7 @@ const CATEGORY_WEIGHTS: Record<ActivityCategory, number> = {
 }
 
 /**
- * Compute a 0.0–1.0 productivity score for a single snapshot.
+ * Compute a 0.0-1.0 productivity score for a single snapshot.
  */
 export function computeProductivityScore(
     activeSeconds: number,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
-import { auth } from "@/lib/auth"
+import { getServerSession } from "@/lib/auth-server"
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 const ALLOWED_MIME_TYPES = [
@@ -18,7 +18,7 @@ const ALLOWED_MIME_TYPES = [
 
 export async function POST(req: Request) {
     try {
-        const session = await auth()
+        const session = await getServerSession()
         if (!session) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }

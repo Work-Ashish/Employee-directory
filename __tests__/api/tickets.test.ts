@@ -1,132 +1,74 @@
 import { beforeEach, describe, expect, test, vi } from "vitest"
-import { auth } from "@/lib/auth"
-import { Roles } from "@/lib/permissions"
-import { prismaMock } from "../setup"
 
-vi.mock("@/lib/workflow-engine", () => ({
-    WorkflowEngine: {
-        initiateWorkflow: vi.fn().mockResolvedValue({ id: "inst-1" })
-    }
+/**
+ * Tickets API routes are now Django proxies (Sprint 13).
+ * Business logic tests live in Django (apps.tickets.tests).
+ * These tests verify the proxy wiring is correct.
+ */
+
+const mockProxyToDjango = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ data: [] }), { status: 200 })
+)
+vi.mock("@/lib/django-proxy", () => ({
+    proxyToDjango: (...args: unknown[]) => mockProxyToDjango(...args),
+}))
+vi.mock("@/lib/route-deprecation", () => ({
+    deprecatedRoute: vi.fn(),
 }))
 
-import { WorkflowEngine } from "@/lib/workflow-engine"
-import { GET as getTickets, POST as createTicket, PUT as updateTicket } from "@/app/api/tickets/route"
+import { GET, POST, PUT } from "@/app/api/tickets/route"
 
-describe("Tickets API Routes", () => {
+describe("Tickets API Routes (Django Proxy)", () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        mockProxyToDjango.mockResolvedValue(
+            new Response(JSON.stringify({ data: [] }), { status: 200 })
+        )
     })
 
-    test("GET /api/tickets returns 400 for employee without profile", async () => {
-        ; (auth as any).mockResolvedValueOnce({
-            user: { id: "u-emp-1", role: Roles.EMPLOYEE, organizationId: "org-1" }
-        })
-        prismaMock.employee.findFirst.mockResolvedValueOnce(null)
-
+    test("GET proxies to Django /tickets/", async () => {
         const req = new Request("http://localhost:3000/api/tickets")
-        const res = await getTickets(req)
-        const json = await res.json()
+        await GET(req)
 
-        expect(res.status).toBe(400)
-        expect(json.error.code).toBe("BAD_REQUEST")
+        expect(mockProxyToDjango).toHaveBeenCalledWith(req, "/tickets/")
     })
 
-    test("POST /api/tickets rejects malformed payload", async () => {
-        // EMPLOYEE has TICKETS.CREATE (CEO does not)
-        ;(auth as any).mockResolvedValueOnce({
-            user: { id: "u-emp-1", role: Roles.EMPLOYEE, organizationId: "org-1" }
-        })
-
+    test("POST proxies to Django /tickets/", async () => {
         const req = new Request("http://localhost:3000/api/tickets", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ subject: "bad", category: "IT" })
+            body: JSON.stringify({ subject: "Printer broken", category: "IT" }),
         })
+        await POST(req)
 
-        const res = await createTicket(req)
-        expect(res.status).toBe(400)
+        expect(mockProxyToDjango).toHaveBeenCalledWith(req, "/tickets/")
     })
 
-    test("POST /api/tickets creates ticket and triggers workflow", async () => {
-        // EMPLOYEE has TICKETS.CREATE (CEO does not)
-        ;(auth as any).mockResolvedValueOnce({
-            user: { id: "u-emp-1", role: Roles.EMPLOYEE, organizationId: "org-1" }
+    test("PUT proxies to Django /tickets/", async () => {
+        const req = new Request("http://localhost:3000/api/tickets", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: "t-1", status: "CLOSED" }),
         })
-        // First call consumed by withAuth (employeeId resolution), second by route handler (ownership)
-        prismaMock.employee.findFirst.mockResolvedValueOnce({ id: "emp-1" })
-        prismaMock.employee.findFirst.mockResolvedValueOnce({ id: "emp-1" })
+        await PUT(req)
 
-        prismaMock.ticket.create.mockResolvedValueOnce({
-            id: "t-1",
-            ticketCode: "TKT-2026-ABCDEF12",
-            employeeId: "emp-1",
-            organizationId: "org-1"
-        })
-        prismaMock.workflowTemplate.findFirst.mockResolvedValueOnce({
-            id: "wf-1"
-        })
+        expect(mockProxyToDjango).toHaveBeenCalledWith(req, "/tickets/")
+    })
+
+    test("relays Django 201 response for created tickets", async () => {
+        const body = { data: { id: "t-1", ticketCode: "TKT-2026-ABC" } }
+        mockProxyToDjango.mockResolvedValue(
+            new Response(JSON.stringify(body), { status: 201 })
+        )
 
         const req = new Request("http://localhost:3000/api/tickets", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                subject: "Printer not working",
-                description: "Printer fails with paper jam error",
-                category: "IT",
-                priority: "HIGH",
-                employeeId: "emp-1"
-            })
+            body: JSON.stringify({ subject: "Test" }),
         })
-
-        const res = await createTicket(req)
+        const res = await POST(req)
         const json = await res.json()
 
         expect(res.status).toBe(201)
-        expect(json.data.id).toBe("t-1")
-        expect(WorkflowEngine.initiateWorkflow).toHaveBeenCalledTimes(1)
-    })
-
-    test("PUT /api/tickets returns 403 when employee profile missing", async () => {
-        ; (auth as any).mockResolvedValueOnce({
-            user: { id: "u-emp-1", role: Roles.EMPLOYEE, organizationId: "org-1" }
-        })
-        prismaMock.employee.findFirst.mockResolvedValueOnce(null)
-
-        const req = new Request("http://localhost:3000/api/tickets", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                id: "t-1",
-                status: "CLOSED"
-            })
-        })
-
-        const res = await updateTicket(req)
-        expect(res.status).toBe(403)
-    })
-
-    test("PUT /api/tickets returns 404 when no row updated", async () => {
-        ; (auth as any).mockResolvedValueOnce({
-            user: { id: "u-emp-1", role: Roles.EMPLOYEE, organizationId: "org-1" }
-        })
-        // First call consumed by withAuth (employeeId resolution), second by route handler (ownership check)
-        prismaMock.employee.findFirst.mockResolvedValueOnce({ id: "emp-1" })
-        prismaMock.employee.findFirst.mockResolvedValueOnce({ id: "emp-1" })
-        prismaMock.ticket.updateMany.mockResolvedValueOnce({ count: 0 })
-
-        const req = new Request("http://localhost:3000/api/tickets", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                id: "t-1",
-                status: "CLOSED"
-            })
-        })
-
-        const res = await updateTicket(req)
-        const json = await res.json()
-
-        expect(res.status).toBe(404)
-        expect(json.error.code).toBe("NOT_FOUND")
+        expect(json.data.ticketCode).toBe("TKT-2026-ABC")
     })
 })

@@ -175,7 +175,14 @@
       "Bash(ls \"c:/Users/Ashish Singh/Desktop/Employee directory/app/\\(main\\)/recruitment\")",
       "Bash(python -c \"import django; import os; os.environ.setdefault\\(''DJANGO_SETTINGS_MODULE'', ''config.settings.base''\\); django.setup\\(\\); print\\(''Django setup OK''\\)\")",
       "Bash(grep -l \"Permission\\\\|FeatureFlag\" backend/hiringnow/apps/tenants/*.py)",
-      "Bash(echo \"EXIT_CODE=$?\")"
+      "Bash(echo \"EXIT_CODE=$?\")",
+      "Bash(python -c \"import os; os.environ.setdefault\\(''DJANGO_SETTINGS_MODULE'',''config.settings.test''\\); import django; django.setup\\(\\); from django.apps import apps; local=[a for a in apps.get_app_configs\\(\\) if a.name.startswith\\(''apps.''\\)]; print\\(f''Loaded {len\\(local\\)} local apps''\\); [print\\(f''  {a.name}''\\) for a in local]\")",
+      "Bash(python -c \"import os; os.environ.setdefault\\(''DJANGO_SETTINGS_MODULE'',''config.settings.test''\\); import django; django.setup\\(\\); from django.apps import apps; local=[a for a in apps.get_app_configs\\(\\) if a.name.startswith\\(''apps.''\\)]; print\\(f''Loaded {len\\(local\\)} local apps''\\); assert any\\(a.name==''apps.audit'' for a in local\\), ''audit app missing!''; print\\(''apps.audit loaded OK''\\)\")",
+      "Bash(python -m pytest apps/rbac/tests/test_seed_rbac.py -v --tb=short)",
+      "Bash(python -m pytest apps/ tests/ -v --tb=short)",
+      "Bash(npx vitest run --reporter=verbose)",
+      "Bash(python -m pytest hiringnow/ -v --tb=short)",
+      "Bash(python -m pytest hiringnow/ --tb=short -q)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\reimbursements",

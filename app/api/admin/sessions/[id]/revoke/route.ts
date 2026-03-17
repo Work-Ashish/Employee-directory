@@ -1,31 +1,13 @@
-import { prisma } from "@/lib/prisma"
-import { withAuth } from "@/lib/security"
-import { Module, Action } from "@/lib/permissions"
-import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
+/**
+ * /api/admin/sessions/[id]/revoke — Django proxy (Sprint 14).
+ */
+import { proxyToDjango } from "@/lib/django-proxy"
+import { deprecatedRoute } from "@/lib/route-deprecation"
 
-// POST /api/admin/sessions/[id]/revoke - Revoke a specific user session
-export const POST = withAuth({ module: Module.SETTINGS, action: Action.UPDATE }, async (req, ctx) => {
-    try {
-        const { id } = ctx.params
-        const session = await prisma.userSession.findFirst({
-            where: {
-                id,
-                organizationId: ctx.organizationId
-            }
-        })
-
-        if (!session) {
-            return apiError("Session not found", ApiErrorCode.NOT_FOUND, 404)
-        }
-
-        await prisma.userSession.update({
-            where: { id: session.id },
-            data: { isRevoked: true }
-        })
-
-        return apiSuccess({ message: "Session revoked successfully" })
-    } catch (error) {
-        console.error("[ADMIN_SESSIONS_REVOKE]", error)
-        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
-    }
-})
+export async function POST(req: Request) {
+    const url = new URL(req.url)
+    const segments = url.pathname.split("/")
+    const id = segments[segments.indexOf("sessions") + 1]
+    deprecatedRoute(`/api/admin/sessions/${id}/revoke POST`, `Django /api/v1/sessions/${id}/revoke/`)
+    return proxyToDjango(req, `/sessions/${id}/revoke/`)
+}

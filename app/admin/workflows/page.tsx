@@ -4,7 +4,6 @@ import { PlusIcon, InputIcon, GearIcon } from '@radix-ui/react-icons'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { api } from '@/lib/api-client'
-import { WorkflowTemplate } from '@prisma/client'
 import { extractArray } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -13,7 +12,22 @@ import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfigPanel } from '@/components/ui/ConfigPanel'
 
-// Extended interface matches our Prisma return structure
+/**
+ * Local interface replacing @prisma/client WorkflowTemplate.
+ * Matches the Django WorkflowTemplate model shape.
+ */
+interface WorkflowTemplate {
+    id: string
+    name: string
+    description: string | null
+    entityType: string
+    status: string
+    organizationId: string
+    createdAt: string
+    updatedAt: string
+}
+
+// Extended interface matches our API return structure
 interface Template extends WorkflowTemplate {
     steps: any[]
 }

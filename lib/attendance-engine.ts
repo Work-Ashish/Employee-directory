@@ -1,5 +1,32 @@
-import { Shift, AttendancePolicy, Holiday } from "@prisma/client"
 import { parse, differenceInMinutes, isSameDay } from "date-fns"
+
+/**
+ * Local type definitions replacing @prisma/client types.
+ * These mirror the Django Shift, AttendancePolicy, and Holiday models.
+ */
+export interface Shift {
+    id: string
+    name: string
+    startTime: string
+    endTime: string
+    workDays: number[]
+    [key: string]: unknown
+}
+
+export interface AttendancePolicy {
+    id: string
+    lateGracePeriod: number
+    earlyExitGrace: number
+    otThreshold: number
+    [key: string]: unknown
+}
+
+export interface Holiday {
+    id: string
+    date: Date
+    name: string
+    [key: string]: unknown
+}
 
 export interface AttendanceEvaluation {
     isLate: boolean

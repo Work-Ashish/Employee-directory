@@ -1,5 +1,4 @@
-import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { getServerSession } from "@/lib/auth-server"
 import { NextResponse } from "next/server"
 import { apiError, ApiErrorCode } from "@/lib/api-response"
 import { logger, logContext } from "@/lib/logger"
@@ -16,6 +15,7 @@ export interface AuthContext {
     role: Role
     employeeId?: string
     name?: string | null
+    /** @deprecated Session tokens are now managed by Django's token blacklist */
     sessionToken?: string
     params: Record<string, string>
 }
@@ -69,47 +69,26 @@ export function withAuth(requirement: AuthRequirement, handler: AuthHandler) {
         const path = url.pathname
 
         try {
-            const session = await auth()
+            const session = await getServerSession()
             if (!session?.user) {
                 logger.warn("Unauthorized access attempt", { path, method: req.method, requestId })
                 return apiError("Unauthorized", ApiErrorCode.UNAUTHORIZED, 401)
             }
 
-            const { id: userId, organizationId, role, name, sessionToken } = session.user as {
-                id: string; organizationId: string | null | undefined; role: Role; name?: string | null; sessionToken?: string
+            const { id: userId, organizationId, role, name } = session.user as {
+                id: string; organizationId: string | null | undefined; role: Role; name?: string | null
             }
             if (!organizationId) {
                 logger.error("Organization account missing in session", { userId, path, requestId })
                 return apiError("Organization account required. Please log in again.", ApiErrorCode.FORBIDDEN, 403)
             }
 
-            // Session Revocation Check
-            if (sessionToken) {
-                const dbSession = await prisma.userSession.findUnique({
-                    where: { sessionToken }
-                })
-                if (!dbSession || dbSession.isRevoked) {
-                    logger.warn("Revoked session attempt", { userId, path, requestId })
-                    return apiError("Session has been revoked", ApiErrorCode.UNAUTHORIZED, 401)
-                }
-                // Update last active in background
-                prisma.userSession.update({
-                    where: { id: dbSession.id },
-                    data: { lastActive: new Date() }
-                }).catch(() => { })
-            }
+            // Note: Session revocation is now handled by Django's token blacklist.
+            // Django validates token validity on every /auth/me/ call in getServerSession().
 
-            // ── Resolve employeeId eagerly ───────────────────────
-            let employeeId: string | undefined
-            try {
-                const emp = await prisma.employee.findFirst({
-                    where: { userId, organizationId },
-                    select: { id: true },
-                })
-                employeeId = emp?.id
-            } catch {
-                // Non-critical — some users (e.g. superadmin) may not have employee records
-            }
+            // employeeId is already available from the Django JWT claims
+            // (resolved by getServerSession → Django /auth/me/)
+            const employeeId = session.user.employeeId
 
             // ── Permission / RBAC Check ──────────────────────────
             // Tenant admins bypass all permission checks (matches Django is_tenant_admin)
@@ -170,7 +149,6 @@ export function withAuth(requirement: AuthRequirement, handler: AuthHandler) {
                     role: role as Role,
                     employeeId,
                     name,
-                    sessionToken,
                     params,
                 })
 
@@ -207,7 +185,7 @@ export function withAuth(requirement: AuthRequirement, handler: AuthHandler) {
 }
 
 /**
- * orgFilter: Helper to inject organizationId into Prisma query objects
+ * orgFilter: Helper to inject organizationId into query filter objects.
  */
 export function orgFilter(context: AuthContext, existingWhere: Record<string, unknown> = {}) {
     return {

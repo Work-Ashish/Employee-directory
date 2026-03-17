@@ -1,26 +1,10 @@
-import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { getServerSession } from "@/lib/auth-server"
 
 /**
  * Get the authenticated employee's ID from the session.
- * Uses a single OR query for efficiency (userId or email match).
+ * The Django session already includes employeeId from the /auth/me/ endpoint.
  */
-export async function getSessionEmployee() {
-    const session = await auth()
-    if (!session?.user?.id) return null
-
-    const orgId = (session.user as any).organizationId
-    const employee = await prisma.employee.findFirst({
-        where: {
-            ...(orgId ? { organizationId: orgId } : {}),
-            OR: [
-                { userId: session.user.id },
-                ...(session.user.email ? [{ email: session.user.email }] : []),
-            ],
-        },
-        select: { id: true, organizationId: true },
-    })
-
-    return employee
+export async function getSessionEmployee(): Promise<{ employeeId: string | undefined }> {
+    const session = await getServerSession()
+    return { employeeId: session?.user?.employeeId }
 }
-

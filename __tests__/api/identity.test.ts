@@ -1,126 +1,94 @@
-import { expect, test, describe, beforeEach, vi } from 'vitest'
-import { GET as listSessions } from '@/app/api/admin/sessions/route'
-import { POST as createScimUser } from '@/app/api/scim/v2/Users/route'
-import { auth } from '@/lib/auth'
-import { Roles } from '@/lib/permissions'
-import { prismaMock } from '../setup'
+import { beforeEach, describe, expect, test, vi } from "vitest"
 
-describe('Enterprise Identity Security Tests', () => {
+/**
+ * Enterprise Identity API routes are now Django proxies (Sprint 14).
+ * Business logic tests live in Django (apps.scim.tests, apps.sessions.tests).
+ * These tests verify the proxy wiring is correct.
+ */
+
+const mockProxyToDjango = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ data: [] }), { status: 200 })
+)
+vi.mock("@/lib/django-proxy", () => ({
+    proxyToDjango: (...args: unknown[]) => mockProxyToDjango(...args),
+}))
+vi.mock("@/lib/route-deprecation", () => ({
+    deprecatedRoute: vi.fn(),
+}))
+
+import { GET as listSessions } from "@/app/api/admin/sessions/route"
+import { POST as createScimUser } from "@/app/api/scim/v2/Users/route"
+
+describe("Enterprise Identity Routes (Django Proxy)", () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        mockProxyToDjango.mockResolvedValue(
+            new Response(JSON.stringify({ data: [] }), { status: 200 })
+        )
     })
 
-    describe('SCIM Provisioning', () => {
-        test('rejects SCIM request with invalid token', async () => {
-            prismaMock.organization.findFirst.mockResolvedValue(null)
-
-            const req = new Request('http://localhost:3000/api/scim/v2/Users', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer invalid-token' }
-            })
-
-            const res = await createScimUser(req)
-            expect(res.status).toBe(401)
-        })
-
-        test('allows creating user with valid SCIM token', async () => {
-            prismaMock.organization.findFirst.mockResolvedValue({ id: 'org-1', scimSecret: 'valid-token' } as any)
-            prismaMock.user.findUnique.mockResolvedValue(null)
-            prismaMock.department.findFirst.mockResolvedValue({ id: 'dept-1' } as any)
-            prismaMock.user.create.mockResolvedValue({
-                id: 'new-user-1',
-                email: 'scim@test.com',
-                createdAt: new Date(),
-                updatedAt: new Date()
-            } as any)
-
-            const req = new Request('http://localhost:3000/api/scim/v2/Users', {
-                method: 'POST',
+    describe("SCIM Provisioning", () => {
+        test("POST /api/scim/v2/Users proxies to Django /scim/v2/Users/", async () => {
+            const req = new Request("http://localhost:3000/api/scim/v2/Users", {
+                method: "POST",
                 headers: {
-                    'Authorization': 'Bearer valid-token',
-                    'Content-Type': 'application/json'
+                    "Authorization": "Bearer valid-token",
+                    "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    userName: 'scim@test.com',
-                    name: { givenName: 'Scim', familyName: 'User' }
-                })
+                    userName: "scim@test.com",
+                    name: { givenName: "Scim", familyName: "User" },
+                }),
             })
+            await createScimUser(req)
 
+            expect(mockProxyToDjango).toHaveBeenCalledWith(req, "/scim/v2/Users/")
+        })
+
+        test("relays Django 201 for created SCIM user", async () => {
+            const body = { data: { id: "new-user-1", userName: "scim@test.com" } }
+            mockProxyToDjango.mockResolvedValue(
+                new Response(JSON.stringify(body), { status: 201 })
+            )
+
+            const req = new Request("http://localhost:3000/api/scim/v2/Users", {
+                method: "POST",
+                body: JSON.stringify({ userName: "scim@test.com" }),
+            })
             const res = await createScimUser(req)
+
             expect(res.status).toBe(201)
-            expect(prismaMock.user.create).toHaveBeenCalled()
         })
 
-        test('rejects SCIM request without userName/email', async () => {
-            prismaMock.organization.findFirst.mockResolvedValue({ id: 'org-1', scimSecret: 'valid-token' } as any)
+        test("relays Django 409 for duplicate SCIM user", async () => {
+            mockProxyToDjango.mockResolvedValue(
+                new Response(JSON.stringify({ error: "Conflict" }), { status: 409 })
+            )
 
-            const req = new Request('http://localhost:3000/api/scim/v2/Users', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer valid-token',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: { givenName: 'Missing', familyName: 'Email' }
-                })
+            const req = new Request("http://localhost:3000/api/scim/v2/Users", {
+                method: "POST",
+                body: JSON.stringify({ userName: "exists@test.com" }),
             })
-
             const res = await createScimUser(req)
-            expect(res.status).toBe(400)
-        })
 
-        test('returns conflict when SCIM user already exists', async () => {
-            prismaMock.organization.findFirst.mockResolvedValue({ id: 'org-1', scimSecret: 'valid-token' } as any)
-            prismaMock.user.findUnique.mockResolvedValue({ id: 'existing-user-1', email: 'exists@test.com' } as any)
-
-            const req = new Request('http://localhost:3000/api/scim/v2/Users', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer valid-token',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    userName: 'exists@test.com',
-                    name: { givenName: 'Existing', familyName: 'User' }
-                })
-            })
-
-            const res = await createScimUser(req)
             expect(res.status).toBe(409)
-            expect(prismaMock.user.create).not.toHaveBeenCalled()
         })
     })
 
-    describe('Session Management', () => {
-        test('lists sessions for authorized admin', async () => {
-            ; (auth as any).mockResolvedValueOnce({
-                user: { id: 'admin-1', role: Roles.CEO, organizationId: 'org-1' }
-            })
+    describe("Session Management", () => {
+        test("GET /api/admin/sessions proxies to Django /sessions/", async () => {
+            const req = new Request("http://localhost:3000/api/admin/sessions")
+            await listSessions(req)
 
-            prismaMock.userSession.findMany.mockResolvedValue([
-                {
-                    id: 'sess-1',
-                    userId: 'user-1',
-                    isRevoked: false,
-                    expires: new Date(Date.now() + 10000),
-                    user: { name: 'User 1', email: 'u1@test.com', avatar: null }
-                }
-            ])
-
-            const req = new Request('http://localhost:3000/api/admin/sessions')
-            const res = await listSessions(req)
-            const json = await res.json()
-
-            expect(res.status).toBe(200)
-            expect(json.data.length).toBe(1)
+            expect(mockProxyToDjango).toHaveBeenCalledWith(req, "/sessions/")
         })
 
-        test('forbids non-admin users from listing sessions', async () => {
-            ; (auth as any).mockResolvedValueOnce({
-                user: { id: 'emp-1', role: Roles.EMPLOYEE, organizationId: 'org-1' }
-            })
+        test("relays Django 403 for unauthorized session access", async () => {
+            mockProxyToDjango.mockResolvedValue(
+                new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 })
+            )
 
-            const req = new Request('http://localhost:3000/api/admin/sessions')
+            const req = new Request("http://localhost:3000/api/admin/sessions")
             const res = await listSessions(req)
 
             expect(res.status).toBe(403)

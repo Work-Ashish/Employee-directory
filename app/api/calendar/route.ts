@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { getServerSession } from "@/lib/auth-server"
 import { google } from "googleapis"
 
 export async function GET() {
     try {
-        const session = await auth()
+        const session = await getServerSession()
         if (!session?.user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        // If we have an accessToken, try to fetch from Google Calendar
-        const accessToken = (session as any).accessToken as string | undefined
+        // Google Calendar integration requires a separate OAuth flow (not part of Django JWT auth).
+        // TODO: Re-implement Google OAuth token storage when Google Calendar integration is restored.
+        const accessToken: string | undefined = undefined
         if (accessToken) {
             const oauth2Client = new google.auth.OAuth2(
                 process.env.GOOGLE_CLIENT_ID,

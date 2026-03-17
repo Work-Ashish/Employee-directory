@@ -1,88 +1,79 @@
 import { beforeEach, describe, expect, test, vi } from "vitest"
-import { GET as getTemplates, POST as createTemplate } from "@/app/api/workflows/templates/route"
-import { auth } from "@/lib/auth"
-import { Roles } from "@/lib/permissions"
-import { prismaMock } from "../setup"
 
-describe("Workflows API Routes", () => {
+/**
+ * Workflow API routes are now Django proxies (Sprint 14).
+ * Business logic tests live in Django (apps.workflows.tests).
+ * These tests verify the proxy wiring is correct.
+ */
+
+const mockProxyToDjango = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ data: [] }), { status: 200 })
+)
+vi.mock("@/lib/django-proxy", () => ({
+    proxyToDjango: (...args: unknown[]) => mockProxyToDjango(...args),
+}))
+vi.mock("@/lib/route-deprecation", () => ({
+    deprecatedRoute: vi.fn(),
+}))
+
+import { GET as getTemplates, POST as createTemplate } from "@/app/api/workflows/templates/route"
+import { POST as workflowAction } from "@/app/api/workflows/action/route"
+
+describe("Workflows API Routes (Django Proxy)", () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        mockProxyToDjango.mockResolvedValue(
+            new Response(JSON.stringify({ data: [] }), { status: 200 })
+        )
     })
 
-    test("GET /api/workflows/templates returns 403 without organization context", async () => {
-        ; (auth as any).mockResolvedValueOnce({ user: { id: "u1", role: Roles.CEO } })
-
+    test("GET /api/workflows/templates proxies to Django /workflows/templates/", async () => {
         const req = new Request("http://localhost:3000/api/workflows/templates")
-        const res = await getTemplates(req as any)
+        await getTemplates(req)
 
-        expect(res.status).toBe(403)
+        expect(mockProxyToDjango).toHaveBeenCalledWith(req, "/workflows/templates/")
     })
 
-    test("POST /api/workflows/templates returns 403 for non-admin", async () => {
-        ; (auth as any).mockResolvedValueOnce({
-            user: { id: "u-emp-1", role: Roles.EMPLOYEE, organizationId: "org-1" }
-        })
-
-        const req = new Request("http://localhost:3000/api/workflows/templates", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({})
-        })
-
-        const res = await createTemplate(req as any)
-        expect(res.status).toBe(403)
-    })
-
-    test("POST /api/workflows/templates validates payload", async () => {
-        ; (auth as any).mockResolvedValueOnce({
-            user: { id: "admin-1", role: Roles.CEO, organizationId: "org-1" }
-        })
-
+    test("POST /api/workflows/templates proxies to Django /workflows/templates/", async () => {
         const req = new Request("http://localhost:3000/api/workflows/templates", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 name: "Ticket Flow",
                 entityType: "TICKET",
-                steps: []
-            })
+                steps: [{ stepOrder: 1, approverType: "ROLE", role: "CEO", slaHours: 24 }],
+            }),
         })
+        await createTemplate(req)
 
-        const res = await createTemplate(req as any)
-        expect(res.status).toBe(400)
+        expect(mockProxyToDjango).toHaveBeenCalledWith(req, "/workflows/templates/")
     })
 
-    test("POST /api/workflows/templates creates template for valid input", async () => {
-        ; (auth as any).mockResolvedValueOnce({
-            user: { id: "admin-1", role: Roles.CEO, organizationId: "org-1" }
+    test("POST /api/workflows/action proxies to Django /workflows/action/", async () => {
+        const req = new Request("http://localhost:3000/api/workflows/action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ instanceId: "wf-1", action: "APPROVE" }),
         })
-        prismaMock.workflowTemplate.create.mockResolvedValueOnce({
-            id: "wf-1",
-            name: "Ticket Flow",
-            steps: [{ id: "step-1", stepOrder: 1 }]
-        })
+        await workflowAction(req)
+
+        expect(mockProxyToDjango).toHaveBeenCalledWith(req, "/workflows/action/")
+    })
+
+    test("relays Django 201 for created template", async () => {
+        const body = { data: { id: "wf-1", name: "Ticket Flow" } }
+        mockProxyToDjango.mockResolvedValue(
+            new Response(JSON.stringify(body), { status: 201 })
+        )
 
         const req = new Request("http://localhost:3000/api/workflows/templates", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                name: "Ticket Flow",
-                description: "Approval chain for help-desk tickets",
-                entityType: "TICKET",
-                steps: [
-                    {
-                        stepOrder: 1,
-                        approverType: "ROLE",
-                        role: Roles.CEO,
-                        slaHours: 24
-                    }
-                ]
-            })
+            body: JSON.stringify({ name: "Ticket Flow" }),
         })
-
-        const res = await createTemplate(req as any)
+        const res = await createTemplate(req)
+        const json = await res.json()
 
         expect(res.status).toBe(201)
-        expect(prismaMock.workflowTemplate.create).toHaveBeenCalledTimes(1)
+        expect(json.data.id).toBe("wf-1")
     })
 })

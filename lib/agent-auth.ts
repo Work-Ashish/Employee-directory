@@ -1,7 +1,8 @@
-import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
 import { apiError, ApiErrorCode } from "@/lib/api-response"
 import { NextResponse } from "next/server"
+
+const DJANGO_BASE = process.env.DJANGO_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
 
 export interface AgentContext {
     deviceId: string
@@ -13,7 +14,7 @@ type AgentHandler = (req: Request, ctx: AgentContext) => Promise<NextResponse | 
 
 /**
  * withAgentAuth: wraps agent-facing API routes.
- * Authenticates via X-Agent-Key header against AgentDevice.apiKey.
+ * Authenticates via X-Agent-Key header against the Django agent device endpoint.
  */
 export function withAgentAuth(handler: AgentHandler) {
     return async (req: Request) => {
@@ -23,30 +24,37 @@ export function withAgentAuth(handler: AgentHandler) {
         }
 
         try {
-            const device = await prisma.agentDevice.findUnique({
-                where: { apiKey },
-                select: { id: true, status: true, employeeId: true, organizationId: true },
+            // Validate agent API key via Django
+            const response = await fetch(`${DJANGO_BASE}/api/v1/agents/devices/validate/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ api_key: apiKey }),
+                signal: AbortSignal.timeout(5000),
             })
 
-            if (!device) {
+            if (!response.ok) {
                 logger.warn("Invalid agent API key", { keyPrefix: apiKey.slice(0, 8) })
                 return apiError("Invalid agent API key", ApiErrorCode.UNAUTHORIZED, 401)
             }
+
+            const json = await response.json()
+            const device = json.data ?? json
 
             if (device.status !== "ACTIVE") {
                 return apiError(`Device is ${device.status}`, ApiErrorCode.FORBIDDEN, 403)
             }
 
             // Update lastHeartbeat in background (non-blocking)
-            prisma.agentDevice.update({
-                where: { id: device.id },
-                data: { lastHeartbeat: new Date() },
+            fetch(`${DJANGO_BASE}/api/v1/agents/devices/${device.id}/heartbeat/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                signal: AbortSignal.timeout(5000),
             }).catch(() => {})
 
             return handler(req, {
                 deviceId: device.id,
-                employeeId: device.employeeId,
-                organizationId: device.organizationId,
+                employeeId: device.employee_id ?? device.employeeId,
+                organizationId: device.organization_id ?? device.organizationId,
             })
         } catch (error: unknown) {
             logger.error("Agent auth error", { error: error instanceof Error ? error.message : "unknown" })

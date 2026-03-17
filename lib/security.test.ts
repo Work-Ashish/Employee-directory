@@ -1,11 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { orgFilter, withAuth, AuthContext } from './security'
-import { auth } from './auth'
-import { NextResponse } from 'next/server'
-import { Roles } from '@/lib/permissions'
 
-vi.mock('./auth', () => ({
-    auth: vi.fn()
+// Mock server-only (imported transitively by auth-server and permissions-server)
+vi.mock('server-only', () => ({}))
+
+// Mock auth-server (Sprint 12 replacement for NextAuth auth())
+// vi.hoisted() ensures the variable is available when vi.mock is hoisted
+const { mockGetServerSession } = vi.hoisted(() => ({
+    mockGetServerSession: vi.fn(),
+}))
+vi.mock('./auth-server', () => ({
+    getServerSession: mockGetServerSession,
+}))
+
+// Mock permissions-server (imports server-only + prisma + redis)
+vi.mock('./permissions-server', () => ({
+    hasFunctionalPermission: vi.fn().mockResolvedValue(false),
+    capabilitiesToRecord: vi.fn().mockReturnValue({}),
 }))
 
 vi.mock('./metrics', () => ({
@@ -13,6 +23,18 @@ vi.mock('./metrics', () => ({
         recordRequest: vi.fn().mockResolvedValue(true)
     }
 }))
+
+vi.mock('./logger', () => ({
+    logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
+    logContext: {
+        run: vi.fn((_ctx: unknown, fn: () => unknown) => fn()),
+        getStore: vi.fn().mockReturnValue(undefined),
+    },
+}))
+
+import { orgFilter, withAuth, AuthContext } from './security'
+import { NextResponse } from 'next/server'
+import { Roles } from '@/lib/permissions'
 
 describe('Security Utilities', () => {
     beforeEach(() => {
@@ -51,7 +73,7 @@ describe('Security Utilities', () => {
         const mockReq = new Request('http://localhost:3000/api/test')
 
         it('should return 401 if unauthenticated', async () => {
-            ; (auth as any).mockResolvedValue(null)
+            mockGetServerSession.mockResolvedValue(null)
             const handler = async () => NextResponse.json({ ok: true })
             const wrapped = withAuth(Roles.CEO, handler)
 
@@ -62,7 +84,7 @@ describe('Security Utilities', () => {
         })
 
         it('should return 403 if no organizationId', async () => {
-            ; (auth as any).mockResolvedValue({ user: { id: 'u1', role: Roles.CEO } }) // missing org
+            mockGetServerSession.mockResolvedValue({ user: { id: 'u1', role: Roles.CEO } }) // missing org
             const handler = async () => NextResponse.json({ ok: true })
             const wrapped = withAuth(Roles.CEO, handler)
 
@@ -73,7 +95,7 @@ describe('Security Utilities', () => {
         })
 
         it('should return 403 if role is forbidden', async () => {
-            ; (auth as any).mockResolvedValue({ user: { id: 'u1', role: Roles.EMPLOYEE, organizationId: 'org-1' } })
+            mockGetServerSession.mockResolvedValue({ user: { id: 'u1', role: Roles.EMPLOYEE, organizationId: 'org-1' } })
             const handler = async () => NextResponse.json({ ok: true })
             const wrapped = withAuth(Roles.CEO, handler)
 
@@ -85,7 +107,7 @@ describe('Security Utilities', () => {
         })
 
         it('should succeed on happy path', async () => {
-            ; (auth as any).mockResolvedValue({ user: { id: 'u1', role: Roles.CEO, organizationId: 'org-1' } })
+            mockGetServerSession.mockResolvedValue({ user: { id: 'u1', role: Roles.CEO, organizationId: 'org-1' } })
             const handler = async () => NextResponse.json({ ok: true }, { status: 200 })
             const wrapped = withAuth(Roles.CEO, handler)
 
@@ -96,7 +118,7 @@ describe('Security Utilities', () => {
         })
 
         it('should handle internal handler errors gracefully', async () => {
-            ; (auth as any).mockResolvedValue({ user: { id: 'u1', role: Roles.CEO, organizationId: 'org-1' } })
+            mockGetServerSession.mockResolvedValue({ user: { id: 'u1', role: Roles.CEO, organizationId: 'org-1' } })
             const handler = async () => { throw new Error('Simulated failure') }
             const wrapped = withAuth(Roles.CEO, handler)
 

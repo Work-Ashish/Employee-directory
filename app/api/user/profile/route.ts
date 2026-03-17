@@ -1,61 +1,15 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+/**
+ * /api/user/profile — Django proxy (Sprint 14).
+ */
+import { proxyToDjango } from "@/lib/django-proxy"
+import { deprecatedRoute } from "@/lib/route-deprecation"
 
-export async function GET() {
-    try {
-        const session = await auth()
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const user = await prisma.user.findUnique({
-            where: { id: session.user.id },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                avatar: true,
-                bio: true,
-                accentColor: true,
-            }
-        })
-
-        if (!user) {
-            return NextResponse.json({ error: "User not found" }, { status: 404 })
-        }
-
-        return NextResponse.json(user)
-    } catch (error) {
-        console.error("[USER_GET]", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
-    }
+export async function GET(req: Request) {
+    deprecatedRoute("/api/user/profile GET", "Django /api/v1/auth/me/")
+    return proxyToDjango(req, "/auth/me/")
 }
 
 export async function PUT(req: Request) {
-    try {
-        const session = await auth()
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const body = await req.json()
-        const { name, bio, accentColor, avatar } = body
-
-        const user = await prisma.user.update({
-            where: { id: session.user.id },
-            data: {
-                name,
-                bio,
-                accentColor,
-                avatar,
-            },
-        })
-
-        return NextResponse.json(user)
-    } catch (error) {
-        console.error("[USER_PUT]", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
-    }
+    deprecatedRoute("/api/user/profile PUT", "Django /api/v1/auth/me/")
+    return proxyToDjango(req, "/auth/me/")
 }

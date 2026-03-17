@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
-import { auth } from "@/lib/auth"
+import { getServerSession } from "@/lib/auth-server"
 
 const REQUIRED_BUCKETS = [
     { name: "avatars", public: true },
@@ -12,7 +12,7 @@ const REQUIRED_BUCKETS = [
 
 export async function POST(req: Request) {
     try {
-        const session = await auth()
+        const session = await getServerSession()
         if (!session) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
 // GET - Check status of all required buckets
 export async function GET() {
     try {
-        const session = await auth()
+        const session = await getServerSession()
         if (!session) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }

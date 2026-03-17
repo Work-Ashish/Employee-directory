@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
-import { auth } from "@/lib/auth"
+import { getServerSession } from "@/lib/auth-server"
 
 const BUCKETS_TO_TEST = ["avatars", "documents", "assets", "training", "receipts"]
 
 export async function POST() {
     try {
-        const session = await auth()
+        const session = await getServerSession()
         if (!session) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }

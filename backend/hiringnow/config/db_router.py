@@ -9,7 +9,7 @@ class TenantDatabaseRouter:
         "tenants.permission",
         "tenants.featureflag",  # feature catalog lives in registry, managed by us
     }
-    tenant_scoped_apps = ("users", "rbac", "features", "employees", "departments", "dashboard", "attendance", "leave", "payroll", "token_blacklist", "teams", "performance", "training", "assets", "documents", "tickets", "announcements", "reimbursements", "resignations", "feedback", "events", "notifications", "reports", "roles", "user_sessions", "timetracker")
+    tenant_scoped_apps = ("users", "rbac", "features", "employees", "departments", "dashboard", "attendance", "leave", "payroll", "token_blacklist", "teams", "performance", "training", "assets", "documents", "tickets", "announcements", "reimbursements", "resignations", "feedback", "events", "notifications", "reports", "roles", "user_sessions", "timetracker", "audit")
 
     def db_for_read(self, model, **hints):
         return self._db_for_model(model)

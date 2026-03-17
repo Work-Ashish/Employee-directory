@@ -1,13 +1,13 @@
 /**
  * Server-only functional role resolution.
- * These functions access the database and must NOT be imported by client components.
+ * These functions access the Django RBAC API and must NOT be imported by client components.
  */
 import "server-only"
 
-import { prisma } from "@/lib/prisma"
 import { redis } from "@/lib/redis"
 import { Module, getModulesForRole, type Role } from "@/lib/permissions"
 
+const DJANGO_BASE = process.env.DJANGO_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
 const CACHE_TTL = 300 // 5 minutes
 
 /** Convert Map<string, Set<string>> to plain object for caching/API */
@@ -21,8 +21,7 @@ export function capabilitiesToRecord(caps: Map<string, Set<string>>): Record<str
 
 /**
  * Resolve all functional capabilities for an employee.
- * Walks up the parent role chain (max 5 levels) to inherit capabilities.
- * Results are cached in Redis with a 5-minute TTL.
+ * Calls Django RBAC capabilities endpoint with Redis caching (5-minute TTL).
  * Returns Map<module, Set<action>>
  */
 export async function resolveEmployeeCapabilities(employeeId: string): Promise<Map<string, Set<string>>> {
@@ -37,63 +36,34 @@ export async function resolveEmployeeCapabilities(employeeId: string): Promise<M
             }
             return map
         }
-    } catch { /* cache miss — continue to DB */ }
+    } catch { /* cache miss — continue to API */ }
 
-    const assignments = await prisma.employeeFunctionalRole.findMany({
-        where: { employeeId },
-        include: {
-            functionalRole: {
-                include: { capabilities: true },
-            },
-        },
-    })
-
+    // Call Django RBAC capabilities endpoint
     const capabilities = new Map<string, Set<string>>()
-    const visitedRoles = new Set<string>()
-
-    async function walkHierarchy(roleId: string, depth: number) {
-        if (depth > 5 || visitedRoles.has(roleId)) return
-        visitedRoles.add(roleId)
-
-        const role = await prisma.functionalRole.findUnique({
-            where: { id: roleId },
-            include: { capabilities: true },
+    try {
+        const response = await fetch(`${DJANGO_BASE}/api/v1/rbac/capabilities/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ employee_id: employeeId }),
+            signal: AbortSignal.timeout(5000),
         })
-        if (!role || !role.isActive) return
 
-        for (const cap of role.capabilities) {
-            if (!capabilities.has(cap.module)) {
-                capabilities.set(cap.module, new Set())
-            }
-            const actionSet = capabilities.get(cap.module)!
-            for (const action of cap.actions) {
-                actionSet.add(action)
-            }
-        }
+        if (response.ok) {
+            const json = await response.json()
+            const data = json.data ?? json
 
-        if (role.parentRoleId) {
-            await walkHierarchy(role.parentRoleId, depth + 1)
-        }
-    }
-
-    for (const assignment of assignments) {
-        const role = assignment.functionalRole
-        if (!role.isActive) continue
-
-        for (const cap of role.capabilities) {
-            if (!capabilities.has(cap.module)) {
-                capabilities.set(cap.module, new Set())
-            }
-            const actionSet = capabilities.get(cap.module)!
-            for (const action of cap.actions) {
-                actionSet.add(action)
+            // Expected shape: { "MODULE_NAME": ["action1", "action2"], ... }
+            if (data && typeof data === "object") {
+                for (const [mod, actions] of Object.entries(data)) {
+                    if (Array.isArray(actions)) {
+                        capabilities.set(mod, new Set(actions as string[]))
+                    }
+                }
             }
         }
-        visitedRoles.add(role.id)
-
-        if (role.parentRoleId) {
-            await walkHierarchy(role.parentRoleId, 1)
-        }
+    } catch {
+        // API call failed — return empty capabilities
+        return capabilities
     }
 
     // Cache the resolved capabilities in Redis
@@ -113,6 +83,24 @@ export async function invalidateCapabilitiesCache(employeeId: string): Promise<v
 
 /** Check if an employee has a specific functional capability */
 export async function hasFunctionalPermission(employeeId: string, module: string, action: string): Promise<boolean> {
+    // Try Django check-permission endpoint directly (avoids full capabilities fetch)
+    try {
+        const response = await fetch(`${DJANGO_BASE}/api/v1/rbac/check-permission/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ employee_id: employeeId, module, action }),
+            signal: AbortSignal.timeout(5000),
+        })
+
+        if (response.ok) {
+            const json = await response.json()
+            const data = json.data ?? json
+            return data.has_permission === true
+        }
+    } catch {
+        // Fallback: resolve from full capabilities
+    }
+
     const capabilities = await resolveEmployeeCapabilities(employeeId)
     return capabilities.get(module)?.has(action) ?? false
 }

@@ -1,7 +1,7 @@
 import { redis } from './redis'
-import { prisma } from './prisma'
 import { logger } from './logger'
-import { Roles } from '@/lib/permissions'
+
+const DJANGO_BASE = process.env.DJANGO_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
 
 export interface ApiMetrics {
     path: string
@@ -35,8 +35,6 @@ export class MetricsCollector {
 
             // 4. Latency tracking (Sum and Count for average)
             await redis.incr(`${baseKey}:latency_count`)
-            // Note: Since our redis.ts wrapper doesn't have incrBy, we have to do get/set for sum
-            // This is slightly racey but acceptable for metrics in dev fallback.
             const currentSum = await redis.get(`${baseKey}:latency_sum`) || 0
             await redis.set(`${baseKey}:latency_sum`, Number(currentSum) + latencyMs)
 
@@ -52,27 +50,20 @@ export class MetricsCollector {
 
                     if (!isInhibited) {
                         try {
-                            // Find an admin to assign the alert to
-                            const admin = await prisma.employee.findFirst({
-                                where: {
-                                    organizationId,
-                                    user: { role: Roles.CEO }
-                                }
+                            // Post alert to Django admin alerts endpoint
+                            await fetch(`${DJANGO_BASE}/api/v1/admin/alerts/`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    organization_id: organizationId,
+                                    severity: "HIGH",
+                                    reason: `Critical API Failure Spike: ${count} errors of type 5xx detected in organization ${organizationId} on ${date}.`,
+                                }),
+                                signal: AbortSignal.timeout(5000),
                             })
-
-                            if (admin) {
-                                await prisma.adminAlerts.create({
-                                    data: {
-                                        employeeId: admin.id,
-                                        severity: 'HIGH',
-                                        reason: `Critical API Failure Spike: ${count} errors of type 5xx detected in organization ${organizationId} on ${date}.`,
-                                        organizationId
-                                    }
-                                })
-                                // Inhibiting frequent alerts (e.g., once every 4 hours)
-                                await redis.set(alertInhibitedKey, true, { ex: 14400 })
-                                logger.info("System alert generated for error spike", { organizationId, errorCount: count })
-                            }
+                            // Inhibiting frequent alerts (e.g., once every 4 hours)
+                            await redis.set(alertInhibitedKey, true, { ex: 14400 })
+                            logger.info("System alert generated for error spike", { organizationId, errorCount: count })
                         } catch (pErr) {
                             logger.error("Failed to generate AdminAlert", { pErr: pErr instanceof Error ? pErr.message : String(pErr) })
                         }

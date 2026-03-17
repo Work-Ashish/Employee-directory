@@ -1,5 +1,15 @@
 import { z } from 'zod'
-import { ApproverType } from '@prisma/client'
+
+/**
+ * Local enum replacing @prisma/client ApproverType.
+ * Matches the Django ApproverType choices.
+ */
+export enum ApproverType {
+    ROLE = "ROLE",
+    USER = "USER",
+    DEPARTMENT_HEAD = "DEPARTMENT_HEAD",
+    MANAGER = "MANAGER",
+}
 
 export const workflowStepSchema = z.object({
     stepOrder: z.number().int().min(1),

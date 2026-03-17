@@ -1,5 +1,25 @@
-import { prisma } from '@/lib/prisma'
-import { PayrollComplianceConfig, TaxSlab } from '@prisma/client'
+/**
+ * Local type definitions replacing @prisma/client types.
+ * These mirror the Django PayrollComplianceConfig and TaxSlab models.
+ */
+export interface PayrollComplianceConfig {
+    id: string
+    organizationId: string
+    standardDeduction: number
+    healthCess: number
+    pfPercentage: number
+    [key: string]: unknown
+}
+
+export interface TaxSlab {
+    id: string
+    configId: string
+    minIncome: number
+    maxIncome: number | null
+    taxRate: number
+    baseTax: number
+    [key: string]: unknown
+}
 
 export interface SalaryComponents {
     basicSalary: number
@@ -24,7 +44,7 @@ export interface TaxCalculation {
 }
 
 /**
- * Calculates net salary factoring in additions (arrears, reimbursements) 
+ * Calculates net salary factoring in additions (arrears, reimbursements)
  * and deductions (loansAdvances, etc)
  */
 export function calculateNetSalary(components: SalaryComponents): number {

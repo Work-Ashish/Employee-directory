@@ -1,17 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
-import { withAuth } from './security'
 import { Roles } from '@/lib/permissions'
-
-// Mocking Next.js and Prisma
-vi.mock('./prisma', () => ({
-    prisma: {
-        $transaction: vi.fn(),
-    }
-}))
 
 describe('Tenant Isolation Guard (HRMS-402)', () => {
     it('should inject organizationId into context from session', async () => {
-        const mockReq = new Request('http://localhost/api/test')
         const mockAuth = {
             user: {
                 id: 'user123',
@@ -20,8 +11,7 @@ describe('Tenant Isolation Guard (HRMS-402)', () => {
             }
         }
 
-        // This test simulates the withAuth wrapper injecting the correct tenant context
-        // Actual implementation logic is in security.ts
+        // Verifies that auth session carries organizationId for tenant scoping
         expect(mockAuth.user.organizationId).toBe('org_abc')
     })
 

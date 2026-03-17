@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'apps.roles.apps.RolesConfig',
     'apps.sessions.apps.SessionsConfig',
     'apps.timetracker.apps.TimetrackerConfig',
+    'apps.audit.apps.AuditConfig',
 ]
 
 # The MIDDLEWARE setting is a list of all the middleware that is used in the project.
@@ -70,6 +71,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'apps.audit.middleware.AuditLogMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 

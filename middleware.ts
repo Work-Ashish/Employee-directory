@@ -65,11 +65,15 @@ function extractUserIdFromJwt(authHeader: string | null): string | null {
 // Routes that don't require authentication
 const publicRoutes = [
     "/login",
+    "/signup",
     "/api/auth",
     "/api/health",
-    // seed-load-test removed — requires CRON_SECRET auth
     "/api/raw-health",
 ]
+
+function isPublicRoute(pathname: string): boolean {
+    return publicRoutes.some(route => pathname === route || pathname.startsWith(route + "/"))
+}
 
 // NOTE: Admin route enforcement removed — RBAC is handled at route level by withAuth()
 // All role/permission checks happen server-side in each API handler.
@@ -90,12 +94,27 @@ function addSecurityHeaders(response: NextResponse) {
     return response
 }
 
-// Auth is now handled client-side by AuthProvider (Django JWT in localStorage).
-// Django backend enforces auth on every API call via JWT validation.
-// Middleware only handles rate limiting and security headers.
+// Auth is handled client-side by AuthProvider (Django JWT in localStorage) and
+// server-side by getServerSession() in API routes (via withAuth).
+// Middleware handles: route protection (JWT presence check), rate limiting, security headers.
 
 export default async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl
+
+    // Skip auth check for public routes, static assets, and API routes
+    // (API routes are protected by withAuth() in each handler)
+    if (!isPublicRoute(pathname) && !pathname.startsWith("/api/") && !pathname.startsWith("/_next")) {
+        // Server-side route protection: check for JWT in Authorization header or cookie
+        const authHeader = req.headers.get("authorization")
+        const hasHeaderToken = authHeader?.startsWith("Bearer ")
+        const hasCookieToken = req.cookies.has("access_token")
+
+        if (!hasHeaderToken && !hasCookieToken) {
+            const loginUrl = new URL("/login", req.url)
+            loginUrl.searchParams.set("callbackUrl", pathname)
+            return addSecurityHeaders(NextResponse.redirect(loginUrl))
+        }
+    }
 
     // Always add security headers
     const response = NextResponse.next()

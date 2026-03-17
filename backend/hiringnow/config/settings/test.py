@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "apps.roles.apps.RolesConfig",
     "apps.sessions.apps.SessionsConfig",
     "apps.timetracker.apps.TimetrackerConfig",
+    "apps.audit.apps.AuditConfig",
 ]
 
 # ── Middleware ──────────────────────────────────────────────────────
@@ -81,6 +82,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "apps.audit.middleware.AuditLogMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 

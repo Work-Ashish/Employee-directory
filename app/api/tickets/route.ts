@@ -1,140 +1,20 @@
-import { prisma } from "@/lib/prisma"
-import { withAuth } from "@/lib/security"
-import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
-import crypto from "crypto"
-import { ticketSchema, updateTicketSchema } from "@/lib/schemas"
-import { WorkflowEngine } from "@/lib/workflow-engine"
-import { Module, Action, Roles, hasAdminScope } from "@/lib/permissions"
+/**
+ * /api/tickets — Django proxy (Sprint 13).
+ */
+import { proxyToDjango } from "@/lib/django-proxy"
+import { deprecatedRoute } from "@/lib/route-deprecation"
 
-// GET /api/tickets – List help desk tickets (scoped)
-export const GET = withAuth({ module: Module.TICKETS, action: Action.VIEW }, async (req, ctx) => {
-    try {
-        const { searchParams } = new URL(req.url)
-        const status = searchParams.get("status")
-        const employeeId = searchParams.get("employeeId")
+export async function GET(req: Request) {
+    deprecatedRoute("/api/tickets GET", "Django /api/v1/tickets/")
+    return proxyToDjango(req, "/tickets/")
+}
 
-        const where: Record<string, any> = { organizationId: ctx.organizationId }
-        if (status) where.status = status
+export async function POST(req: Request) {
+    deprecatedRoute("/api/tickets POST", "Django /api/v1/tickets/")
+    return proxyToDjango(req, "/tickets/")
+}
 
-        const isAdmin = hasAdminScope(ctx.role, Module.TICKETS)
-
-        if (isAdmin) {
-            // CEO/HR see all tickets in the org
-            if (employeeId) where.employeeId = employeeId
-        } else {
-            // TEAM_LEAD, PAYROLL, EMPLOYEE — only their own tickets
-            const employee = await prisma.employee.findFirst({
-                where: { userId: ctx.userId, organizationId: ctx.organizationId },
-                select: { id: true }
-            })
-            if (employee) where.employeeId = employee.id
-            else return apiError("No employee profile found", ApiErrorCode.BAD_REQUEST, 400)
-        }
-
-        const tickets = await prisma.ticket.findMany({
-            where,
-            include: { employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } } },
-            orderBy: { createdAt: "desc" },
-            take: 200,
-        })
-
-        return apiSuccess(tickets, { isAdmin })
-    } catch (error) {
-        console.error("[TICKETS_GET]", error)
-        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
-    }
-})
-
-// POST /api/tickets – Create a ticket (always for the logged-in user)
-export const POST = withAuth({ module: Module.TICKETS, action: Action.CREATE }, async (req, ctx) => {
-    try {
-        const body = await req.json()
-        const parsed = ticketSchema.safeParse(body)
-        if (!parsed.success) {
-            return apiError("Validation Error", ApiErrorCode.VALIDATION_ERROR, 400, parsed.error.format())
-        }
-
-        // Always create ticket for the logged-in employee
-        const employee = await prisma.employee.findFirst({
-            where: { userId: ctx.userId, organizationId: ctx.organizationId },
-            select: { id: true }
-        })
-        if (!employee) return apiError("No employee profile found", ApiErrorCode.BAD_REQUEST, 400)
-
-        // Generate collision-resistant ticket code
-        const shortId = crypto.randomUUID().slice(0, 8).toUpperCase()
-        const ticketCode = `TKT-${new Date().getFullYear()}-${shortId}`
-
-        const ticket = await prisma.ticket.create({
-            data: {
-                ticketCode,
-                subject: parsed.data.subject,
-                description: parsed.data.description,
-                category: parsed.data.category,
-                priority: parsed.data.priority || "MEDIUM",
-                status: "OPEN",
-                employeeId: employee.id,
-                organizationId: ctx.organizationId,
-            },
-            include: { employee: true },
-        })
-
-        const template = await prisma.workflowTemplate.findFirst({
-            where: { organizationId: ctx.organizationId, entityType: 'TICKET', status: 'PUBLISHED' }
-        })
-        if (template) {
-            await WorkflowEngine.initiateWorkflow(template.id, ticket.id, employee.id, ctx.organizationId)
-        }
-
-        return apiSuccess(ticket, undefined, 201)
-    } catch (error) {
-        console.error("[TICKETS_POST]", error)
-        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
-    }
-})
-
-// PUT /api/tickets – Update ticket status
-export const PUT = withAuth({ module: Module.TICKETS, action: Action.UPDATE }, async (req, ctx) => {
-    try {
-        const body = await req.json()
-        const parsed = updateTicketSchema.safeParse(body)
-        if (!parsed.success) {
-            return apiError("Validation Error", ApiErrorCode.VALIDATION_ERROR, 400, parsed.error.format())
-        }
-
-        const where: any = { id: parsed.data.id, organizationId: ctx.organizationId }
-
-        const isAdmin = hasAdminScope(ctx.role, Module.TICKETS)
-
-        // Non-admin can only update their own tickets
-        if (!isAdmin) {
-            const employee = await prisma.employee.findFirst({
-                where: { userId: ctx.userId, organizationId: ctx.organizationId }
-            })
-            if (!employee) return apiError("Forbidden", ApiErrorCode.FORBIDDEN, 403)
-            where.employeeId = employee.id
-        }
-
-        const result = await prisma.ticket.updateMany({
-            where,
-            data: {
-                status: parsed.data.status,
-                priority: parsed.data.priority,
-            }
-        })
-
-        if (result.count === 0) {
-            return apiError("Ticket not found or unauthorized", ApiErrorCode.NOT_FOUND, 404)
-        }
-
-        const updated = await prisma.ticket.findUnique({
-            where: { id: parsed.data.id },
-            include: { employee: true },
-        })
-
-        return apiSuccess(updated)
-    } catch (error) {
-        console.error("[TICKETS_PUT]", error)
-        return apiError("Internal Server Error", ApiErrorCode.INTERNAL_ERROR, 500)
-    }
-})
+export async function PUT(req: Request) {
+    deprecatedRoute("/api/tickets PUT", "Django /api/v1/tickets/")
+    return proxyToDjango(req, "/tickets/")
+}

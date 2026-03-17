@@ -404,8 +404,9 @@ export interface ScopeContext {
 }
 
 /**
- * Returns a Prisma `where` clause fragment for data isolation.
+ * Returns a scope filter for data isolation.
  * Used for employee-centric queries (employee list, attendance, leaves, etc.)
+ * Django views call this via the permissions API; kept here for frontend query scoping.
  */
 export function scopeEmployeeQuery(ctx: ScopeContext, module: Module): Record<string, unknown> {
   const base: Record<string, unknown> = { organizationId: ctx.organizationId }
@@ -450,8 +451,9 @@ export function scopeEmployeeQuery(ctx: ScopeContext, module: Module): Record<st
 }
 
 /**
- * Returns a Prisma `where` clause for entity queries scoped by employeeId field.
+ * Returns a scope filter for entity queries scoped by employeeId field.
  * Used for payroll, attendance, leaves, etc. where the entity has an employeeId FK.
+ * Django views call this via the permissions API; kept here for frontend query scoping.
  */
 export function scopeEntityQuery(ctx: ScopeContext, module: Module): Record<string, unknown> {
   const base: Record<string, unknown> = { organizationId: ctx.organizationId }
