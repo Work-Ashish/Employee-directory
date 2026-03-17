@@ -1,27 +1,11 @@
 """Root conftest — shared pytest fixtures for the Django backend."""
 
 import pytest
-from django.test import override_settings
 from rest_framework.test import APIClient
 
 from apps.users.models import User
 from apps.employees.models import Employee
 from apps.departments.models import Department
-
-
-# ── Settings override for tests ──────────────────────────────────────
-
-# Use the default DB for all test queries (bypass tenant router)
-TEST_DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres.mrjczbozrecpghtivjws',
-        'PASSWORD': 'ZTGuQ4XkJPxpOEIE',
-        'HOST': 'aws-1-ap-southeast-2.pooler.supabase.com',
-        'PORT': '5432',
-    }
-}
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@
 ### Session-auth routes
 
 Protected application routes use `withAuth()` and enforce:
+
 1. valid NextAuth session
 2. module/action permission check
 3. session revocation check
@@ -28,7 +29,7 @@ Authorization: Bearer {CRON_SECRET}
 ## Roles
 
 | Role | Summary |
-|---|---|
+| --- | --- |
 | CEO | Full access across all 19 modules |
 | HR | HR operations, workflow visibility, agent tracking visibility |
 | PAYROLL | Payroll and compliance operations |
@@ -48,10 +49,12 @@ Authorization: Bearer {CRON_SECRET}
 
 ## Key Endpoints
 
-### Dashboard
+### Dashboard (Migrated to Django)
 
-- `GET /api/dashboard`
-- `GET /api/dashboard/logins`
+- `GET /api/v1/dashboard/` (Django)
+- `GET /api/v1/dashboard/logins/` (Django)
+~~- `GET /api/dashboard`~~ (Legacy)
+~~- `GET /api/dashboard/logins`~~ (Legacy)
 
 ### Employees
 
@@ -94,6 +97,7 @@ Authorization: Bearer {CRON_SECRET}
 ### Agent Tracking
 
 #### Employee / device endpoints
+
 - `POST /api/agent/register`
 - `POST /api/agent/heartbeat`
 - `GET /api/agent/config`
@@ -104,12 +108,14 @@ Authorization: Bearer {CRON_SECRET}
 - `GET /api/agent/report/{date}`
 
 #### Admin endpoints
+
 - `GET /api/admin/agent/dashboard`
 - `GET /api/admin/agent/devices`
 - `PATCH /api/admin/agent/devices`
 - `POST /api/admin/agent/command`
 
 #### Cron / worker endpoints
+
 - `POST /api/cron/agent-aggregate`
 - `POST /api/cron/agent-reports`
 - `POST /api/worker/process-queue`
@@ -133,7 +139,7 @@ Authorization: Bearer {CRON_SECRET}
 - `/api/reports/export`
 - `/api/settings/webhooks`
 - `/api/organization`
-- `/api/chat`
+- `/api/chat` (Returns 501, pending FastAPI migration)
 - `/api/health`
 - `/api/admin/sessions`
 - `/api/admin/metrics`
@@ -158,6 +164,7 @@ Defined in `lib/schemas/agent.ts`:
 ## Webhook Events
 
 Current notable webhook events include:
+
 - `employee.created`
 - `employee.updated`
 - `payroll.finalized`

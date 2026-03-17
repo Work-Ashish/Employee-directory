@@ -127,7 +127,21 @@
       "Bash(do mkdir -p \"features/$mod/api\")",
       "Bash(python manage.py makemigrations teams performance training assets documents tickets announcements reimbursements resignations feedback events notifications reports roles sessions timetracker)",
       "Bash(python manage.py makemigrations user_sessions)",
-      "Bash(python manage.py migrate --database=default)"
+      "Bash(python manage.py migrate --database=default)",
+      "Bash(python -m pytest apps/teams/tests/ apps/performance/tests/ apps/training/tests/ apps/assets/tests/ apps/documents/tests/ apps/tickets/tests/ apps/announcements/tests/ apps/reimbursements/tests/ apps/resignations/tests/ apps/feedback/tests/ apps/events/tests/ apps/notifications/tests/ apps/reports/tests/ apps/roles/tests/ apps/sessions/tests/ apps/timetracker/tests/ -v --tb=short)",
+      "Bash(python -m pytest apps/teams/tests/test_views.py::test_list_teams_paginated apps/assets/tests/test_views.py::test_list_assets_paginated apps/announcements/tests/test_views.py::test_unauthenticated_announcements -v --tb=short)",
+      "Bash(python -m pytest apps/teams/tests/test_views.py::test_list_teams_paginated apps/assets/tests/test_views.py::test_list_assets_paginated apps/announcements/tests/test_views.py::test_unauthenticated_announcements --tb=short)",
+      "Bash(python -m pytest apps/announcements/tests/test_views.py::test_unauthenticated_announcements --create-db --tb=short)",
+      "Bash(python -m pytest apps/announcements/tests/test_views.py::test_unauthenticated_announcements apps/teams/tests/test_views.py::test_list_teams_paginated apps/timetracker/tests/test_views.py::test_check_in --tb=short --no-header)",
+      "Bash(python -m pytest apps/teams/tests/ apps/performance/tests/ apps/training/tests/ apps/assets/tests/ apps/documents/tests/ apps/tickets/tests/ apps/announcements/tests/ apps/reimbursements/tests/ apps/resignations/tests/ apps/feedback/tests/ apps/events/tests/ apps/notifications/tests/ apps/reports/tests/ apps/roles/tests/ apps/sessions/tests/ apps/timetracker/tests/ --tb=short)",
+      "Bash(python -m pytest apps/roles/tests/ --tb=short --no-header)",
+      "Bash(python -m pytest apps/teams/tests/ apps/performance/tests/ apps/training/tests/ apps/assets/tests/ apps/documents/tests/ apps/tickets/tests/ apps/announcements/tests/ apps/reimbursements/tests/ apps/resignations/tests/ apps/feedback/tests/ apps/events/tests/ apps/notifications/tests/ apps/reports/tests/ apps/roles/tests/ apps/sessions/tests/ apps/timetracker/tests/ --tb=short --no-header)",
+      "Bash(find . -maxdepth 1 -name '!r*' -delete)",
+      "Bash(python -m pytest --tb=short --no-header -q)",
+      "Bash(python -m pytest apps/employees/tests/test_views.py --tb=short --no-header -q)",
+      "Bash(python -m pytest apps/employees/tests/test_views.py::test_list_employees_search --tb=long --no-header -q)",
+      "Bash(xargs grep -l \"import.*API.*from.*@/features\")",
+      "Bash(xargs grep -l \"API\\\\.\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\reimbursements",

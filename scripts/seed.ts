@@ -1,4 +1,4 @@
-import { prisma } from "./lib/prisma"
+import { prisma } from "../lib/prisma"
 import * as dotenv from 'dotenv'
 
 dotenv.config()

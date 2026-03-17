@@ -16,14 +16,15 @@ EMS Pro is a full-stack, multi-tenant Human Resource Management System (HRMS) bu
 | Layer | Technology |
 |-------|------------|
 | **Frontend** | Next.js 16 (App Router, Turbopack), React 19, TailwindCSS 3.4, Radix UI |
-| **Backend** | Next.js API Routes, Prisma 7.4 ORM |
-| **Database** | PostgreSQL (Supabase-hosted) — 64 models, 46 enums |
-| **Authentication** | NextAuth.js v5, JWT, bcryptjs, Google OAuth, Auth0, SCIM 2.0 |
+| **Backend (New)** | Django 5.1, Django REST Framework |
+| **Backend (Legacy)** | Next.js API Routes, Prisma 7.4 ORM |
+| **Database** | PostgreSQL — schema-per-tenant isolation (New) / Supabase (Legacy) |
+| **Authentication** | Django SimpleJWT (New) / NextAuth.js v5, Google OAuth, Auth0 (Legacy) |
 | **Caching/Queue** | Upstash Redis (with in-memory fallback) |
-| **AI Engine** | Google Gemini 2.0 Flash (via ai-sdk) |
+| **AI Engine** | Google Gemini 2.5 Flash (via ai-sdk) |
 | **File Storage** | Supabase Storage (5 buckets: avatars, documents, assets, training, receipts) |
-| **Validation** | Zod 4.3, react-hook-form |
-| **Testing** | Vitest (unit), Playwright (E2E) |
+| **Validation** | Zod 4.3, react-hook-form (Frontend), DRF serializers (Backend) |
+| **Testing** | Vitest (unit), Playwright (E2E), pytest (Backend) |
 | **Export** | XLSX, jsPDF, CSV (QuickBooks/Xero compatible) |
 | **Notifications** | Slack integration, in-app notification center, email (Resend) |
 
@@ -245,6 +246,7 @@ The following requirements have been received from the client and are scheduled 
 **Priority**: High | **Estimated Effort**: 13 SP
 
 **Requirements**:
+
 - Roles must be defined before user creation — system enforces role-first workflow
 - Recruitment-specific roles: Sourcing, Screening, Interview Scheduling, Offer Making, Onboarding
 - Each employee tagged to specific functional roles defining task visibility and permissions
@@ -253,6 +255,7 @@ The following requirements have been received from the client and are scheduled 
 - UI dynamically adapts to show only functionality relevant to user's assigned roles
 
 **Implementation Approach**:
+
 - Extend existing RBAC model with a new `FunctionalRole` model and `RoleCapability` mapping table
 - Create role management admin UI with drag-and-drop hierarchy builder
 - Implement capability-based permission checks alongside existing role checks
@@ -260,6 +263,7 @@ The following requirements have been received from the client and are scheduled 
 - Build role inheritance resolution engine in `lib/permissions.ts`
 
 **Impact on Existing System**:
+
 - Extend `User` model with many-to-many `FunctionalRole` relationship
 - Update `security.ts` middleware to resolve functional roles
 - Modify sidebar and page-level access control
@@ -270,12 +274,14 @@ The following requirements have been received from the client and are scheduled 
 **Priority**: High | **Estimated Effort**: 8 SP
 
 **Requirements**:
+
 - **Bulk upload**: Employee creation via Excel sheet with fields — employee code, name, designation, role, department, manager, etc.
 - **Auto-hierarchy**: String matching algorithm to automatically build reporting hierarchy from department and position data in import file
 - **Automated notifications**: New users receive login credentials via email upon account creation
 - **Manager mapping**: Every user must be mapped to a manager/reporting structure
 
 **Implementation Approach**:
+
 - Extend existing CSV import pattern (already used in attendance, payroll, assets, resignations) to employee creation
 - Add XLSX parsing with column mapping UI (similar to `CsvImportModal` component)
 - Implement fuzzy string matching for department/position → hierarchy resolution
@@ -283,6 +289,7 @@ The following requirements have been received from the client and are scheduled 
 - Add `managerId` foreign key enforcement on Employee model
 
 **Impact on Existing System**:
+
 - Enhance `/api/employees` POST endpoint for bulk creation
 - New component: Enhanced import modal with preview and hierarchy mapping
 - Add email template for welcome notification
@@ -293,12 +300,14 @@ The following requirements have been received from the client and are scheduled 
 **Priority**: Medium-High | **Estimated Effort**: 13 SP
 
 **Requirements**:
+
 - Predictive/autocomplete search across all system search functions
 - Covers: job search, candidate search, resume database search, employee search
 - As-you-type suggestions with dropdown for quick selection
 - Full-text search with relevance scoring
 
 **Implementation Approach**:
+
 - Deploy Elasticsearch (or OpenSearch) as a managed service alongside existing Supabase PostgreSQL
 - Create search index sync pipeline: Prisma middleware → Elasticsearch indexing on write
 - Build `lib/search.ts` client with index-per-entity pattern (employees, candidates, documents, jobs)
@@ -307,6 +316,7 @@ The following requirements have been received from the client and are scheduled 
 - Add search analytics for relevance tuning
 
 **Entities to Index**:
+
 | Entity | Searchable Fields |
 |--------|-------------------|
 | Employee | firstName, lastName, employeeCode, email, designation, department, skills |
@@ -315,6 +325,7 @@ The following requirements have been received from the client and are scheduled 
 | Job/Position | title, department, location, requirements, description |
 
 **Impact on Existing System**:
+
 - New infrastructure dependency: Elasticsearch cluster
 - New lib file: `lib/elasticsearch.ts`
 - New API routes: `/api/search/suggest`, `/api/search/query`
@@ -328,6 +339,7 @@ The following requirements have been received from the client and are scheduled 
 **Current State**: Desktop agent backend is built (8 DB models, 10 API routes, activity classifier, report generator, admin dashboard). The desktop agent itself exists but requires additional configuration capabilities.
 
 **Requirements**:
+
 - Fully configurable desktop application (currently partially configurable)
 - Downloadable agent installer with OS-level permissions on company computers
 - Enhanced software usage tracking with categorization
@@ -336,6 +348,7 @@ The following requirements have been received from the client and are scheduled 
 - Cross-platform support (Windows, macOS, Linux)
 
 **Implementation Approach**:
+
 - Enhance agent config API (`/api/agent/config`) with comprehensive settings schema
 - Add admin-facing agent configuration panel with per-device and per-policy settings
 - Implement WebSocket/SSE-based live monitoring feed for admin dashboards
@@ -344,6 +357,7 @@ The following requirements have been received from the client and are scheduled 
 - Desktop app enhancements: configurable capture intervals, app categorization, privacy zones
 
 **Configuration Parameters to Add**:
+
 | Setting | Type | Description |
 |---------|------|-------------|
 | Screenshot Interval | Number (seconds) | Time between screenshots (30s–600s) |
@@ -356,6 +370,7 @@ The following requirements have been received from the client and are scheduled 
 | Data Retention | Number (days) | Auto-delete old tracking data |
 
 **Impact on Existing System**:
+
 - Extend AgentDevice, AgentConfig models
 - New admin page: `/admin/agent-tracking/config`
 - WebSocket endpoint for live monitoring
@@ -368,6 +383,7 @@ The following requirements have been received from the client and are scheduled 
 **Current State**: Basic workflow engine exists (WorkflowTemplate/Step/Instance/Action models, admin builder page). Workflows need to be made fully dynamic and configurable.
 
 **Requirements**:
+
 - All workflows must be configurable and customizable — zero hardcoded workflows
 - Configuration interface allows adding, deleting, or modifying fields on any screen
 - Right-side panel or pop-up configuration UI on each screen
@@ -375,6 +391,7 @@ The following requirements have been received from the client and are scheduled 
 - AI-powered workflow suggestions for faster configuration
 
 **Implementation Approach**:
+
 - Build a `FormBuilder` component with drag-and-drop field configuration
 - Create a `ConfigPanel` component (slide-over from right side) mountable on any page
 - Implement `WorkflowFieldConfig` model to store per-screen field configurations
@@ -384,6 +401,7 @@ The following requirements have been received from the client and are scheduled 
 - Add configuration versioning with rollback capability
 
 **Field Configuration Schema**:
+
 ```
 WorkflowFieldConfig {
   id, screenName, fieldName, fieldType, label, required, defaultValue,
@@ -393,6 +411,7 @@ WorkflowFieldConfig {
 ```
 
 **Impact on Existing System**:
+
 - New Prisma model: `WorkflowFieldConfig`
 - Enhance existing workflow builder page
 - New reusable component: `<ConfigPanel />`

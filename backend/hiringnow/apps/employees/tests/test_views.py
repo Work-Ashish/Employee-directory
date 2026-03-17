@@ -37,16 +37,16 @@ def test_list_employees_paginated(auth_client, employee):
 # ── Search ───────────────────────────────────────────────────────────
 
 @pytest.mark.django_db
-def test_list_employees_search(auth_client, employee, second_employee):
-    """GET /employees/?search=John filters employees by first name."""
-    response = auth_client.get(EMPLOYEE_LIST_URL, {"search": "John"})
+def test_list_employees_search(auth_client, employee, employee2):
+    """GET /employees/?search=Jane filters employees by first name."""
+    response = auth_client.get(EMPLOYEE_LIST_URL, {"search": "Jane"})
     assert response.status_code == 200
 
     data = response.json()
     names = [e["first_name"] for e in data["results"]]
-    assert "John" in names
-    # The admin employee (first_name="Admin") should not appear
-    assert "Admin" not in names
+    assert "Jane" in names
+    # The first employee (first_name="Test") should not appear
+    assert "Test" not in names
 
 
 # ── Create ───────────────────────────────────────────────────────────
@@ -101,28 +101,28 @@ def test_update_employee(auth_client, employee):
 # ── Soft Delete ──────────────────────────────────────────────────────
 
 @pytest.mark.django_db
-def test_soft_delete_employee(auth_client, second_employee):
+def test_soft_delete_employee(auth_client, employee2):
     """DELETE /employees/{id}/ sets deleted_at, is_archived=True, status=archived."""
-    response = auth_client.delete(_detail_url(second_employee.pk))
+    response = auth_client.delete(_detail_url(employee2.pk))
     assert response.status_code == 204
 
-    second_employee.refresh_from_db()
-    assert second_employee.deleted_at is not None
-    assert second_employee.is_archived is True
-    assert second_employee.status == Employee.Status.ARCHIVED
+    employee2.refresh_from_db()
+    assert employee2.deleted_at is not None
+    assert employee2.is_archived is True
+    assert employee2.status == Employee.Status.ARCHIVED
 
 
 @pytest.mark.django_db
-def test_soft_deleted_excluded_from_list(auth_client, employee, second_employee):
+def test_soft_deleted_excluded_from_list(auth_client, employee, employee2):
     """After soft-delete, employee is excluded from the default GET list."""
     # Soft-delete the second employee
-    auth_client.delete(_detail_url(second_employee.pk))
+    auth_client.delete(_detail_url(employee2.pk))
 
     response = auth_client.get(EMPLOYEE_LIST_URL)
     assert response.status_code == 200
 
     ids = [e["id"] for e in response.json()["results"]]
-    assert str(second_employee.pk) not in ids
+    assert str(employee2.pk) not in ids
     assert str(employee.pk) in ids
 
 
@@ -143,7 +143,7 @@ def test_credentials_reset(auth_client, employee):
 # ── Manager List ─────────────────────────────────────────────────────
 
 @pytest.mark.django_db
-def test_manager_list(auth_client, employee, second_employee):
+def test_manager_list(auth_client, employee, employee2):
     """GET /employees/managers/ returns active employees."""
     response = auth_client.get(MANAGER_LIST_URL)
     assert response.status_code == 200
