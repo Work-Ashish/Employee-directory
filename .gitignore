@@ -47,17 +47,14 @@ sed.out
 *.tsbuildinfo
 next-env.d.ts
 
-# ── Prisma ─────────────────────────────────────────────────
-/lib/generated/prisma
 
-# ── Python / Django ────────────────────────────────────────
+# ── Python / Django ────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.egg-info/
 *.egg
 .pytest_cache/
-backend/hiringnow/
 
-# ── Temp / generated ──────────────────────────────────────
+# ── Temp / generated ──────────────────────────────────
 /tmp/
 cookies.txt

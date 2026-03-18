@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calculateNetSalary, calculatePFContributions, calculateDynamicTax } from './payroll-engine'
+import { calculateNetSalary, calculatePFContributions, calculateDynamicTax } from '@/lib/payroll-engine'
 
 describe('Payroll Engine', () => {
     describe('calculateNetSalary', () => {

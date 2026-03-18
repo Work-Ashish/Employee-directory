@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { MetricsCollector } from './metrics'
-import { redis } from './redis'
+import { MetricsCollector } from '@/lib/metrics'
+import { redis } from '@/lib/redis'
 
-vi.mock('./redis', () => ({
+vi.mock('@/lib/redis', () => ({
     redis: {
         incr: vi.fn().mockResolvedValue(1),
         get: vi.fn(),

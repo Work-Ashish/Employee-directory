@@ -8,23 +8,23 @@ vi.mock('server-only', () => ({}))
 const { mockGetServerSession } = vi.hoisted(() => ({
     mockGetServerSession: vi.fn(),
 }))
-vi.mock('./auth-server', () => ({
+vi.mock('@/lib/auth-server', () => ({
     getServerSession: mockGetServerSession,
 }))
 
 // Mock permissions-server (imports server-only + prisma + redis)
-vi.mock('./permissions-server', () => ({
+vi.mock('@/lib/permissions-server', () => ({
     hasFunctionalPermission: vi.fn().mockResolvedValue(false),
     capabilitiesToRecord: vi.fn().mockReturnValue({}),
 }))
 
-vi.mock('./metrics', () => ({
+vi.mock('@/lib/metrics', () => ({
     MetricsCollector: {
         recordRequest: vi.fn().mockResolvedValue(true)
     }
 }))
 
-vi.mock('./logger', () => ({
+vi.mock('@/lib/logger', () => ({
     logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
     logContext: {
         run: vi.fn((_ctx: unknown, fn: () => unknown) => fn()),
@@ -32,7 +32,7 @@ vi.mock('./logger', () => ({
     },
 }))
 
-import { orgFilter, withAuth, AuthContext } from './security'
+import { orgFilter, withAuth, AuthContext } from '@/lib/security'
 import { NextResponse } from 'next/server'
 import { Roles } from '@/lib/permissions'
 

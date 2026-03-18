@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   // Multi-Zone support: when NEXT_PUBLIC_BASE_PATH is set (e.g. "/hrms"),
   // all routes are served under that prefix. Empty string = standalone mode.
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || "",

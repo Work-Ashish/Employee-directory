@@ -1,0 +1,33 @@
+# Version control
+.git
+.github
+.gitignore
+
+# Claude / AI tooling
+.claude
+.claude-flow
+.swarm
+.mcp.json
+
+# Build artifacts
+.next
+node_modules
+coverage
+tsconfig.tsbuildinfo
+
+# Tests & docs (not needed in image)
+__tests__
+docs
+extensions
+scripts
+
+# Infrastructure configs (used externally, not in app image)
+infra
+
+# Markdown & swap files
+*.md
+*.swp
+
+# Environment files (secrets — inject via Docker env)
+.env*
+!.env.example

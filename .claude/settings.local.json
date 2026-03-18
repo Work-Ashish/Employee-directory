@@ -185,7 +185,9 @@
       "Bash(python -m pytest hiringnow/ --tb=short -q)",
       "Read(//c/Users/Ashish Singh/Desktop/Employee directory/backend/hiringnow/apps/**)",
       "Bash(DJANGO_SETTINGS_MODULE=config.settings.test python -m django makemigrations departments dashboard attendance leave payroll audit --settings=config.settings.test)",
-      "Bash(python manage.py makemigrations departments dashboard attendance leave payroll audit --settings=config.settings.test)"
+      "Bash(python manage.py makemigrations departments dashboard attendance leave payroll audit --settings=config.settings.test)",
+      "Bash(npx vitest run __tests__/lib/logger.test.ts)",
+      "Bash(npx vitest run __tests__/lib/redis.test.ts)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\reimbursements",

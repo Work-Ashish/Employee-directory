@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { logger, logContext } from './logger'
+import { logger, logContext } from '@/lib/logger'
 
 describe('Logger Utility', () => {
     beforeEach(() => {

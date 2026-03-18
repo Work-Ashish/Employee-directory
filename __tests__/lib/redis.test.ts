@@ -16,7 +16,7 @@ vi.mock('@upstash/redis', () => {
     }
 })
 
-import { redis } from './redis'
+import { redis } from '@/lib/redis'
 
 describe('Redis Wrapper (Fallback Behavior)', () => {
     // Note: In test environment without UPSTASH_REDIS_REST_URL, it uses the fallback.
@@ -67,7 +67,7 @@ describe('Redis Wrapper (Upstash Behavior)', () => {
         // This dynamic import forces the module to re-evaluate with the new env vars
         // Note: because we mocked @upstash/redis globally, it will use our mock.
         vi.resetModules()
-        const { redis: upstashRedis } = await import('./redis')
+        const { redis: upstashRedis } = await import('@/lib/redis')
 
         await upstashRedis.set('k', 'v')
         await upstashRedis.set('k2', 'v', { ex: 10 })
