@@ -187,7 +187,29 @@
       "Bash(DJANGO_SETTINGS_MODULE=config.settings.test python -m django makemigrations departments dashboard attendance leave payroll audit --settings=config.settings.test)",
       "Bash(python manage.py makemigrations departments dashboard attendance leave payroll audit --settings=config.settings.test)",
       "Bash(npx vitest run __tests__/lib/logger.test.ts)",
-      "Bash(npx vitest run __tests__/lib/redis.test.ts)"
+      "Bash(npx vitest run __tests__/lib/redis.test.ts)",
+      "Bash(find \"/c/Users/Ashish Singh/Desktop/Employee directory/backend/hiringnow/apps\" -maxdepth 2 -name \"models.py\" -exec wc -l {} +)",
+      "Bash(find \"/c/Users/Ashish Singh/Desktop/Employee directory/backend/hiringnow/apps\" -maxdepth 2 -name \"views.py\" -exec wc -l {} +)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:8000/api/v1/auth/login/)",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/v1/auth/login/ -H \"Content-Type: application/json\" -H \"Origin: http://localhost:3000\" -d '{\"\"\"\"tenant_slug\"\"\"\":\"\"\"\"sourceoneai\"\"\"\",\"\"\"\"email\"\"\"\":\"\"\"\"workashishsinghwork@gmail.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Admin@123\"\"\"\"}')",
+      "Bash(curl -s -I -X OPTIONS http://127.0.0.1:8000/api/v1/auth/login/ -H \"Origin: http://localhost:3000\" -H \"Access-Control-Request-Method: POST\" -H \"Access-Control-Request-Headers: Content-Type\")",
+      "Bash(findstr \":3000 \")",
+      "Bash(curl -v -X POST http://127.0.0.1:8000/api/v1/auth/login/ -H \"Content-Type: application/json\" -H \"Origin: http://localhost:3000\" -d '{\"\"\"\"tenant_slug\"\"\"\":\"\"\"\"sourceoneai\"\"\"\",\"\"\"\"email\"\"\"\":\"\"\"\"workashishsinghwork@gmail.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Admin@123\"\"\"\"}')",
+      "Bash(curl -s -I -X OPTIONS http://127.0.0.1:8000/api/v1/auth/me/ -H \"Origin: http://localhost:3000\" -H \"Access-Control-Request-Method: GET\" -H \"Access-Control-Request-Headers: Content-Type,Authorization,X-Tenant-Slug\")",
+      "Bash(npm install:*)",
+      "Bash(curl -s -X POST \"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDZVB93XJYzyG4se8XM5E9QT-UTMCnFLy4\" -H \"Content-Type: application/json\" -d '{\"\"contents\"\":[{\"\"parts\"\":[{\"\"text\"\":\"\"Say hello in one word\"\"}]}]}')",
+      "Bash(curl -s \"https://generativelanguage.googleapis.com/v1beta/models?key=AIzaSyDZVB93XJYzyG4se8XM5E9QT-UTMCnFLy4\")",
+      "Bash(curl -s -X POST \"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyDZVB93XJYzyG4se8XM5E9QT-UTMCnFLy4\" -H \"Content-Type: application/json\" -d '{\"\"contents\"\":[{\"\"parts\"\":[{\"\"text\"\":\"\"Say hello in one word\"\"}]}]}')",
+      "Bash(find 'c:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\Employee directory\\\\__tests__' -type f -name *.test.ts)",
+      "Bash(find 'c:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\Employee directory' -type f \\\\\\(-name *.ts -o -name *.tsx \\\\\\) -path */components/signup/*)",
+      "Bash(grep -r \"stripe\\\\|razorpay\\\\|payment\" 'c:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\Employee directory\\\\lib' --include=*.ts)",
+      "Bash(grep -r \"backup\\\\|restore\\\\|snapshot\" 'c:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\Employee directory\\\\scripts' --include=*.ts --include=*.js)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -r \"@@index\\\\|@@unique\" 'c:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\Employee directory\\\\prisma' --include=*.prisma)",
+      "Bash(grep -r \"CSRF\\\\|csrf\" 'c:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\Employee directory' --include=*.ts --include=*.tsx --exclude-dir=node_modules)",
+      "Bash(grep -r \"skip\\\\|todo\\\\|xtest\\\\|xit\" 'c:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\Employee directory\\\\__tests__' --include=*.test.ts)",
+      "Bash(find 'c:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\Employee directory' -maxdepth 1 -name *.md -type f)",
+      "Bash(grep -r \"SameSite\\\\|Secure\\\\|HttpOnly\" 'c:\\\\Users\\\\Ashish Singh\\\\Desktop\\\\Employee directory' --include=*.ts --exclude-dir=node_modules)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Ashish Singh\\Desktop\\Employee directory\\app\\api\\reimbursements",
@@ -201,7 +223,8 @@
       "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\leave",
       "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\apps\\payroll",
       "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow\\config",
-      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow"
+      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\hiringnow",
+      "C:\\Users\\Ashish Singh\\Desktop\\HiringNow\\hiringnow-platform\\frontend\\src\\widgets\\sidebar"
     ]
   }
 }

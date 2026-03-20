@@ -13,6 +13,15 @@ export default function LoginPage() {
     const [tenantSlug, setTenantSlug] = React.useState("")
     const [email, setEmail] = React.useState("")
     const [password, setPassword] = React.useState("")
+
+    // Pre-fill org slug from localStorage (set during onboarding)
+    React.useEffect(() => {
+        try {
+            const savedSlug = localStorage.getItem("tenant_slug")
+            if (savedSlug && !tenantSlug) setTenantSlug(savedSlug)
+        } catch { /* non-critical */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState("")
     const [rememberMe, setRememberMe] = React.useState(true)

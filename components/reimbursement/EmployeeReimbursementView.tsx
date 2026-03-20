@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
 import { ReimbursementAPI } from "@/features/reimbursements/api/client"
 import { api } from "@/lib/api-client"
+import { confirmDanger, confirmAction, showSuccess } from "@/lib/swal"
 
 const reimbursementSchema = z.object({
     category: z.string().min(1, "Category is required"),
@@ -180,10 +181,10 @@ export function EmployeeReimbursementView() {
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Delete this pending request?")) return
+        if (!await confirmDanger("Delete Request?", "This pending reimbursement request will be removed.")) return
         try {
             await api.delete("/reimbursements/" + id + "/")
-            toast.success("Request deleted")
+            showSuccess("Deleted", "Reimbursement request removed")
             fetchRecords()
         } catch (error: any) {
             toast.error(error.message || "Failed to delete")

@@ -30,6 +30,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
+import { confirmDanger, showSuccess } from "@/lib/swal"
 import { PlusIcon, Pencil2Icon, TrashIcon } from "@radix-ui/react-icons"
 import { TeamAPI } from "@/features/teams/api/client"
 import { DepartmentAPI } from "@/features/departments/api/client"
@@ -264,7 +265,7 @@ export default function OrgChartPage() {
     }, [])
 
     const handleDelete = React.useCallback(async (id: string, name: string) => {
-        if (!window.confirm(`Delete ${name}? Their direct reports will be unlinked.`)) return
+        if (!await confirmDanger("Delete Employee?", `${name} will be removed. Their direct reports will be unlinked.`)) return
         try {
             await EmployeeAPI.deleteEmployee(id)
             toast.success("Employee deleted")

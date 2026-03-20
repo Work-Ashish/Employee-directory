@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"
 import { LaptopIcon, BarChartIcon, ClockIcon } from "@radix-ui/react-icons"
 import { api } from "@/lib/api-client"
+import { confirmDanger, confirmAction, showSuccess } from "@/lib/swal"
 
 interface DashboardData {
     devices: { active: number; pending: number; suspended: number; uninstalled: number; total: number }
@@ -88,8 +89,9 @@ export default function AgentTrackingPage() {
     }
 
     const handleCommand = async (deviceId: string, type: string) => {
-        if (!confirm(`Are you sure you want to issue ${type} command?`)) return
+        if (!await confirmAction("Issue Command?", `A ${type} command will be sent to this device.`)) return
         await api.post('/admin/agent/command/', { deviceId, type })
+        showSuccess("Command Sent", `${type} command issued successfully`)
         fetchDevices()
     }
 

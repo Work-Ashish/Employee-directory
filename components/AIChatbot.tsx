@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useState, useRef, useEffect, useCallback } from "react"
-import { api } from "@/lib/api-client"
 
 interface Message {
     id: string
@@ -62,7 +61,12 @@ export function AIChatbot() {
                 })
             )
 
-            const { data } = await api.post<{ reply?: string }>('/chat/', { messages: apiMessages })
+            const res = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ messages: apiMessages }),
+            })
+            const data = await res.json()
 
             const assistantMessage: Message = {
                 id: (Date.now() + 1).toString(),

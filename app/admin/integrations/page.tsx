@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { webhookSchema } from "@/lib/schemas/integrations"
 import { cn } from "@/lib/utils"
+import { confirmDanger, confirmAction, showSuccess } from "@/lib/swal"
 import { Button } from "@/components/ui/Button"
 import { Badge } from "@/components/ui/Badge"
 import { Input } from "@/components/ui/Input"
@@ -66,10 +67,10 @@ export default function IntegrationsPage() {
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this webhook?")) return
+        if (!await confirmDanger("Delete Webhook?", "This webhook will be permanently removed.")) return
         try {
             await api.delete('/settings/webhooks/' + id + '/')
-            toast.success("Webhook deleted")
+            showSuccess("Deleted", "Webhook removed successfully")
             fetchWebhooks()
         } catch (error) {
             toast.error("Failed to delete webhook")

@@ -13,6 +13,7 @@ import { cn, extractArray } from "@/lib/utils"
 import { AssetAPI } from "@/features/assets/api/client"
 import { EmployeeAPI } from "@/features/employees/api/client"
 import { toast } from "sonner"
+import { confirmDanger, confirmAction, showSuccess } from "@/lib/swal"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -182,11 +183,11 @@ export default function AssetManagement() {
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this asset?")) return
+        if (!await confirmDanger("Delete Asset?", "This asset record will be permanently removed.")) return
 
         try {
             await AssetAPI.delete(id)
-            toast.success("Asset deleted")
+            showSuccess("Deleted", "Asset removed successfully")
             fetchAssets()
         } catch (error: any) {
             toast.error(error.message || "Failed to delete asset")

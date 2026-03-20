@@ -8,6 +8,7 @@ import { useForm, SubmitHandler } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
+import { confirmWarning, showSuccess } from "@/lib/swal"
 import { format } from "date-fns"
 import { PayrollConfigView } from "@/components/payroll/PayrollConfigView"
 
@@ -241,10 +242,10 @@ export function AdminPayrollView() {
     }
 
     const handleFinalize = async (id: string) => {
-        if (!confirm("Are you sure? This will lock the payslip forever.")) return;
+        if (!await confirmWarning("Finalize Payroll?", "This will lock the payslip permanently. This action cannot be undone.")) return;
         try {
             await PayrollAPI.finalize(id)
-            toast.success("Payroll finalized")
+            showSuccess("Payroll Finalized", "The payslip has been locked permanently.")
             fetchAll()
         } catch (e) {
             toast.error("Network error")

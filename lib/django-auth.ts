@@ -19,6 +19,17 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   }
 }
 
+/** Set a cookie so Next.js middleware can detect authentication */
+function setAuthCookie(token: string): void {
+  const maxAge = 60 * 60 * 24; // 1 day — refresh will extend
+  document.cookie = `access_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+/** Clear the auth cookie */
+function clearAuthCookie(): void {
+  document.cookie = "access_token=; path=/; max-age=0; SameSite=Lax";
+}
+
 /** Extract and persist tenant claims from JWT access token */
 function persistTenantFromJwt(accessToken: string, fallbackSlug?: string): void {
   const claims = decodeJwtPayload(accessToken);
@@ -100,6 +111,7 @@ export async function login(payload: LoginPayload): Promise<AuthTokens & { user:
 
   localStorage.setItem("access_token", result.access);
   localStorage.setItem("refresh_token", result.refresh);
+  setAuthCookie(result.access);
   persistTenantFromJwt(result.access, payload.tenantSlug);
 
   return result;
@@ -117,6 +129,7 @@ export async function register(payload: RegisterPayload): Promise<AuthTokens & {
 
   localStorage.setItem("access_token", result.access);
   localStorage.setItem("refresh_token", result.refresh);
+  setAuthCookie(result.access);
   persistTenantFromJwt(result.access, payload.tenantSlug);
 
   return result;
@@ -134,6 +147,7 @@ export async function refreshToken(): Promise<string> {
   if (result.refresh) {
     localStorage.setItem("refresh_token", result.refresh);
   }
+  setAuthCookie(result.access);
   persistTenantFromJwt(result.access);
 
   return result.access;
@@ -152,6 +166,7 @@ export async function logout(): Promise<void> {
   localStorage.removeItem("refresh_token");
   localStorage.removeItem("tenant_slug");
   localStorage.removeItem("tenant_id");
+  clearAuthCookie();
 }
 
 export async function getMe(): Promise<AuthUser> {

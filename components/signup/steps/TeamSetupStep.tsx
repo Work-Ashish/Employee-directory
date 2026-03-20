@@ -18,29 +18,22 @@ interface StepProps {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const ROLE_OPTIONS = [
-  { value: "admin", label: "Admin" },
-  { value: "ceo", label: "CEO" },
   { value: "hr_manager", label: "HR Manager" },
   { value: "payroll_admin", label: "Payroll Admin" },
   { value: "team_lead", label: "Team Lead" },
-  { value: "hiring_manager", label: "Hiring Manager" },
-  { value: "recruiter", label: "Recruiter" },
-  { value: "interviewer", label: "Interviewer" },
-  { value: "it_admin", label: "IT Admin" },
   { value: "employee", label: "Employee" },
-  { value: "viewer", label: "Viewer" },
 ]
 
 const SEAT_LIMITS: Record<string, number> = {
-  starter: 10,
-  growth: 25,
+  starter: Infinity,
+  growth: Infinity,
   enterprise: Infinity,
 }
 
 const TIER_LABELS: Record<string, string> = {
-  starter: "Starter",
-  growth: "Growth",
-  enterprise: "Enterprise",
+  starter: "EMS Pro",
+  growth: "EMS Pro",
+  enterprise: "EMS Pro",
 }
 
 const PlusIcon = () => (

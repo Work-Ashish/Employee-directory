@@ -156,13 +156,13 @@ export function EmployeeDashboard() {
                         ))
                     ) : (
                         <>
-                            <DashboardStatCard label="Attendance" value={data?.stats?.attendanceCount || 0} sub="Days present this month" badge="Live" badgeType="up" icon={<ClockIcon className="w-5 h-5" />} />
-                            <DashboardStatCard label="Leaves Used" value={data?.stats?.leavesUsed || 0} sub="Approved leaves this year" badge="Yearly" badgeType="neutral" icon={<CalendarIcon className="w-5 h-5" />} />
-                            <DashboardStatCard label="Pending Training" value={data?.stats?.pendingTrainingCount || 0} sub="Assigned modules"
+                            <div data-aos="fade-up" data-aos-delay="0"><DashboardStatCard label="Attendance" value={data?.stats?.attendanceCount || 0} sub="Days present this month" badge="Live" badgeType="up" icon={<ClockIcon className="w-5 h-5" />} /></div>
+                            <div data-aos="fade-up" data-aos-delay="100"><DashboardStatCard label="Leaves Used" value={data?.stats?.leavesUsed || 0} sub="Approved leaves this year" badge="Yearly" badgeType="neutral" icon={<CalendarIcon className="w-5 h-5" />} /></div>
+                            <div data-aos="fade-up" data-aos-delay="200"><DashboardStatCard label="Pending Training" value={data?.stats?.pendingTrainingCount || 0} sub="Assigned modules"
                                 badge={data?.stats?.pendingTrainingCount > 0 ? "Priority" : "Done"}
                                 badgeType={data?.stats?.pendingTrainingCount > 0 ? "down" : "up"}
-                                icon={<BackpackIcon className="w-5 h-5" />} />
-                            <DashboardStatCard label="Review Status" value={data?.stats?.reviewStatus || "Upcoming"} sub="Next evaluation" badge="Q1" badgeType="neutral" icon={<span className="text-lg">📊</span>} />
+                                icon={<BackpackIcon className="w-5 h-5" />} /></div>
+                            <div data-aos="fade-up" data-aos-delay="300"><DashboardStatCard label="Review Status" value={data?.stats?.reviewStatus || "Upcoming"} sub="Next evaluation" badge="Q1" badgeType="neutral" icon={<span className="text-lg">📊</span>} /></div>
                         </>
                     )}
                 </div>
@@ -173,7 +173,7 @@ export function EmployeeDashboard() {
                         <OnboardingCompanion />
 
                         {/* Today's Schedule */}
-                        <Card variant="glass-premium" className="rounded-2xl">
+                        <Card data-aos="fade-up" data-aos-delay="100" variant="glass-premium" className="rounded-2xl">
                             <CardHeader>
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
@@ -218,7 +218,7 @@ export function EmployeeDashboard() {
                         <KudosWidget />
 
                         {/* My Team + Quick Actions */}
-                        <Card variant="glass-premium" className="rounded-2xl">
+                        <Card data-aos="fade-left" data-aos-delay="200" variant="glass-premium" className="rounded-2xl">
                             <CardHeader>
                                 <CardTitle className="text-lg">My Team Status</CardTitle>
                             </CardHeader>

@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
+import { confirmDanger, confirmAction, showSuccess } from "@/lib/swal"
 import { format } from "date-fns"
 import { EmployeeList } from "@/features/employees/components/EmployeeList"
 import { EmployeeFormModal } from "@/features/employees/components/EmployeeFormModal"
@@ -128,11 +129,11 @@ function EmployeesContent() {
     }
 
     const handleDeleteDepartment = async (deptId: string, deptName: string) => {
-        if (!window.confirm(`Delete department "${deptName}"? Employees in this department must be reassigned first.`)) return
+        if (!await confirmDanger("Delete Department?", `"${deptName}" will be removed. Employees must be reassigned first.`)) return
         try {
             await DepartmentAPI.delete(deptId)
+            showSuccess("Department Deleted", `"${deptName}" has been removed.`)
             setDepartments(prev => prev.filter(d => d.id !== deptId))
-            toast.success(`Department "${deptName}" deleted`)
         } catch (err: any) {
             toast.error(err.message || 'An error occurred')
         }
@@ -207,10 +208,10 @@ function EmployeesContent() {
     }
 
     const handleDelete = async (id: string, name: string) => {
-        if (!window.confirm(`Are you sure you want to delete ${name}?`)) return
+        if (!await confirmDanger("Delete Employee?", `${name} will be permanently removed.`)) return
         try {
             await EmployeeAPI.deleteEmployee(id)
-            toast.success('Employee deleted successfully')
+            showSuccess("Employee Deleted", `${name} has been permanently removed.`)
             fetchData()
         } catch {
             toast.error('An error occurred')
@@ -218,10 +219,11 @@ function EmployeesContent() {
     }
 
     const handleResetCredentials = async (emp: EmployeeApiData) => {
-        if (!window.confirm(`Reset login credentials for ${emp.firstName} ${emp.lastName}?`)) return
+        if (!await confirmAction("Reset Credentials?", `New login credentials will be generated for ${emp.firstName} ${emp.lastName}.`)) return
         setIsResettingCreds(emp.id)
         try {
             const data = await EmployeeAPI.resetCredentials(emp.id)
+            showSuccess("Credentials Reset", `New credentials generated for ${emp.firstName} ${emp.lastName}.`)
             setCredCard({ username: data.email, password: data.tempPassword, name: `${emp.firstName} ${emp.lastName}` })
         } catch {
             toast.error('An error occurred')

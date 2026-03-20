@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { SessionAPI } from "@/features/sessions/api/client"
 import { toast } from "sonner"
+import { confirmWarning, showSuccess } from "@/lib/swal"
 import { ReloadIcon, LockClosedIcon, PersonIcon, DesktopIcon, DiscIcon } from "@radix-ui/react-icons"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/Button"
@@ -35,12 +36,12 @@ export function SessionManager() {
     }, [])
 
     const handleRevoke = async (id: string, name: string) => {
-        if (!window.confirm(`Are you sure you want to revoke the session for ${name}? User will be logged out immediately.`)) return
+        if (!await confirmWarning("Revoke Session?", `${name} will be logged out immediately.`)) return
 
         setRevoking(id)
         try {
             await SessionAPI.terminate(id)
-            toast.success(`Session for ${name} revoked`)
+            showSuccess("Session Revoked", `${name} has been logged out.`)
             fetchSessions()
         } catch (error: any) {
             toast.error(error.message || "Failed to revoke session")

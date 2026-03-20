@@ -3,7 +3,6 @@
 import { motion } from "framer-motion"
 import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"
-import { Badge } from "@/components/ui/Badge"
 import { cn } from "@/lib/utils"
 import type { SignupFormData } from "@/lib/schemas/signup"
 
@@ -13,99 +12,24 @@ interface StepProps {
   errors: Record<string, string>
 }
 
-type Tier = "starter" | "growth" | "enterprise"
+const MONTHLY_PRICE = 500 // INR per user/month
+const ANNUAL_DISCOUNT = 0.15 // 15% off
+const ANNUAL_PRICE = Math.round(MONTHLY_PRICE * (1 - ANNUAL_DISCOUNT)) // ₹425/user/month
 
-interface PricingTier {
-  id: Tier
-  name: string
-  monthlyPrice: number
-  annualPrice: number
-  employees: string
-  features: string[]
-  highlighted: string[]
-  popular?: boolean
-  icon: React.ReactNode
-  color: string
-  gradient: string
-}
-
-const PRICING_TIERS: PricingTier[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    monthlyPrice: 29,
-    annualPrice: 24,
-    employees: "Up to 25",
-    features: ["Core HR", "Attendance", "Leave", "Basic Reports", "Email Support"],
-    highlighted: [],
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <path d="M14 3L17.5 10L25 11L19.5 16.5L21 24L14 20L7 24L8.5 16.5L3 11L10.5 10L14 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-      </svg>
-    ),
-    color: "text-blue-500",
-    gradient: "from-blue-500/10 to-cyan-500/5",
-  },
-  {
-    id: "growth",
-    name: "Growth",
-    monthlyPrice: 79,
-    annualPrice: 66,
-    employees: "Up to 100",
-    features: [
-      "Everything in Starter",
-      "Payroll Management",
-      "Performance Reviews",
-      "Advanced Reports",
-      "Training Module",
-      "Recruitment Pipeline",
-      "Priority Email Support",
-    ],
-    highlighted: ["Payroll Management", "Performance Reviews", "Recruitment Pipeline"],
-    popular: true,
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <path d="M4 21L10 15L14 19L24 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M18 7H24V13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    color: "text-[var(--accent)]",
-    gradient: "from-[var(--accent)]/15 to-purple-500/5",
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    monthlyPrice: 199,
-    annualPrice: 166,
-    employees: "Unlimited",
-    features: [
-      "Everything in Growth",
-      "SSO & SAML",
-      "API Access",
-      "Custom Workflows",
-      "AI Chatbot",
-      "Asset Management",
-      "Dedicated Account Manager",
-      "SLA & Priority Support",
-      "Custom Integrations",
-    ],
-    highlighted: ["SSO & SAML", "API Access", "AI Chatbot", "Custom Integrations"],
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <rect x="4" y="10" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M4 14H24" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M10 4H18L20 10H8L10 4Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-        <circle cx="14" cy="20" r="2" stroke="currentColor" strokeWidth="1.5" />
-      </svg>
-    ),
-    color: "text-purple-500",
-    gradient: "from-purple-500/10 to-pink-500/5",
-  },
-]
-
-const BILLING_CYCLE_OPTIONS = [
-  { value: "monthly", label: "Monthly" },
-  { value: "annual", label: "Annual (save 17%)" },
+const PLAN_FEATURES = [
+  { text: "Unlimited Employees", highlighted: true },
+  { text: "Core HR & Employee Management", highlighted: false },
+  { text: "Attendance & Leave Management", highlighted: false },
+  { text: "Payroll Management", highlighted: true },
+  { text: "Performance Reviews", highlighted: true },
+  { text: "Training Module", highlighted: false },
+  { text: "Recruitment Pipeline", highlighted: false },
+  { text: "Reports & Analytics", highlighted: false },
+  { text: "Asset & Document Management", highlighted: false },
+  { text: "AI Chatbot", highlighted: true },
+  { text: "Custom Workflows", highlighted: false },
+  { text: "API Access & Integrations", highlighted: false },
+  { text: "Priority Support", highlighted: false },
 ]
 
 const INVOICE_OPTIONS = [
@@ -132,156 +56,9 @@ const CheckIcon = ({ highlighted }: { highlighted?: boolean }) => (
   </svg>
 )
 
-const RadioIcon = ({ selected }: { selected: boolean }) => (
-  <div className={cn(
-    "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200",
-    selected ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--border2)]"
-  )}>
-    {selected && (
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 500, damping: 20 }}
-        className="w-2 h-2 rounded-full bg-white"
-      />
-    )}
-  </div>
-)
-
-function PricingCard({
-  tier,
-  selected,
-  isAnnual,
-  onSelect,
-  delay,
-}: {
-  tier: PricingTier
-  selected: boolean
-  isAnnual: boolean
-  onSelect: () => void
-  delay: number
-}) {
-  const displayPrice = isAnnual ? tier.annualPrice : tier.monthlyPrice
-  const monthlyPrice = tier.monthlyPrice
-  const savings = isAnnual ? Math.round(((monthlyPrice - tier.annualPrice) / monthlyPrice) * 100) : 0
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut", delay }}
-      whileHover={{ y: -4 }}
-      whileTap={{ scale: 0.98 }}
-      className="relative"
-    >
-      {/* Popular badge */}
-      {tier.popular && (
-        <motion.div
-          className="absolute -top-3 left-1/2 -translate-x-1/2 z-20"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: delay + 0.2 }}
-        >
-          <Badge variant="default" className="bg-[var(--accent)] text-white shadow-lg px-4 py-1">
-            Most Popular
-          </Badge>
-        </motion.div>
-      )}
-
-      <motion.div
-        animate={{
-          scale: selected ? 1.02 : 1,
-          y: selected ? -2 : 0,
-        }}
-        transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        onClick={onSelect}
-        className={cn(
-          "relative rounded-2xl cursor-pointer transition-all duration-300 overflow-hidden h-full",
-          "border",
-          selected
-            ? "border-[var(--accent)] shadow-[0_0_30px_rgba(0,122,255,0.15)]"
-            : "border-[var(--border)] hover:border-[var(--border2)]"
-        )}
-      >
-        {/* Gradient header area */}
-        <div className={cn(
-          "bg-gradient-to-br p-6 pb-5 relative",
-          tier.gradient,
-        )}>
-          {/* Selection radio */}
-          <div className="absolute top-4 right-4">
-            <RadioIcon selected={selected} />
-          </div>
-
-          {/* Name */}
-          <h4 className="font-bold text-text text-lg">{tier.name}</h4>
-          <p className="text-xs text-text-3 mt-1">{tier.employees} employees</p>
-
-          {/* Price */}
-          <div className="mt-4 flex items-baseline gap-1">
-            <span className="text-4xl font-extrabold text-text tracking-tight">${displayPrice}</span>
-            <span className="text-text-3 text-sm">/mo</span>
-          </div>
-
-          {isAnnual && (
-            <div className="flex items-center gap-2 mt-1.5">
-              <span className="text-xs text-text-3 line-through">${monthlyPrice}/mo</span>
-              <span className="text-xs font-semibold text-[var(--green)] bg-[var(--green)]/10 px-2 py-0.5 rounded-full">
-                Save {savings}%
-              </span>
-            </div>
-          )}
-
-          {!isAnnual && (
-            <p className="text-xs text-text-3 mt-1.5">
-              ${tier.annualPrice}/mo billed annually
-            </p>
-          )}
-        </div>
-
-        {/* Features list */}
-        <div className="p-6 pt-4 bg-[var(--surface)]">
-          <p className="text-[11px] uppercase tracking-wider text-text-3 font-semibold mb-3">
-            What&apos;s included
-          </p>
-          <ul className="space-y-2.5">
-            {tier.features.map((feature) => {
-              const isHighlighted = tier.highlighted.includes(feature)
-              return (
-                <li
-                  key={feature}
-                  className={cn(
-                    "flex items-center gap-2.5 text-sm",
-                    isHighlighted ? "text-text font-medium" : "text-text-2"
-                  )}
-                >
-                  <CheckIcon highlighted={isHighlighted} />
-                  {feature}
-                </li>
-              )
-            })}
-          </ul>
-
-          {/* Select button */}
-          <motion.button
-            className={cn(
-              "w-full mt-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200",
-              selected
-                ? "bg-[var(--accent)] text-white shadow-md"
-                : "bg-[var(--bg2)] text-text-2 hover:bg-[var(--bg3)] hover:text-text"
-            )}
-            whileTap={{ scale: 0.97 }}
-          >
-            {selected ? "Selected" : "Select Plan"}
-          </motion.button>
-        </div>
-      </motion.div>
-    </motion.div>
-  )
-}
-
 export function PaymentSetupStep({ data, updateData, errors }: StepProps) {
   const isAnnual = data.billingCycle === "annual"
+  const displayPrice = isAnnual ? ANNUAL_PRICE : MONTHLY_PRICE
 
   return (
     <div className="space-y-6">
@@ -315,25 +92,73 @@ export function PaymentSetupStep({ data, updateData, errors }: StepProps) {
           >
             Annual
             <span className="text-[10px] font-bold text-[var(--green)] bg-[var(--green)]/10 px-2 py-0.5 rounded-full">
-              -17%
+              -15%
             </span>
           </button>
         </div>
       </motion.div>
 
-      {/* Pricing Tier Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
-        {PRICING_TIERS.map((tier, idx) => (
-          <PricingCard
-            key={tier.id}
-            tier={tier}
-            selected={data.subscriptionTier === tier.id}
-            isAnnual={isAnnual}
-            onSelect={() => updateData({ subscriptionTier: tier.id })}
-            delay={idx * 0.1}
-          />
-        ))}
-      </div>
+      {/* Single Plan Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
+        className="max-w-lg mx-auto"
+      >
+        <div className="relative rounded-2xl overflow-hidden border border-[var(--accent)] shadow-[0_0_30px_rgba(0,122,255,0.12)]">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-[var(--accent)]/15 to-purple-500/5 p-6 pb-5 text-center">
+            <h4 className="font-bold text-text text-xl">EMS Pro</h4>
+            <p className="text-xs text-text-3 mt-1">Everything you need to manage your team</p>
+
+            {/* Price */}
+            <div className="mt-5 flex items-baseline justify-center gap-1">
+              <span className="text-lg text-text-3 font-medium">₹</span>
+              <span className="text-5xl font-extrabold text-text tracking-tight">{displayPrice}</span>
+              <div className="text-left ml-1">
+                <span className="text-text-3 text-sm block leading-tight">/user</span>
+                <span className="text-text-3 text-sm block leading-tight">/month</span>
+              </div>
+            </div>
+
+            {isAnnual && (
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <span className="text-sm text-text-3 line-through">₹{MONTHLY_PRICE}/user/mo</span>
+                <span className="text-xs font-semibold text-[var(--green)] bg-[var(--green)]/10 px-2.5 py-0.5 rounded-full">
+                  Save 15%
+                </span>
+              </div>
+            )}
+
+            {!isAnnual && (
+              <p className="text-xs text-text-3 mt-2">
+                ₹{ANNUAL_PRICE}/user/mo when billed annually
+              </p>
+            )}
+          </div>
+
+          {/* Features */}
+          <div className="p-6 pt-4 bg-[var(--surface)]">
+            <p className="text-[11px] uppercase tracking-wider text-text-3 font-semibold mb-3">
+              Everything included
+            </p>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
+              {PLAN_FEATURES.map((feature) => (
+                <li
+                  key={feature.text}
+                  className={cn(
+                    "flex items-center gap-2.5 text-sm",
+                    feature.highlighted ? "text-text font-medium" : "text-text-2"
+                  )}
+                >
+                  <CheckIcon highlighted={feature.highlighted} />
+                  {feature.text}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </motion.div>
 
       {/* Billing Details Card */}
       <motion.div

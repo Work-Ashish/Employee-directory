@@ -29,9 +29,9 @@ export const profileKycSchema = z.object({
   path: ["adminConfirmPassword"],
 })
 
-// Step 2: Payment Setup
+// Step 2: Payment Setup (single plan: ₹500/user/month, 15% off annually)
 export const paymentSetupSchema = z.object({
-  subscriptionTier: z.enum(["starter", "growth", "enterprise"]),
+  subscriptionTier: z.string().default("growth"),
   billingEmail: z.string().email("Invalid billing email"),
   billingCycle: z.enum(["monthly", "annual"]),
   invoicePreference: z.enum(["email", "download"]),
@@ -76,7 +76,7 @@ export interface SignupFormData {
   adminPassword: string
   adminConfirmPassword: string
   // Step 2
-  subscriptionTier: "starter" | "growth" | "enterprise"
+  subscriptionTier: string
   billingEmail: string
   billingCycle: "monthly" | "annual"
   invoicePreference: "email" | "download"

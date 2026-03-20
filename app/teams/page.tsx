@@ -15,6 +15,7 @@ import { TeamFormModal } from "@/components/teams/TeamFormModal"
 import { TeamDetailModal } from "@/components/teams/TeamDetailModal"
 import { PlusIcon, Pencil1Icon, TrashIcon, PersonIcon } from "@radix-ui/react-icons"
 import { TeamAPI } from "@/features/teams/api/client"
+import { confirmDanger, showSuccess } from "@/lib/swal"
 
 interface TeamMember {
     employee: { id: string; firstName: string; lastName: string; avatarUrl?: string; designation: string; email?: string }
@@ -64,10 +65,11 @@ export default function TeamsPage() {
     React.useEffect(() => { fetchTeams() }, [fetchTeams])
 
     const handleDelete = async (teamId: string) => {
-        if (!confirm("Are you sure you want to delete this team? All members will be removed.")) return
+        if (!await confirmDanger("Delete Team?", "All members will be removed from this team.")) return
         setDeleting(teamId)
         try {
             await TeamAPI.delete(teamId)
+            showSuccess("Team Deleted", "All members have been removed from the team.")
             setTeams(prev => prev.filter(t => t.id !== teamId))
         } catch { /* empty */ }
         finally { setDeleting(null) }

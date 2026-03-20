@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"
 import { Textarea } from "@/components/ui/Textarea"
 import { Card, CardContent } from "@/components/ui/Card"
+import { confirmDanger, confirmAction, showSuccess } from "@/lib/swal"
 
 const trainingSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -167,10 +168,10 @@ export function AdminTrainingView() {
     }
 
     const deleteTraining = async (id: string) => {
-        if (!confirm("Are you sure? This will delete all enrollments too.")) return
+        if (!await confirmDanger("Delete Training?", "This will permanently delete the training and all enrollments.")) return
         try {
             await TrainingAPI.delete(id)
-            toast.success("Training deleted")
+            showSuccess("Training Deleted", "The training and all enrollments have been removed.")
             fetchTrainings()
         } catch (error: any) {
             toast.error(error.message || "Deletion failed")

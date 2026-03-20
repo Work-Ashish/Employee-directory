@@ -27,9 +27,7 @@ interface GoLiveStepProps extends StepProps {
 /* ------------------------------------------------------------------ */
 
 const PLAN_PRICES: Record<string, { monthly: string; annual: string }> = {
-  starter: { monthly: "$9/mo", annual: "$7/mo" },
-  growth: { monthly: "$29/mo", annual: "$24/mo" },
-  enterprise: { monthly: "$79/mo", annual: "$66/mo" },
+  growth: { monthly: "₹500/user/mo", annual: "₹425/user/mo" },
 }
 
 /* ------------------------------------------------------------------ */
@@ -90,8 +88,8 @@ export default function GoLiveStep({
   const teamCount = data.teamInvites.length + 1
   const activeModules = Object.entries(data.enabledModules).filter(([, v]) => v)
   const activeModuleCount = activeModules.length
-  const planLabel = data.subscriptionTier.charAt(0).toUpperCase() + data.subscriptionTier.slice(1)
-  const planPrice = PLAN_PRICES[data.subscriptionTier]?.[data.billingCycle] ?? ""
+  const planLabel = "EMS Pro"
+  const planPrice = PLAN_PRICES["growth"]?.[data.billingCycle] ?? "₹500/user/mo"
 
   /* ---- Review rows ---- */
   const rows = [

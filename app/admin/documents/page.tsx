@@ -8,6 +8,7 @@ import { cn, extractArray } from "@/lib/utils"
 import { DocumentAPI, Document } from "@/features/documents/api/client"
 import { EmployeeAPI } from "@/features/employees/api/client"
 import { toast } from "sonner"
+import { confirmDanger, confirmAction, showSuccess } from "@/lib/swal"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -250,10 +251,10 @@ export default function DocumentManagement() {
     }
 
     const handleDelete = async (docId: string) => {
-        if (!confirm("Delete this document?")) return
+        if (!await confirmDanger("Delete Document?", "This document will be permanently removed.")) return
         try {
             await DocumentAPI.delete(docId)
-            toast.success("Deleted")
+            showSuccess("Deleted", "Document removed successfully")
             fetchAll()
         } catch (error: any) {
             toast.error(error.message || "Failed to delete")

@@ -54,28 +54,95 @@ async function fetchUserPermissions(): Promise<string[]> {
   return []
 }
 
+/**
+ * Maps frontend module keys → Django feature codenames.
+ * Must stay in sync with MODULE_FEATURE_FLAG in permissions.ts.
+ */
+const LOCAL_MODULE_TO_CODENAME: Record<string, string> = {
+  employees: "employees",
+  attendance: "attendance",
+  leave: "leave",
+  payroll: "payroll",
+  performance: "performance",
+  training: "training",
+  announcements: "announcements",
+  assets: "assets",
+  documents: "documents",
+  helpDesk: "help_desk",
+  recruitment: "recruitment",
+  resignation: "resignation",
+  reports: "reports",
+  teams: "teams",
+  workflows: "workflows",
+  calendar: "calendar",
+  reimbursement: "reimbursement",
+  aiChatbot: "ai_chatbot",
+  feedback: "feedback",
+}
+
+/** Read the admin's onboarding feature config from localStorage */
+function getLocalFeatureConfig(): Record<string, boolean> | null {
+  try {
+    const raw = localStorage.getItem("tenant_feature_config")
+    if (!raw) return null
+    const config = JSON.parse(raw) as Record<string, boolean>
+    // Convert frontend keys to Django codenames
+    const mapped: Record<string, boolean> = {}
+    for (const [key, enabled] of Object.entries(config)) {
+      const codename = LOCAL_MODULE_TO_CODENAME[key] || key
+      mapped[codename] = enabled
+    }
+    return mapped
+  } catch {
+    return null
+  }
+}
+
 /** Fetch tenant's feature flags from Django.
  *  Django returns an array of enabled features: [{codename, name, config}, ...].
- *  We convert it to Record<string, boolean> where each enabled codename → true. */
+ *  We convert it to Record<string, boolean> where each enabled codename → true.
+ *  Falls back to localStorage config from onboarding if Django is unavailable. */
 async function fetchFeatureFlags(): Promise<Record<string, boolean>> {
+  const localConfig = getLocalFeatureConfig()
+
   try {
     const token = localStorage.getItem("access_token")
-    if (!token) return {}
+    if (!token) return localConfig || {}
     const { data } = await api.get<
       { codename: string; name: string; config?: Record<string, unknown> }[]
     >('/features/')
     // Django returns only enabled features as an array
     if (Array.isArray(data)) {
-      const map: Record<string, boolean> = {}
+      const djangoMap: Record<string, boolean> = {}
       for (const f of data) {
-        if (f.codename) map[f.codename] = true
+        if (f.codename) djangoMap[f.codename] = true
       }
-      return map
+      // If we have local config (from onboarding), use it as the source of truth
+      // because Django may not have been synced yet. Local config has explicit
+      // true/false for each module; Django only returns enabled ones.
+      if (localConfig) {
+        // Merge: local config overrides Django defaults
+        const allCodenames = new Set([
+          ...Object.keys(djangoMap),
+          ...Object.keys(localConfig),
+        ])
+        const merged: Record<string, boolean> = {}
+        for (const codename of allCodenames) {
+          // Local config takes precedence (admin explicitly toggled these)
+          if (codename in localConfig) {
+            merged[codename] = localConfig[codename]
+          } else {
+            merged[codename] = djangoMap[codename] ?? false
+          }
+        }
+        return merged
+      }
+      return djangoMap
     }
     // Fallback: if response is already a map (future-proofing)
     if (data && typeof data === "object") return data as unknown as Record<string, boolean>
   } catch { /* non-critical — features endpoint may not exist yet */ }
-  return {}
+  return localConfig || {}
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

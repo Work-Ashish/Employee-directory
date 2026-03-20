@@ -3,6 +3,7 @@
 import * as React from "react"
 import { extractArray, cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { confirmDanger, showSuccess } from "@/lib/swal"
 import { format } from "date-fns"
 import { PlusIcon, TrashIcon, Pencil2Icon, DrawingPinFilledIcon, DrawingPinIcon } from "@radix-ui/react-icons"
 import { Modal } from "@/components/ui/Modal"
@@ -96,10 +97,10 @@ export function AdminAnnouncementsView() {
     }
 
     const deleteAnnouncement = async (id: string) => {
-        if (!confirm("Are you sure?")) return
+        if (!await confirmDanger("Delete Announcement?", "This announcement will be permanently removed.")) return
         try {
             await AnnouncementAPI.delete(id)
-            toast.success("Announcement deleted")
+            showSuccess("Announcement Deleted", "The announcement has been permanently removed.")
             fetchAnnouncements()
         } catch (error: any) {
             toast.error(error.message || "Deletion failed")

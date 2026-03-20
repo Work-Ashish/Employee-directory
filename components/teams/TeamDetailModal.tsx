@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/Avatar"
 import { Pencil1Icon, PlusIcon, Cross2Icon, MagnifyingGlassIcon } from "@radix-ui/react-icons"
 import { EmployeeAPI } from "@/features/employees/api/client"
 import { api } from "@/lib/api-client"
+import { confirmDanger, confirmAction, showSuccess } from "@/lib/swal"
 
 interface Employee {
     id: string
@@ -97,10 +98,11 @@ export function TeamDetailModal({
     }
 
     const handleRemoveMember = async (employeeId: string) => {
-        if (!confirm("Remove this member from the team?")) return
+        if (!await confirmDanger("Remove Member?", "This member will be removed from the team.")) return
         setActionLoading(employeeId)
         try {
             await api.delete(`/teams/${team.id}/members/?employeeId=${employeeId}`)
+            showSuccess("Removed", "Member removed from team")
             onMembersChanged()
         } catch { /* empty */ }
         finally { setActionLoading(null) }

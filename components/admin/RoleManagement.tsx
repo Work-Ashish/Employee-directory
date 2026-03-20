@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { toast } from "sonner"
+import { confirmDanger, showSuccess } from "@/lib/swal"
 import { extractArray } from "@/lib/utils"
 import { api, apiClient } from "@/lib/api-client"
 import { RoleAPI } from "@/features/roles/api/client"
@@ -79,10 +80,10 @@ export function RoleManagement() {
     React.useEffect(() => { fetchRoles(); fetchEmployees() }, [fetchRoles, fetchEmployees])
 
     const handleDelete = async (role: FunctionalRole) => {
-        if (!confirm(`Delete role "${role.name}"? This will unassign all employees.`)) return
+        if (!await confirmDanger("Delete Role?", `"${role.name}" will be removed and all employees unassigned.`)) return
         try {
             await RoleAPI.delete(role.id)
-            toast.success("Role deleted")
+            showSuccess("Role Deleted", `"${role.name}" has been removed.`)
             fetchRoles()
         } catch (error: any) {
             toast.error(error?.data?.error?.message || error.message || "Failed to delete role")

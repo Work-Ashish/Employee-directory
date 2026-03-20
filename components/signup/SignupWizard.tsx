@@ -58,12 +58,70 @@ export function SignupWizard() {
   const [isLaunching, setIsLaunching] = useState(false)
   const [launchError, setLaunchError] = useState("")
 
+  /** Send team invites (fire-and-forget — don't block launch) */
+  const processTeamInvites = useCallback(async (token: string) => {
+    if (!data.teamInvites.length) return
+    try {
+      await fetch("/api/team/invite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          invites: data.teamInvites,
+          organizationName: data.companyName,
+          organizationSlug: data.companyDomain,
+        }),
+      })
+    } catch {
+      // Non-critical — admin can re-invite from the employee module
+    }
+  }, [data.teamInvites, data.companyName, data.companyDomain])
+
+  /** Persist feature flags + preferences (fire-and-forget) */
+  const persistFeatureConfig = useCallback(async (token: string) => {
+    // 1. Save to localStorage so AuthContext can read immediately
+    const featureMap: Record<string, boolean> = {}
+    for (const [key, enabled] of Object.entries(data.enabledModules)) {
+      featureMap[key] = enabled
+    }
+    try {
+      localStorage.setItem("tenant_feature_config", JSON.stringify(featureMap))
+      localStorage.setItem("tenant_preferences", JSON.stringify({
+        timezone: data.timezone,
+        language: data.language,
+        dateFormat: data.dateFormat,
+        currency: data.currency,
+      }))
+    } catch {
+      // non-critical
+    }
+
+    // 2. Sync to Django (best-effort)
+    try {
+      await fetch("/api/features/configure", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          enabledModules: data.enabledModules,
+          tenantSlug: data.companyDomain,
+        }),
+      })
+    } catch {
+      // Will use localStorage fallback
+    }
+  }, [data.enabledModules, data.companyDomain, data.timezone, data.language, data.dateFormat, data.currency])
+
   const handleLaunch = useCallback(async () => {
     setIsLaunching(true)
     setLaunchError("")
 
     try {
-      await register({
+      const registerResult = await register({
         tenantName: data.companyName,
         tenantSlug: data.companyDomain,
         email: data.adminEmail,
@@ -71,6 +129,17 @@ export function SignupWizard() {
         firstName: data.adminFirstName,
         lastName: data.adminLastName,
       })
+
+      // register() already returns tokens and saves them to localStorage + cookie
+      const token = registerResult.access || localStorage.getItem("access_token") || ""
+
+      // Process team invites in background (don't block launch)
+      if (data.teamInvites.length > 0 && token) {
+        processTeamInvites(token)
+      }
+
+      // Persist feature flags + preferences (don't block launch)
+      persistFeatureConfig(token)
 
       // Fire confetti celebration
       fireConfetti()
@@ -95,8 +164,16 @@ export function SignupWizard() {
             adminLastName: data.adminLastName,
             subscriptionTier: data.subscriptionTier,
             billingCycle: data.billingCycle,
+            teamInvites: data.teamInvites,
           }))
           localStorage.setItem("tenant_slug", data.companyDomain)
+          localStorage.setItem("tenant_feature_config", JSON.stringify(data.enabledModules))
+          localStorage.setItem("tenant_preferences", JSON.stringify({
+            timezone: data.timezone,
+            language: data.language,
+            dateFormat: data.dateFormat,
+            currency: data.currency,
+          }))
         } catch {
           // localStorage not available — non-fatal
         }
@@ -113,7 +190,7 @@ export function SignupWizard() {
       setLaunchError(message)
       setIsLaunching(false)
     }
-  }, [data, router])
+  }, [data, router, processTeamInvites, persistFeatureConfig])
 
   const renderStep = () => {
     const stepProps = { data, updateData, errors }
