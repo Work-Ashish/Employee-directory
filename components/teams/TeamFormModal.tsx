@@ -109,7 +109,7 @@ export function TeamFormModal({ isOpen, onClose, team, onSaved }: TeamFormModalP
     }
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? "Edit Team" : "Create Team"} className="max-w-lg">
+        <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? "Edit Team" : "Create Team"} className="max-w-2xl">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 {error && (
                     <div className="p-3 rounded-lg bg-danger/10 text-danger text-sm border border-danger/20">

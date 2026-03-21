@@ -40,7 +40,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_both]">
             <div
                 className={cn(
-                    "bg-surface border border-border w-full max-w-md rounded-xl shadow-2xl relative animate-[scaleIn_0.3s_both] flex flex-col max-h-[90vh]",
+                    "bg-surface border border-border w-full max-w-2xl rounded-xl shadow-2xl relative animate-[scaleIn_0.3s_both] flex flex-col max-h-[90vh]",
                     className
                 )}
             >

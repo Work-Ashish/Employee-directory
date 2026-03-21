@@ -26,3 +26,26 @@ export const payrollRunSchema = z.object({
     loansAdvances: z.number().min(0),
     otherDed: z.number().min(0)
 })
+
+export const esiSchema = z.object({
+    grossMonthlySalary: z.number().min(0),
+    employeeContribution: z.number().min(0),
+    employerContribution: z.number().min(0),
+    isApplicable: z.boolean(),
+})
+
+export const professionalTaxSchema = z.object({
+    state: z.enum(["MH", "KA", "WB", "TN", "AP", "TG", "GJ", "MP", "OR", "KL", "AS"]),
+    grossMonthlySalary: z.number().min(0),
+    taxAmount: z.number().min(0),
+})
+
+export const taxRegimeSchema = z.enum(["old", "new"])
+
+export const compliancePayrollRunSchema = payrollRunSchema.extend({
+    regime: taxRegimeSchema.default("new"),
+    state: z.enum(["MH", "KA", "WB", "TN", "AP", "TG", "GJ", "MP", "OR", "KL", "AS"]).optional(),
+    esiEmployee: z.number().min(0).optional(),
+    esiEmployer: z.number().min(0).optional(),
+    professionalTax: z.number().min(0).optional(),
+})

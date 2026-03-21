@@ -29,6 +29,8 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
+RUN apk add --no-cache wget
+
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 
@@ -41,5 +43,8 @@ EXPOSE 3001
 
 ENV PORT=3001
 ENV HOSTNAME="0.0.0.0"
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO- http://localhost:3001/api/raw-health || exit 1
 
 CMD ["node", "server.js"]

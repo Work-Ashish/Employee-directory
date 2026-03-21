@@ -109,7 +109,7 @@ export function TeamDetailModal({
     }
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={team.name} className="max-w-lg">
+        <Modal isOpen={isOpen} onClose={onClose} title={team.name} className="max-w-2xl">
             <div className="flex flex-col gap-4">
                 {/* Team Info */}
                 {team.description && (

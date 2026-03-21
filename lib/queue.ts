@@ -6,9 +6,12 @@ export interface JobPayload {
     type: "ATTENDANCE_IMPORT" | "PF_IMPORT" | "EMPLOYEE_IMPORT" | "WEBHOOK_DELIVERY" | "AGENT_REPORT_GENERATE" | "AGENT_AGGREGATE"
     data: unknown
     createdAt: number
+    attempts: number
+    maxRetries: number
 }
 
 const QUEUE_KEY = "EMS:JOB_QUEUE"
+const DLQ_KEY = "EMS:DLQ"
 
 export const queue = {
     /**
@@ -20,7 +23,9 @@ export const queue = {
             id,
             type,
             data,
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            attempts: 0,
+            maxRetries: 3
         }
 
         // Pushing to the end of the list (FIFO queue)
@@ -69,5 +74,62 @@ export const queue = {
         } catch {
             return null
         }
+    },
+
+    /**
+     * Re-enqueues a failed job with an incremented attempt counter.
+     * If attempts have reached maxRetries, the job is moved to the DLQ instead.
+     * @returns true if re-enqueued, false if moved to DLQ
+     */
+    async requeueWithRetry(job: JobPayload): Promise<boolean> {
+        const updated: JobPayload = { ...job, attempts: (job.attempts ?? 0) + 1 }
+
+        if (updated.attempts >= (updated.maxRetries ?? 3)) {
+            await this.moveToDLQ(updated)
+            return false
+        }
+
+        await this._fallbackLpush(updated)
+        return true
+    },
+
+    /**
+     * Moves a job to the dead-letter queue for later inspection.
+     */
+    async moveToDLQ(job: JobPayload): Promise<void> {
+        const index = await redis.incr(`${DLQ_KEY}:HEAD`)
+        await redis.set(`${DLQ_KEY}:ITEM:${index}`, JSON.stringify(job))
+    },
+
+    /**
+     * Returns the number of items currently in the dead-letter queue.
+     */
+    async getDLQSize(): Promise<number> {
+        const headStr = (await redis.get(`${DLQ_KEY}:HEAD`)) as string | null
+        return parseInt(headStr || "0", 10)
+    },
+
+    /**
+     * Returns up to `limit` items from the DLQ for inspection (most recent first).
+     * Does NOT remove items from the DLQ.
+     */
+    async peekDLQ(limit = 10): Promise<JobPayload[]> {
+        const head = await this.getDLQSize()
+        if (head === 0) return []
+
+        const start = Math.max(1, head - limit + 1)
+        const results: JobPayload[] = []
+
+        for (let i = head; i >= start; i--) {
+            const itemStr = (await redis.get(`${DLQ_KEY}:ITEM:${i}`)) as string | null
+            if (!itemStr) continue
+            try {
+                results.push(JSON.parse(itemStr) as JobPayload)
+            } catch {
+                // skip malformed entries
+            }
+        }
+
+        return results
     }
 }

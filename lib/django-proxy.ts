@@ -5,7 +5,81 @@
  * relaying auth headers, tenant context, and request body. This allows
  * legacy Next.js routes to act as thin proxies while the frontend is
  * migrated to call Django directly via the feature API clients.
+ *
+ * Includes circuit breaker (CLOSED/OPEN/HALF-OPEN) and retry with
+ * exponential backoff for transient errors on idempotent methods.
  */
+
+// ---------------------------------------------------------------------------
+// Circuit Breaker (module-level state)
+// ---------------------------------------------------------------------------
+type CircuitState = "CLOSED" | "OPEN" | "HALF_OPEN";
+
+const CB_FAILURE_THRESHOLD = 5;
+const CB_COOLDOWN_MS = 30_000; // 30 seconds
+
+let cbState: CircuitState = "CLOSED";
+let cbConsecutiveFailures = 0;
+let cbOpenedAt = 0; // timestamp when circuit tripped to OPEN
+
+function cbRecordSuccess(): void {
+  cbConsecutiveFailures = 0;
+  cbState = "CLOSED";
+}
+
+function cbRecordFailure(): void {
+  cbConsecutiveFailures++;
+  if (cbConsecutiveFailures >= CB_FAILURE_THRESHOLD) {
+    cbState = "OPEN";
+    cbOpenedAt = Date.now();
+  }
+}
+
+function cbCanAttempt(): boolean {
+  if (cbState === "CLOSED") return true;
+  if (cbState === "OPEN") {
+    if (Date.now() - cbOpenedAt >= CB_COOLDOWN_MS) {
+      cbState = "HALF_OPEN";
+      return true; // allow one probe request
+    }
+    return false;
+  }
+  // HALF_OPEN — already allowing one request; block additional ones
+  // until the probe completes (handled by caller sequentially).
+  return true;
+}
+
+/** Reset circuit breaker state (for testing). */
+export function resetCircuitBreaker(): void {
+  cbState = "CLOSED";
+  cbConsecutiveFailures = 0;
+  cbOpenedAt = 0;
+}
+
+/** Return the current circuit breaker state for health-check endpoints. */
+export function getCircuitBreakerState(): {
+  state: CircuitState;
+  consecutiveFailures: number;
+  openedAt: number | null;
+} {
+  return {
+    state: cbState,
+    consecutiveFailures: cbConsecutiveFailures,
+    openedAt: cbState !== "CLOSED" ? cbOpenedAt : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Retry helpers
+// ---------------------------------------------------------------------------
+const RETRYABLE_STATUSES = new Set([502, 503, 504]);
+const IDEMPOTENT_METHODS = new Set(["GET", "HEAD"]);
+const MAX_RETRIES = 2; // 3 total attempts
+const RETRY_DELAYS_MS = [1_000, 2_000];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /** Lazily resolve the Django base URL so env vars set after module load are respected.
  *  Priority: DJANGO_GATEWAY_URL (API gateway) > DJANGO_INTERNAL_URL (direct) > NEXT_PUBLIC_API_URL > default */
@@ -41,17 +115,11 @@ interface ProxyOptions {
 
 /**
  * Proxy an incoming Next.js API request to the Django backend.
- *
- * @param request  - The incoming `Request` from the Next.js route handler.
- * @param djangoPath - The Django URL path (e.g. "/employees/", "/departments/").
- *                     Appended to `DJANGO_BASE/api/v1`.
- * @param options  - Optional overrides.
- * @returns A `Response` that can be returned directly from the route handler.
+ * Includes circuit breaker gating and retry with exponential backoff
+ * for transient errors (502/503/504) on idempotent methods (GET/HEAD).
  *
  * @example
  * ```ts
- * import { proxyToDjango } from "@/lib/django-proxy";
- *
  * export async function GET(req: Request) {
  *   return proxyToDjango(req, "/employees/");
  * }
@@ -62,7 +130,19 @@ export async function proxyToDjango(
   djangoPath: string,
   options: ProxyOptions = {}
 ): Promise<Response> {
+  // --- Circuit breaker gate ------------------------------------------------
+  if (!cbCanAttempt()) {
+    return Response.json(
+      {
+        error: "Circuit breaker is OPEN — Django backend unavailable",
+        detail: `Tripped after ${CB_FAILURE_THRESHOLD} consecutive failures. Retry after cooldown.`,
+      },
+      { status: 503 }
+    );
+  }
+
   const { extraHeaders, method, timeoutMs = 30_000 } = options;
+  const resolvedMethod = (method || request.method).toUpperCase();
 
   // --- Build target URL (preserve query string) -------------------------
   const incoming = new URL(request.url);
@@ -82,8 +162,6 @@ export async function proxyToDjango(
   // or a Bearer token already on the request).
   if (!headers.has("Authorization")) {
     const authCookie = request.headers.get("cookie");
-    // If no explicit Authorization header, don't fabricate one.
-    // The Django backend will reject unauthenticated requests on its own.
     if (authCookie) {
       headers.set("cookie", authCookie);
     }
@@ -99,7 +177,6 @@ export async function proxyToDjango(
     }
   }
 
-  // Apply any extra headers from caller
   if (extraHeaders) {
     for (const [k, v] of Object.entries(extraHeaders)) {
       headers.set(k, v);
@@ -107,64 +184,97 @@ export async function proxyToDjango(
   }
 
   // --- Forward body (for non-GET/HEAD) ------------------------------------
-  const hasBody = method
-    ? !["GET", "HEAD"].includes(method.toUpperCase())
-    : !["GET", "HEAD"].includes(request.method.toUpperCase());
-
-  let body: BodyInit | null = null;
+  const hasBody = !IDEMPOTENT_METHODS.has(resolvedMethod);
+  let body: ArrayBuffer | null = null;
   if (hasBody) {
     body = await request.arrayBuffer();
   }
 
-  // --- Execute the proxied request ----------------------------------------
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // --- Attempt with retry (idempotent methods only) -----------------------
+  const canRetry = IDEMPOTENT_METHODS.has(resolvedMethod);
+  const maxAttempts = canRetry ? MAX_RETRIES + 1 : 1;
 
-  try {
-    const djangoResponse = await fetch(targetUrl, {
-      method: method || request.method,
-      headers,
-      body,
-      signal: controller.signal,
-      cache: "no-store",
-    });
-
-    clearTimeout(timer);
-
-    // --- Relay Django's response back to the client -----------------------
-    const responseHeaders = new Headers();
-    djangoResponse.headers.forEach((value, key) => {
-      // Skip hop-by-hop on the way back too
-      if (!STRIPPED_HEADERS.has(key.toLowerCase())) {
-        responseHeaders.set(key, value);
-      }
-    });
-
-    // Stream the body through without buffering
-    return new Response(djangoResponse.body, {
-      status: djangoResponse.status,
-      statusText: djangoResponse.statusText,
-      headers: responseHeaders,
-    });
-  } catch (error: unknown) {
-    clearTimeout(timer);
-
-    if (error instanceof DOMException && error.name === "AbortError") {
-      return Response.json(
-        { error: "Upstream request to Django timed out", detail: `${timeoutMs}ms` },
-        { status: 504 }
-      );
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      await sleep(RETRY_DELAYS_MS[attempt - 1]);
     }
 
-    const message =
-      error instanceof Error ? error.message : "Unknown proxy error";
-    console.error("[DJANGO_PROXY]", message, { targetUrl });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    return Response.json(
-      { error: "Failed to reach Django backend", detail: message },
-      { status: 502 }
-    );
+    try {
+      const djangoResponse = await fetch(targetUrl, {
+        method: resolvedMethod,
+        headers,
+        body,
+        signal: controller.signal,
+        cache: "no-store",
+      });
+
+      clearTimeout(timer);
+
+      // Transient error on an idempotent method — retry if attempts remain
+      if (
+        canRetry &&
+        RETRYABLE_STATUSES.has(djangoResponse.status) &&
+        attempt < maxAttempts - 1
+      ) {
+        cbRecordFailure();
+        continue;
+      }
+
+      // Determine success/failure for the circuit breaker
+      if (djangoResponse.ok) {
+        cbRecordSuccess();
+      } else if (RETRYABLE_STATUSES.has(djangoResponse.status)) {
+        cbRecordFailure();
+      }
+
+      // --- Relay Django's response back to the client ---------------------
+      const responseHeaders = new Headers();
+      djangoResponse.headers.forEach((value, key) => {
+        if (!STRIPPED_HEADERS.has(key.toLowerCase())) {
+          responseHeaders.set(key, value);
+        }
+      });
+
+      return new Response(djangoResponse.body, {
+        status: djangoResponse.status,
+        statusText: djangoResponse.statusText,
+        headers: responseHeaders,
+      });
+    } catch (error: unknown) {
+      clearTimeout(timer);
+      cbRecordFailure();
+
+      // If retries remain and method is idempotent, keep trying
+      if (canRetry && attempt < maxAttempts - 1) {
+        continue;
+      }
+
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return Response.json(
+          { error: "Upstream request to Django timed out", detail: `${timeoutMs}ms` },
+          { status: 504 }
+        );
+      }
+
+      const message =
+        error instanceof Error ? error.message : "Unknown proxy error";
+      console.error("[DJANGO_PROXY]", message, { targetUrl });
+
+      return Response.json(
+        { error: "Failed to reach Django backend", detail: message },
+        { status: 502 }
+      );
+    }
   }
+
+  // Unreachable, but satisfies TypeScript
+  return Response.json(
+    { error: "Failed to reach Django backend", detail: "Exhausted retries" },
+    { status: 502 }
+  );
 }
 
 /**

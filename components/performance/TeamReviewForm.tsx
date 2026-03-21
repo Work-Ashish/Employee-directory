@@ -523,7 +523,7 @@ function ConfigEditor({
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-            <div className="relative bg-surface border border-border rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+            <div className="relative bg-surface border border-border rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
                 <div className="sticky top-0 bg-surface border-b border-border px-5 py-3 flex items-center justify-between z-10">
                     <h3 className="text-sm font-bold text-text">Configure Review Template</h3>
                     <button onClick={onClose} className="p-1 rounded hover:bg-bg-2 text-text-3">

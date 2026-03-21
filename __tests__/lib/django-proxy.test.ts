@@ -10,7 +10,7 @@ vi.stubGlobal("fetch", fetchMock)
 // Set env vars for predictable Django URL
 vi.stubEnv("DJANGO_INTERNAL_URL", "http://django:8000")
 
-import { proxyToDjango, createProxyHandlers } from "@/lib/django-proxy"
+import { proxyToDjango, createProxyHandlers, resetCircuitBreaker } from "@/lib/django-proxy"
 
 function makeRequest(
   url: string,
@@ -34,6 +34,7 @@ function makeDjangoResponse(
 describe("proxyToDjango", () => {
   beforeEach(() => {
     fetchMock.mockReset()
+    resetCircuitBreaker()
   })
 
   afterEach(() => {
@@ -133,8 +134,12 @@ describe("proxyToDjango", () => {
     expect(res.status).toBe(500)
   })
 
-  it("returns 502 when Django is unreachable", async () => {
-    fetchMock.mockRejectedValueOnce(new Error("ECONNREFUSED"))
+  it("returns 502 when Django is unreachable (GET retries exhausted)", async () => {
+    // GET requests retry up to 3 times total
+    fetchMock
+      .mockRejectedValueOnce(new Error("ECONNREFUSED"))
+      .mockRejectedValueOnce(new Error("ECONNREFUSED"))
+      .mockRejectedValueOnce(new Error("ECONNREFUSED"))
 
     const req = makeRequest("http://localhost:3000/api/employees")
     const res = await proxyToDjango(req, "/employees/")
@@ -145,8 +150,23 @@ describe("proxyToDjango", () => {
     expect(json.detail).toContain("ECONNREFUSED")
   })
 
-  it("returns 504 on timeout", async () => {
-    // Simulate a request that never resolves within the timeout
+  it("returns 502 when Django is unreachable (POST no retry)", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("ECONNREFUSED"))
+
+    const req = makeRequest("http://localhost:3000/api/employees", {
+      method: "POST",
+      body: JSON.stringify({}),
+    })
+    const res = await proxyToDjango(req, "/employees/")
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(res.status).toBe(502)
+    const json = await res.json()
+    expect(json.error).toBe("Failed to reach Django backend")
+  })
+
+  it("returns 504 on timeout (POST no retry)", async () => {
+    // Use POST to avoid retry complexity on timeouts
     fetchMock.mockImplementationOnce(
       (_url: string, init: { signal: AbortSignal }) =>
         new Promise((_resolve, reject) => {
@@ -156,7 +176,10 @@ describe("proxyToDjango", () => {
         })
     )
 
-    const req = makeRequest("http://localhost:3000/api/employees")
+    const req = makeRequest("http://localhost:3000/api/employees", {
+      method: "POST",
+      body: JSON.stringify({}),
+    })
     const res = await proxyToDjango(req, "/employees/", { timeoutMs: 50 })
 
     expect(res.status).toBe(504)
@@ -220,11 +243,63 @@ describe("proxyToDjango", () => {
     const headers = calledInit.headers as Headers
     expect(headers.get("X-Service-Token")).toBe("internal-secret")
   })
+
+  it("retries GET on transient 502 and succeeds", async () => {
+    const djangoBody = { data: [] }
+    fetchMock
+      .mockResolvedValueOnce(makeDjangoResponse({}, 502))
+      .mockResolvedValueOnce(makeDjangoResponse(djangoBody, 200))
+
+    const req = makeRequest("http://localhost:3000/api/employees")
+    const res = await proxyToDjango(req, "/employees/")
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(res.status).toBe(200)
+  })
+
+  it("does not retry POST on transient error", async () => {
+    fetchMock.mockResolvedValueOnce(makeDjangoResponse({}, 503))
+
+    const req = makeRequest("http://localhost:3000/api/employees", {
+      method: "POST",
+      body: JSON.stringify({}),
+    })
+    const res = await proxyToDjango(req, "/employees/")
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(res.status).toBe(503)
+  })
+
+  it("returns 503 when circuit breaker is OPEN", async () => {
+    // Trip the circuit breaker by causing 5 consecutive failures
+    for (let i = 0; i < 5; i++) {
+      fetchMock.mockRejectedValueOnce(new Error("fail"))
+    }
+    // POST doesn't retry, so each call = 1 failure
+    for (let i = 0; i < 5; i++) {
+      const req = makeRequest("http://localhost:3000/api/employees", {
+        method: "POST",
+        body: JSON.stringify({}),
+      })
+      await proxyToDjango(req, "/employees/")
+    }
+
+    // Next call should be blocked by circuit breaker
+    const req = makeRequest("http://localhost:3000/api/employees", {
+      method: "POST",
+      body: JSON.stringify({}),
+    })
+    const res = await proxyToDjango(req, "/employees/")
+    expect(res.status).toBe(503)
+    const json = await res.json()
+    expect(json.error).toContain("Circuit breaker")
+  })
 })
 
 describe("createProxyHandlers", () => {
   beforeEach(() => {
     fetchMock.mockReset()
+    resetCircuitBreaker()
   })
 
   it("creates GET/POST/PUT/PATCH/DELETE handlers", () => {
@@ -240,11 +315,12 @@ describe("createProxyHandlers", () => {
     fetchMock.mockResolvedValue(makeDjangoResponse({ data: {} }))
     const handlers = createProxyHandlers("/employees/")
 
-    const req = makeRequest("http://localhost:3000/api/employees")
-    await handlers.GET(req)
+    const req1 = makeRequest("http://localhost:3000/api/employees")
+    await handlers.GET(req1)
     expect(fetchMock.mock.calls[0][1].method).toBe("GET")
 
-    await handlers.DELETE(req)
+    const req2 = makeRequest("http://localhost:3000/api/employees")
+    await handlers.DELETE(req2)
     expect(fetchMock.mock.calls[1][1].method).toBe("DELETE")
   })
 })

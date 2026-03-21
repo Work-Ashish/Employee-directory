@@ -5,10 +5,10 @@ import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 
 const sizeStyles = {
-  sm: "max-w-md",
-  default: "max-w-lg",
-  lg: "max-w-2xl",
-  xl: "max-w-4xl",
+  sm: "max-w-lg",
+  default: "max-w-2xl",
+  lg: "max-w-3xl",
+  xl: "max-w-5xl",
   full: "max-w-[90vw]",
 }
 

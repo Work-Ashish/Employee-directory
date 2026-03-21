@@ -67,11 +67,20 @@ export async function apiClient<T>(
     }
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    body,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+      body,
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      throw new Error("Request timed out. Please check your connection and try again.");
+    }
+    throw err;
+  }
 
   // Handle 401 → redirect to login
   if (response.status === 401) {

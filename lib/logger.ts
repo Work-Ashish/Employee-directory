@@ -31,9 +31,29 @@ export enum LogLevel {
 
 const currentLogLevel = process.env.NODE_ENV === 'production' ? LogLevel.INFO : LogLevel.DEBUG
 
+const SENSITIVE_KEY_PATTERN = /password|secret|token|apikey|api_key|authorization|credential|credit_card/i
+
+function maskSensitive(obj: unknown): unknown {
+    if (obj === null || obj === undefined) return obj
+    if (Array.isArray(obj)) return obj.map(maskSensitive)
+    if (typeof obj === "object") {
+        const result: Record<string, unknown> = {}
+        for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+            if (SENSITIVE_KEY_PATTERN.test(key)) {
+                result[key] = "[REDACTED]"
+            } else {
+                result[key] = maskSensitive(value)
+            }
+        }
+        return result
+    }
+    return obj
+}
+
 class Logger {
     private formatMessage(level: string, message: string, meta?: Record<string, unknown>) {
         const context = logContext.getStore()
+        const sanitizedMeta = meta ? maskSensitive(meta) as Record<string, unknown> : undefined
         const logEntry = {
             timestamp: new Date().toISOString(),
             level,
@@ -41,7 +61,7 @@ class Logger {
             requestId: context?.requestId,
             organizationId: context?.organizationId,
             userId: context?.userId,
-            ...meta
+            ...sanitizedMeta
         }
         return JSON.stringify(logEntry)
     }
