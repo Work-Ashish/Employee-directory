@@ -12,6 +12,9 @@
 
 # ── Testing ────────────────────────────────────────────────
 /coverage
+/test-results/
+/playwright-report/
+/blob-report/
 
 # ── Next.js ────────────────────────────────────────────────
 /.next/
@@ -47,17 +50,20 @@ sed.out
 *.tsbuildinfo
 next-env.d.ts
 
-
-# ── Python / Django ────────────────────────────────────
+# ── Python / Django ────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.egg-info/
 *.egg
 .pytest_cache/
+*.pyc
 
-# ── Claude Code (local settings may contain secrets) ──
+# ── Claude Code / AI tooling ──────────────────────────────
 .claude/settings.local.json
+.swarm/
+.claude-flow/metrics/
+.claude-flow/security/
 
-# ── Temp / generated ──────────────────────────────────
+# ── Temp / generated ──────────────────────────────────────
 /tmp/
 cookies.txt

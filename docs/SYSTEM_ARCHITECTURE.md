@@ -2,7 +2,7 @@
 
 ## Overview
 
-EMS Pro is a multi-tenant HRMS undergoing migration to a unified platform. The **frontend** is built on Next.js 16, React 19, and TailwindCSS 3.4. The **backend** is being migrated from Next.js API Routes + Prisma to a **Django 5.1 + Django REST Framework** backend (located in `backend/`) with schema-per-tenant PostgreSQL isolation, SimpleJWT authentication, and dynamic RBAC. The system includes 10 roles, 19+ permissioned modules, 100+ legacy API routes (being migrated), 63+ database models, AI-assisted workflows, and a desktop agent telemetry/reporting pipeline.
+EMS Pro is a multi-tenant HRMS with a **Next.js 16 / React 19 / TailwindCSS 3.4** frontend and a **Django 5.1 + Django REST Framework** backend (`backend/`) using DB-per-tenant PostgreSQL isolation, SimpleJWT authentication, and dynamic RBAC. The system has 7 roles, 18 modules (63 permission codenames), 100+ API routes, 64 database models, AI-assisted workflows, and a desktop agent telemetry/reporting pipeline. 12 of 18 modules are fully migrated to Django; 6 remain partial (Payroll, Performance, Feedback, Reports, Settings, Dashboard).
 
 ---
 

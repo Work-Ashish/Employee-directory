@@ -4,6 +4,32 @@ All notable changes to EMS Pro are documented here.
 
 ---
 
+## [5.2.0] - 2026-03-21
+
+### Added
+
+- **Playwright E2E Test Suite** — 57 tests across 7 spec files covering auth, employees CRUD, teams CRUD, leave/attendance, payroll/announcements, admin panels (assets, documents, training, integrations, performance), and full navigation smoke tests for all 18 routes
+- **Playwright Configuration** — `playwright.config.ts` with single-worker sequential execution, chromium project, screenshot-on-failure, and trace-on-retry
+- **Login Helper** — `tests/e2e/helpers/auth.ts` with `login()` and `uniqueId()` utilities
+- **Circuit Breaker Reset** — `resetCircuitBreaker()` export in `lib/django-proxy.ts` for test isolation
+
+### Changed
+
+- **Modal Widths** — Broadened all modal/popup forms across the app: `Modal.tsx` default → `max-w-2xl`, `Dialog.tsx` size tiers bumped (sm→lg, default→2xl, lg→3xl, xl→5xl), plus `TeamFormModal`, `TeamDetailModal`, `TeamReviewForm` individually widened
+- **Django Proxy Tests** — Rewrote `__tests__/lib/django-proxy.test.ts` (17 tests) with `resetCircuitBreaker()` in `beforeEach`, POST-specific tests for non-retry scenarios, and 3 new tests (retry success, POST no-retry, circuit breaker OPEN)
+
+### Fixed
+
+- **Login Authentication** — Rotated credentials after GitGuardian secret detection incident; password updated via Django shell
+- **Secret Leak Prevention** — Added `.claude/settings.local.json` to `.gitignore`, ran `git rm --cached` to stop tracking it
+
+### Security
+
+- Resolved GitGuardian incident #29052649 (credential exposure in 22 commits)
+- Rotated exposed password, added `.gitignore` entries for sensitive files
+
+---
+
 ## [5.1.0] - 2026-03-17
 
 ### Added — HiringNow Django Integration (9 Sprints)
