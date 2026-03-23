@@ -9,7 +9,6 @@
  * regardless of CSV row order.
  */
 import { NextResponse } from "next/server"
-import { salaryStore } from "@/lib/salary-store"
 
 function getDjangoBase(): string {
     return (
@@ -175,9 +174,6 @@ export async function POST(req: Request) {
             rowIndex: number
         }> = []
 
-        // Track salary entries to save to local salary store
-        const salaryEntries: Array<{ employeeId: string; salary: number }> = []
-
         // ──────────────────────────────────────────────────────────
         // PASS 1: Create User + Employee for each row (no reporting_to)
         // ──────────────────────────────────────────────────────────
@@ -211,6 +207,7 @@ export async function POST(req: Request) {
             const existingEmpId = existingByEmail || existingByCode || null
 
             // Build employee payload
+            const rowSalary = parseSalary(row.salary)
             const djangoPayload: Record<string, unknown> = {
                 first_name: firstName,
                 last_name: lastName,
@@ -218,6 +215,7 @@ export async function POST(req: Request) {
                 department: (row.departmentName || "").trim(),
                 designation: (row.designation || "").trim(),
             }
+            if (rowSalary > 0) djangoPayload.salary = rowSalary
             const normalizedDate = normalizeDate(row.dateOfJoining)
             if (normalizedDate) djangoPayload.start_date = normalizedDate
             if (empCode) djangoPayload.employee_code = empCode
@@ -241,11 +239,6 @@ export async function POST(req: Request) {
                         emailToId.set(email.toLowerCase(), existingEmpId)
                         if (empCode) codeToId.set(empCode.toLowerCase(), existingEmpId)
                         inserted.push(i)
-
-                        const rowSalary = parseSalary(row.salary)
-                        if (rowSalary > 0) {
-                            salaryEntries.push({ employeeId: existingEmpId, salary: rowSalary })
-                        }
 
                         if (mgrEmail && !djangoPayload.reporting_to) {
                             pendingManagerLinks.push({
@@ -321,11 +314,6 @@ export async function POST(req: Request) {
                         name: `${firstName} ${lastName}`.trim(),
                     })
 
-                    const rowSalary = parseSalary(row.salary)
-                    if (rowSalary > 0) {
-                        salaryEntries.push({ employeeId: empId, salary: rowSalary })
-                    }
-
                     if (mgrEmail && !djangoPayload.reporting_to) {
                         pendingManagerLinks.push({
                             employeeId: empId,
@@ -370,8 +358,6 @@ export async function POST(req: Request) {
                             if (updateRes.ok) {
                                 emailToId.set(email.toLowerCase(), foundId)
                                 inserted.push(i)
-                                const rowSalary = parseSalary(row.salary)
-                                if (rowSalary > 0) salaryEntries.push({ employeeId: foundId, salary: rowSalary })
                             } else {
                                 const upErr = await updateRes.json().catch(() => ({}))
                                 errors.push({ row: i + 1, employeeCode: empCode, email, reason: extractDjangoError(upErr) })
@@ -410,16 +396,6 @@ export async function POST(req: Request) {
             } catch {
                 // Non-critical
             }
-        }
-
-        // ──────────────────────────────────────────────────────────
-        // PASS 3: Save salary data to file-backed salary store
-        // ──────────────────────────────────────────────────────────
-        if (salaryEntries.length > 0) {
-            console.log(`[import] Saving ${salaryEntries.length} salary entries:`, JSON.stringify(salaryEntries))
-            salaryStore.setBatch(salaryEntries)
-        } else {
-            console.log(`[import] No salary entries to save`)
         }
 
         return NextResponse.json({

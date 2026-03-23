@@ -32,7 +32,7 @@ export function DashboardStatCard({ label, value, sub, badge, badgeType, icon, i
           "font-extrabold tracking-tight text-text leading-none animate-count-up",
           isMoney ? "text-xl" : "text-3xl"
         )}>
-          {isMoney ? `₹${value}` : value}
+          {isMoney ? `₹${Number(value).toLocaleString("en-IN")}` : value}
         </div>
 
         {badge && (

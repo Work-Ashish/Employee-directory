@@ -4,12 +4,9 @@
  */
 
 import { toSnakeCase, toCamelCase } from "./transform";
-import { refreshToken as doRefreshToken } from "./django-auth";
+import { refreshToken } from "./django-auth";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-
-/** Prevent concurrent refresh attempts */
-let refreshPromise: Promise<string> | null = null;
 
 export interface ApiResponse<T> {
   data: T;
@@ -89,11 +86,8 @@ export async function apiClient<T>(
   // Handle 401 → try refresh token, then retry once
   if (response.status === 401 && typeof window !== "undefined") {
     try {
-      // Deduplicate concurrent refresh calls
-      if (!refreshPromise) {
-        refreshPromise = doRefreshToken().finally(() => { refreshPromise = null; });
-      }
-      const newToken = await refreshPromise;
+      // Uses shared dedup from django-auth.ts — safe with ROTATE_REFRESH_TOKENS
+      const newToken = await refreshToken();
 
       // Retry the original request with the new token
       headers["Authorization"] = `Bearer ${newToken}`;

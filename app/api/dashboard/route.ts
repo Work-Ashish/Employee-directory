@@ -53,9 +53,9 @@ export async function GET(req: Request) {
         const base = getDjangoBase()
         const headers = forwardHeaders(req)
 
-        const res = await fetch(`${base}/api/v1/employees/?per_page=10000`, {
+        const res = await fetch(`${base}/api/v1/employees/?per_page=500`, {
             headers,
-            signal: AbortSignal.timeout(15_000),
+            signal: AbortSignal.timeout(60_000),
         })
 
         if (!res.ok) {
@@ -73,7 +73,7 @@ export async function GET(req: Request) {
         const activeEmployees = employees.filter(e => e.status === "active" || e.status === "pre_joining").length
         const onLeaveEmployees = employees.filter(e => e.status === "on_notice").length
         const exitedEmployees = employees.filter(e => e.status === "exited").length
-        const salaries = employees.map(e => e.salary || 0).filter(s => s > 0)
+        const salaries = employees.map(e => Number(e.salary) || 0).filter(s => s > 0)
         const monthlyPayroll = salaries.reduce((sum, s) => sum + s, 0)
         const avgSalary = salaries.length > 0 ? monthlyPayroll / salaries.length : 0
         const attritionRate = totalEmployees > 0 ? (exitedEmployees / totalEmployees) * 100 : 0

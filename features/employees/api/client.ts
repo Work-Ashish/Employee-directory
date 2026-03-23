@@ -103,6 +103,10 @@ function toDjangoPayload(payload: Record<string, unknown>): Record<string, unkno
     delete out.salary
     delete out.avatarUrl
     delete out.id
+    // Django uses lowercase status choices (active, pre_joining, etc.)
+    if (typeof out.status === "string") {
+        out.status = out.status.toLowerCase()
+    }
     return out
 }
 

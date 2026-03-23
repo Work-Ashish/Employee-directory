@@ -1,0 +1,101 @@
+employeeCode,firstName,lastName,email,designation,departmentName,salary,dateOfJoining,managerEmail
+EMP-1001,Rohan,Pandey,rohan.pandey55@testcorp.com,Software Engineer,Engineering,102900,2023-07-16,
+EMP-1002,Nisha,Nair,nisha.nair93@testcorp.com,Product Manager,Product,102300,2025-12-05,
+EMP-1003,Sara,Singh,sara.singh26@testcorp.com,UI Designer,Design,65000,2023-05-08,
+EMP-1004,Divya,Nair,divya.nair91@testcorp.com,Marketing Manager,Marketing,67200,2023-08-04,
+EMP-1005,Neha,Iyer,neha.iyer72@testcorp.com,Sales Executive,Sales,75200,2025-04-13,
+EMP-1006,Isha,Malhotra,isha.malhotra57@testcorp.com,Financial Analyst,Finance,79900,2023-10-04,
+EMP-1007,Megha,Reddy,megha.reddy13@testcorp.com,HR Manager,HR,57200,2024-01-14,
+EMP-1008,Shweta,Mehta,shweta.mehta30@testcorp.com,Operations Manager,Operations,62000,2024-09-16,
+EMP-1009,Myra,Mishra,myra.mishra68@testcorp.com,Legal Counsel,Legal,90700,2023-07-23,
+EMP-1010,Suresh,Menon,suresh.menon37@testcorp.com,Support Engineer,Customer Support,37900,2023-01-02,
+EMP-1011,Divya,Joshi,divya.joshi125@testcorp.com,Account Manager,Sales,79600,2026-04-14,neha.iyer72@testcorp.com
+EMP-1012,Aarav,Desai,aarav.desai198@testcorp.com,HR Executive,HR,60000,2024-10-10,megha.reddy13@testcorp.com
+EMP-1013,Diya,Pillai,diya.pillai843@testcorp.com,SEO Specialist,Marketing,52600,2025-10-15,divya.nair91@testcorp.com
+EMP-1014,Neha,Kapoor,neha.kapoor877@testcorp.com,Software Engineer,Engineering,110300,2024-02-10,rohan.pandey55@testcorp.com
+EMP-1015,Arjun,Kulkarni,arjun.kulkarni273@testcorp.com,UX Designer,Design,46400,2025-10-22,sara.singh26@testcorp.com
+EMP-1016,Karan,Kulkarni,karan.kulkarni596@testcorp.com,Operations Analyst,Operations,67400,2026-12-21,shweta.mehta30@testcorp.com
+EMP-1017,Megha,Banerjee,megha.banerjee654@testcorp.com,Marketing Manager,Marketing,61800,2026-08-19,divya.nair91@testcorp.com
+EMP-1018,Divya,Kulkarni,divya.kulkarni807@testcorp.com,UX Designer,Design,49300,2024-11-06,sara.singh26@testcorp.com
+EMP-1019,Rohan,Mishra,rohan.mishra417@testcorp.com,Sales Lead,Sales,33700,2026-09-14,neha.iyer72@testcorp.com
+EMP-1020,Swati,Desai,swati.desai139@testcorp.com,Logistics Coordinator,Operations,66000,2025-05-24,shweta.mehta30@testcorp.com
+EMP-1021,Krishna,Bose,krishna.bose407@testcorp.com,Support Lead,Customer Support,31100,2024-01-06,suresh.menon37@testcorp.com
+EMP-1022,Manish,Ghosh,manish.ghosh183@testcorp.com,QA Engineer,Engineering,73200,2025-08-24,rohan.pandey55@testcorp.com
+EMP-1023,Shweta,Bose,shweta.bose629@testcorp.com,Operations Analyst,Operations,37300,2024-06-22,shweta.mehta30@testcorp.com
+EMP-1024,Amit,Das,amit.das841@testcorp.com,HR Manager,HR,61100,2024-02-19,megha.reddy13@testcorp.com
+EMP-1025,Rahul,Saxena,rahul.saxena641@testcorp.com,Operations Analyst,Operations,58900,2026-05-18,shweta.mehta30@testcorp.com
+EMP-1026,Simran,Kulkarni,simran.kulkarni80@testcorp.com,Associate PM,Product,97600,2025-10-08,nisha.nair93@testcorp.com
+EMP-1027,Ayaan,Kapoor,ayaan.kapoor473@testcorp.com,Product Analyst,Product,54900,2025-12-07,nisha.nair93@testcorp.com
+EMP-1028,Vivaan,Das,vivaan.das361@testcorp.com,Product Manager,Product,96700,2024-07-09,nisha.nair93@testcorp.com
+EMP-1029,Aarav,Thakur,aarav.thakur973@testcorp.com,Recruiter,HR,68700,2026-12-02,megha.reddy13@testcorp.com
+EMP-1030,Arjun,Kulkarni,arjun.kulkarni444@testcorp.com,Operations Analyst,Operations,42000,2026-05-06,shweta.mehta30@testcorp.com
+EMP-1031,Pranav,Sinha,pranav.sinha400@testcorp.com,Accountant,Finance,53100,2024-09-27,isha.malhotra57@testcorp.com
+EMP-1032,Krishna,Iyer,krishna.iyer602@testcorp.com,Support Lead,Customer Support,31500,2024-11-08,suresh.menon37@testcorp.com
+EMP-1033,Ishaan,Iyer,ishaan.iyer633@testcorp.com,Product Analyst,Product,100000,2025-12-16,nisha.nair93@testcorp.com
+EMP-1034,Megha,Gupta,megha.gupta512@testcorp.com,Software Engineer,Engineering,116900,2026-02-15,rohan.pandey55@testcorp.com
+EMP-1035,Meera,Kapoor,meera.kapoor847@testcorp.com,DevOps Engineer,Engineering,66900,2024-06-04,rohan.pandey55@testcorp.com
+EMP-1036,Suresh,Kulkarni,suresh.kulkarni543@testcorp.com,Account Manager,Sales,64800,2024-04-28,neha.iyer72@testcorp.com
+EMP-1037,Sneha,Saxena,sneha.saxena789@testcorp.com,Brand Manager,Marketing,36400,2025-07-15,divya.nair91@testcorp.com
+EMP-1038,Reyansh,Ghosh,reyansh.ghosh216@testcorp.com,SEO Specialist,Marketing,71700,2025-04-15,divya.nair91@testcorp.com
+EMP-1039,Shreya,Patel,shreya.patel782@testcorp.com,Graphic Designer,Design,36500,2025-09-05,sara.singh26@testcorp.com
+EMP-1040,Ishaan,Aggarwal,ishaan.aggarwal823@testcorp.com,Product Analyst,Product,87400,2024-04-25,nisha.nair93@testcorp.com
+EMP-1041,Suresh,Iyer,suresh.iyer586@testcorp.com,Legal Analyst,Legal,97200,2026-04-27,myra.mishra68@testcorp.com
+EMP-1042,Rajesh,Kapoor,rajesh.kapoor320@testcorp.com,Product Analyst,Product,89700,2026-03-14,nisha.nair93@testcorp.com
+EMP-1043,Anjali,Saxena,anjali.saxena191@testcorp.com,Support Engineer,Customer Support,38300,2024-04-19,suresh.menon37@testcorp.com
+EMP-1044,Kavya,Verma,kavya.verma898@testcorp.com,Auditor,Finance,58800,2025-03-14,isha.malhotra57@testcorp.com
+EMP-1045,Swati,Patel,swati.patel912@testcorp.com,Brand Manager,Marketing,60600,2025-02-05,divya.nair91@testcorp.com
+EMP-1046,Isha,Verma,isha.verma142@testcorp.com,Sales Executive,Sales,83400,2026-10-25,neha.iyer72@testcorp.com
+EMP-1047,Isha,Singh,isha.singh784@testcorp.com,Content Writer,Marketing,49000,2025-09-17,divya.nair91@testcorp.com
+EMP-1048,Swati,Kulkarni,swati.kulkarni849@testcorp.com,Operations Analyst,Operations,34600,2025-05-13,shweta.mehta30@testcorp.com
+EMP-1049,Aditya,Kumar,aditya.kumar286@testcorp.com,Frontend Developer,Engineering,75200,2025-10-25,rohan.pandey55@testcorp.com
+EMP-1050,Aarav,Kumar,aarav.kumar730@testcorp.com,Operations Manager,Operations,60000,2026-01-16,shweta.mehta30@testcorp.com
+EMP-1051,Pallavi,Pandey,pallavi.pandey577@testcorp.com,Brand Manager,Marketing,49500,2024-04-19,divya.nair91@testcorp.com
+EMP-1052,Myra,Menon,myra.menon391@testcorp.com,Logistics Coordinator,Operations,35600,2024-12-18,shweta.mehta30@testcorp.com
+EMP-1053,Deepak,Pillai,deepak.pillai454@testcorp.com,Product Manager,Product,89600,2026-11-18,nisha.nair93@testcorp.com
+EMP-1054,Anjali,Menon,anjali.menon939@testcorp.com,Product Analyst,Product,60200,2024-04-28,nisha.nair93@testcorp.com
+EMP-1055,Tanvi,Desai,tanvi.desai261@testcorp.com,Support Analyst,Customer Support,42500,2024-06-24,suresh.menon37@testcorp.com
+EMP-1056,Rajesh,Das,rajesh.das534@testcorp.com,Tech Lead,Engineering,59500,2026-05-24,rohan.pandey55@testcorp.com
+EMP-1057,Tanvi,Menon,tanvi.menon16@testcorp.com,UX Designer,Design,62100,2025-04-28,sara.singh26@testcorp.com
+EMP-1058,Tanvi,Patel,tanvi.patel780@testcorp.com,Operations Manager,Operations,38800,2025-12-09,shweta.mehta30@testcorp.com
+EMP-1059,Aarav,Pandey,aarav.pandey682@testcorp.com,Finance Manager,Finance,87300,2024-09-08,isha.malhotra57@testcorp.com
+EMP-1060,Vikram,Iyer,vikram.iyer988@testcorp.com,Account Manager,Sales,62000,2024-03-25,neha.iyer72@testcorp.com
+EMP-1061,Rohan,Mehta,rohan.mehta792@testcorp.com,Operations Analyst,Operations,60000,2026-07-07,shweta.mehta30@testcorp.com
+EMP-1062,Priya,Kulkarni,priya.kulkarni964@testcorp.com,Customer Success Manager,Customer Support,27800,2024-10-05,suresh.menon37@testcorp.com
+EMP-1063,Kavya,Thakur,kavya.thakur269@testcorp.com,Graphic Designer,Design,40900,2026-10-05,sara.singh26@testcorp.com
+EMP-1064,Meera,Iyer,meera.iyer777@testcorp.com,Software Engineer,Engineering,91300,2026-12-09,rohan.pandey55@testcorp.com
+EMP-1065,Priya,Singh,priya.singh281@testcorp.com,Auditor,Finance,92500,2026-06-19,isha.malhotra57@testcorp.com
+EMP-1066,Swati,Joshi,swati.joshi353@testcorp.com,Backend Developer,Engineering,88600,2025-02-25,rohan.pandey55@testcorp.com
+EMP-1067,Simran,Sinha,simran.sinha988@testcorp.com,Sales Executive,Sales,56500,2026-10-09,neha.iyer72@testcorp.com
+EMP-1068,Siddharth,Aggarwal,siddharth.aggarwal482@testcorp.com,Financial Analyst,Finance,58700,2025-01-22,isha.malhotra57@testcorp.com
+EMP-1069,Vihaan,Patel,vihaan.patel612@testcorp.com,Auditor,Finance,62100,2026-07-22,isha.malhotra57@testcorp.com
+EMP-1070,Manish,Sharma,manish.sharma766@testcorp.com,Auditor,Finance,52900,2025-08-20,isha.malhotra57@testcorp.com
+EMP-1071,Deepak,Mehta,deepak.mehta576@testcorp.com,Operations Manager,Operations,46700,2026-05-20,shweta.mehta30@testcorp.com
+EMP-1072,Vikram,Chopra,vikram.chopra651@testcorp.com,Business Development,Sales,76100,2026-03-21,neha.iyer72@testcorp.com
+EMP-1073,Ishaan,Nair,ishaan.nair46@testcorp.com,Design Lead,Design,56600,2025-09-19,sara.singh26@testcorp.com
+EMP-1074,Aarav,Verma,aarav.verma578@testcorp.com,Facilities Manager,Operations,61700,2025-02-25,shweta.mehta30@testcorp.com
+EMP-1075,Krishna,Sinha,krishna.sinha947@testcorp.com,Social Media Manager,Marketing,65500,2024-11-16,divya.nair91@testcorp.com
+EMP-1076,Nikhil,Bose,nikhil.bose471@testcorp.com,Operations Analyst,Operations,71400,2025-06-20,shweta.mehta30@testcorp.com
+EMP-1077,Ayaan,Gupta,ayaan.gupta728@testcorp.com,Associate PM,Product,103500,2024-10-18,nisha.nair93@testcorp.com
+EMP-1078,Neha,Pandey,neha.pandey444@testcorp.com,Operations Manager,Operations,60000,2026-11-15,shweta.mehta30@testcorp.com
+EMP-1079,Meera,Aggarwal,meera.aggarwal445@testcorp.com,Business Development,Sales,78300,2026-01-11,neha.iyer72@testcorp.com
+EMP-1080,Rahul,Mishra,rahul.mishra560@testcorp.com,Paralegal,Legal,84800,2025-09-14,myra.mishra68@testcorp.com
+EMP-1081,Ritika,Iyer,ritika.iyer36@testcorp.com,Support Analyst,Customer Support,46200,2025-02-21,suresh.menon37@testcorp.com
+EMP-1082,Sai,Chopra,sai.chopra252@testcorp.com,Paralegal,Legal,81400,2025-09-05,myra.mishra68@testcorp.com
+EMP-1083,Shweta,Chopra,shweta.chopra84@testcorp.com,Associate PM,Product,83500,2025-01-08,nisha.nair93@testcorp.com
+EMP-1084,Kunal,Das,kunal.das245@testcorp.com,Legal Counsel,Legal,97500,2024-02-17,myra.mishra68@testcorp.com
+EMP-1085,Sara,Pillai,sara.pillai360@testcorp.com,Marketing Manager,Marketing,49000,2024-04-24,divya.nair91@testcorp.com
+EMP-1086,Anika,Sharma,anika.sharma847@testcorp.com,Brand Manager,Marketing,39000,2026-04-09,divya.nair91@testcorp.com
+EMP-1087,Vihaan,Patel,vihaan.patel489@testcorp.com,Frontend Developer,Engineering,76700,2025-07-22,rohan.pandey55@testcorp.com
+EMP-1088,Pallavi,Desai,pallavi.desai416@testcorp.com,Marketing Manager,Marketing,50300,2026-04-10,divya.nair91@testcorp.com
+EMP-1089,Rahul,Das,rahul.das910@testcorp.com,Support Engineer,Customer Support,26100,2025-01-15,suresh.menon37@testcorp.com
+EMP-1090,Vikram,Singh,vikram.singh621@testcorp.com,DevOps Engineer,Engineering,61800,2024-10-09,rohan.pandey55@testcorp.com
+EMP-1091,Kavya,Sharma,kavya.sharma666@testcorp.com,Facilities Manager,Operations,53400,2025-05-18,shweta.mehta30@testcorp.com
+EMP-1092,Shreya,Chopra,shreya.chopra250@testcorp.com,Backend Developer,Engineering,117400,2024-01-07,rohan.pandey55@testcorp.com
+EMP-1093,Kunal,Mehta,kunal.mehta332@testcorp.com,UX Designer,Design,80700,2024-11-09,sara.singh26@testcorp.com
+EMP-1094,Aarav,Sharma,aarav.sharma389@testcorp.com,Associate PM,Product,61600,2024-02-20,nisha.nair93@testcorp.com
+EMP-1095,Nisha,Iyer,nisha.iyer461@testcorp.com,HR Executive,HR,46400,2026-09-09,megha.reddy13@testcorp.com
+EMP-1096,Gaurav,Gupta,gaurav.gupta889@testcorp.com,Support Lead,Customer Support,48800,2024-03-13,suresh.menon37@testcorp.com
+EMP-1097,Manish,Pandey,manish.pandey525@testcorp.com,Compliance Officer,Legal,61100,2024-01-10,myra.mishra68@testcorp.com
+EMP-1098,Gaurav,Patel,gaurav.patel161@testcorp.com,Compliance Officer,Legal,73200,2026-12-23,myra.mishra68@testcorp.com
+EMP-1099,Pallavi,Patel,pallavi.patel288@testcorp.com,Finance Manager,Finance,60700,2026-03-07,isha.malhotra57@testcorp.com
+EMP-1100,Aadhya,Pillai,aadhya.pillai666@testcorp.com,Associate PM,Product,60300,2026-01-19,nisha.nair93@testcorp.com

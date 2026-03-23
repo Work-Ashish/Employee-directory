@@ -44,6 +44,7 @@ export async function POST(req: Request) {
         const base = getDjangoBase()
         const headers = forwardHeaders(req)
 
+
         const email = (body.email || rawBody.email) as string
         const firstName = (body.first_name || "") as string
         const lastName = (body.last_name || "") as string
@@ -89,6 +90,9 @@ export async function POST(req: Request) {
         // Remove fields Django Employee serializer doesn't accept
         delete employeePayload.role
         delete employeePayload.avatar_url
+        // Django uses lowercase status choices (active, pre_joining, etc.)
+        // New employees should default to Django's model default (pre_joining)
+        delete employeePayload.status
         if (userId) {
             employeePayload.user = userId
         }
@@ -101,9 +105,14 @@ export async function POST(req: Request) {
         })
 
         if (!empRes.ok) {
-            const errJson = await empRes.json().catch(() => ({}))
+            const errText = await empRes.text().catch(() => "")
+            let errJson: Record<string, unknown> = {}
+            try { errJson = JSON.parse(errText) } catch { /* not JSON */ }
+            const errObj = errJson.error as Record<string, unknown> | undefined
+            const detail = errObj?.detail || errJson.detail || errText || "Employee creation failed on Django"
+            console.error(`[create-employee] Django ${empRes.status}: ${errText.slice(0, 500)}`)
             return NextResponse.json(
-                { error: errJson.error || errJson },
+                { error: { detail } },
                 { status: empRes.status }
             )
         }

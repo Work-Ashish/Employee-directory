@@ -40,7 +40,7 @@ class EmployeeListCreateView(APIView):
     def get(self, request):
         employees = Employee.objects.select_related(
             'employment_type', 'reporting_to', 'user', 'department_ref',
-        )
+        ).prefetch_related('profile', 'address_info', 'banking')
 
         # ── Soft-delete filter: exclude archived unless explicitly requested
         include_archived = request.query_params.get('include_archived', '').lower() == 'true'
@@ -70,7 +70,8 @@ class EmployeeListCreateView(APIView):
         # ── Pagination
         try:
             page = max(int(request.query_params.get('page', 1)), 1)
-            limit = min(int(request.query_params.get('limit', 50)), 100)
+            per_page = request.query_params.get('per_page') or request.query_params.get('limit', '50')
+            limit = min(int(per_page), 500)
         except (TypeError, ValueError):
             page, limit = 1, 50
 

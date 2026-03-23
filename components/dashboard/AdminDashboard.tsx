@@ -163,12 +163,12 @@ export function AdminDashboard() {
                     ))
                 ) : (
                     <>
-                        <div data-aos="fade-up" data-aos-delay="0"><DashboardStatCard label="Total Employees" value={data?.stats?.totalEmployees?.toString() || "0"} sub="last month" badge="7%" badgeType="up" icon={<span>👥</span>} /></div>
-                        <div data-aos="fade-up" data-aos-delay="80"><DashboardStatCard label="Active Employees" value={data?.stats?.activeEmployees?.toString() || "0"} sub="last month" badge="5%" badgeType="up" icon={<span>✅</span>} /></div>
-                        <div data-aos="fade-up" data-aos-delay="160"><DashboardStatCard label="On Leave" value={data?.stats?.onLeaveEmployees?.toString() || "0"} sub="last month" badge="4%" badgeType="up" icon={<span>🌴</span>} /></div>
-                        <div data-aos="fade-up" data-aos-delay="240"><DashboardStatCard label="Monthly Payroll" value={data?.stats?.monthlyPayroll?.toLocaleString() || "0"} sub="last month" badge="Processed" badgeType="neutral" isMoney icon={<span>💵</span>} /></div>
-                        <div data-aos="fade-up" data-aos-delay="320"><DashboardStatCard label="Active Today" value={loginData?.activeTodayCount?.toString() || "0"} sub="logged in today" badge="Live" badgeType="up" icon={<span>🔐</span>} /></div>
-                        <div data-aos="fade-up" data-aos-delay="400"><DashboardStatCard label="Attrition Rate" value={(data?.stats?.attritionRate || 0).toFixed(1) + "%"} sub="last 30 days" badge={data?.stats?.attritionRate > 5 ? "Alert" : "Stable"} badgeType={data?.stats?.attritionRate > 5 ? "down" : "up"} icon={<span>📉</span>} /></div>
+                        <div data-aos="fade-up" data-aos-delay="0"><DashboardStatCard label="Total Employees" value={data?.stats?.totalEmployees?.toString() || "0"} sub="across all departments" icon={<span>👥</span>} /></div>
+                        <div data-aos="fade-up" data-aos-delay="80"><DashboardStatCard label="Active Employees" value={data?.stats?.activeEmployees?.toString() || "0"} sub="currently working" icon={<span>✅</span>} /></div>
+                        <div data-aos="fade-up" data-aos-delay="160"><DashboardStatCard label="On Notice" value={data?.stats?.onLeaveEmployees?.toString() || "0"} sub="serving notice period" icon={<span>🌴</span>} /></div>
+                        <div data-aos="fade-up" data-aos-delay="240"><DashboardStatCard label="Monthly Payroll" value={data?.stats?.monthlyPayroll?.toString() || "0"} sub={`avg ₹${Math.round(data?.avgSalary || 0).toLocaleString("en-IN")}/emp`} isMoney icon={<span>💵</span>} /></div>
+                        <div data-aos="fade-up" data-aos-delay="320"><DashboardStatCard label="Active Today" value={loginData?.activeTodayCount?.toString() || "0"} sub="logged in today" icon={<span>🔐</span>} /></div>
+                        <div data-aos="fade-up" data-aos-delay="400"><DashboardStatCard label="Attrition Rate" value={(data?.stats?.attritionRate || 0).toFixed(1) + "%"} sub="overall attrition" badge={data?.stats?.attritionRate > 5 ? "Alert" : undefined} badgeType={data?.stats?.attritionRate > 5 ? "down" : undefined} icon={<span>📉</span>} /></div>
                     </>
                 )}
             </div>
@@ -298,7 +298,6 @@ export function AdminDashboard() {
                             </div>
                             <div className="flex justify-between items-center mt-3">
                                 <span className="text-sm text-text-3">Last 6 months</span>
-                                <Badge variant="success" size="sm" dot>23% growth</Badge>
                             </div>
                         </Card>
 
@@ -316,7 +315,7 @@ export function AdminDashboard() {
                                 </ResponsiveContainer>
                             </div>
                             <div className="text-center font-mono text-xs text-text-3 mt-4">
-                                Avg: ${data?.avgSalary?.toLocaleString(undefined, { maximumFractionDigits: 0 }) || "0"}
+                                Avg: ₹{Math.round(data?.avgSalary || 0).toLocaleString("en-IN")}
                             </div>
                         </Card>
                     </>
