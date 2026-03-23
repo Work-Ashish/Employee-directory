@@ -120,7 +120,9 @@ class UserDetailView(APIView):
 
 # POST /users/{id}/reset-password/ — admin resets another user's password
 class AdminResetPasswordView(APIView):
-    permission_classes = [IsAuthenticated, HasPermission('users.manage')]
+
+    def get_permissions(self):
+        return [IsAuthenticated(), HasPermission('users.manage')]
 
     def post(self, request, user_id):
         password = request.data.get('password')

@@ -21,7 +21,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 
 /** Set a cookie so Next.js middleware can detect authentication */
 function setAuthCookie(token: string): void {
-  const maxAge = 60 * 60 * 24; // 1 day — refresh will extend
+  const maxAge = 60 * 60 * 24 * 7; // 7 days — matches refresh token lifetime
   document.cookie = `access_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
 }
 

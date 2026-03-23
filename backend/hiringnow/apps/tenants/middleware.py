@@ -8,7 +8,7 @@ from .models import Tenant
 # resolve tenant from host or X-Tenant-Slug and attach to request
 class TenantMiddleware(MiddlewareMixin):
 
-    SKIP_PREFIXES = ("/admin/", "/health/", "/api/v1/auth/register/", "/api/v1/auth/login/")
+    SKIP_PREFIXES = ("/admin/", "/health/", "/api/v1/auth/")
 
     # set request.tenant and thread-local tenant for tenant-scoped DB routing
     def process_request(self, request):

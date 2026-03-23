@@ -140,7 +140,7 @@ export async function POST(req: Request) {
         // Fetch existing employees to check for duplicates
         let existingEmployees: Record<string, unknown>[] = []
         try {
-            const existRes = await fetch(`${base}/api/v1/employees/?per_page=1000`, {
+            const existRes = await fetch(`${base}/api/v1/employees/?per_page=1000&include_archived=true`, {
                 headers,
                 signal: AbortSignal.timeout(15_000),
             })
@@ -152,9 +152,14 @@ export async function POST(req: Request) {
 
         // email → employee ID map (existing + newly created)
         const emailToId = new Map<string, string>()
+        // employee_code → employee ID map for duplicate detection
+        const codeToId = new Map<string, string>()
         for (const emp of existingEmployees) {
             if (emp.email && emp.id) {
                 emailToId.set((emp.email as string).toLowerCase(), emp.id as string)
+            }
+            if (emp.employee_code && emp.id) {
+                codeToId.set((emp.employee_code as string).toLowerCase(), emp.id as string)
             }
         }
 
@@ -198,13 +203,14 @@ export async function POST(req: Request) {
                 continue
             }
 
-            // Duplicate check
-            if (emailToId.has(email.toLowerCase())) {
-                skipped.push(i)
-                continue
-            }
+            const empCode = (row.employeeCode || "").trim()
 
-            // Build employee payload WITHOUT reporting_to (set in pass 2)
+            // Check if employee already exists (by email or employee_code)
+            const existingByEmail = emailToId.get(email.toLowerCase())
+            const existingByCode = empCode ? codeToId.get(empCode.toLowerCase()) : undefined
+            const existingEmpId = existingByEmail || existingByCode || null
+
+            // Build employee payload
             const djangoPayload: Record<string, unknown> = {
                 first_name: firstName,
                 last_name: lastName,
@@ -214,7 +220,6 @@ export async function POST(req: Request) {
             }
             const normalizedDate = normalizeDate(row.dateOfJoining)
             if (normalizedDate) djangoPayload.start_date = normalizedDate
-            const empCode = (row.employeeCode || "").trim()
             if (empCode) djangoPayload.employee_code = empCode
 
             // If managerEmail resolves to an EXISTING employee (not in this batch), set it now
@@ -224,6 +229,39 @@ export async function POST(req: Request) {
             }
 
             try {
+                // ── UPDATE existing employee ──
+                if (existingEmpId) {
+                    const updateRes = await fetch(`${base}/api/v1/employees/${existingEmpId}/`, {
+                        method: "PUT",
+                        headers,
+                        body: JSON.stringify(djangoPayload),
+                        signal: AbortSignal.timeout(15_000),
+                    })
+                    if (updateRes.ok) {
+                        emailToId.set(email.toLowerCase(), existingEmpId)
+                        if (empCode) codeToId.set(empCode.toLowerCase(), existingEmpId)
+                        inserted.push(i)
+
+                        const rowSalary = parseSalary(row.salary)
+                        if (rowSalary > 0) {
+                            salaryEntries.push({ employeeId: existingEmpId, salary: rowSalary })
+                        }
+
+                        if (mgrEmail && !djangoPayload.reporting_to) {
+                            pendingManagerLinks.push({
+                                employeeId: existingEmpId,
+                                managerEmail: mgrEmail,
+                                rowIndex: i,
+                            })
+                        }
+                    } else {
+                        const errJson = await updateRes.json().catch(() => ({}))
+                        errors.push({ row: i + 1, employeeCode: empCode, email, reason: extractDjangoError(errJson) })
+                    }
+                    continue
+                }
+
+                // ── CREATE new employee ──
                 const tempPassword = generateTempPassword()
 
                 // Step 1: Create Django User
@@ -246,7 +284,6 @@ export async function POST(req: Request) {
                         const userData = userJson.data || userJson
                         userId = (userData.id as string) || null
                     } else {
-                        // User creation failed — log but still create the employee
                         const userErr = await userRes.json().catch(() => ({}))
                         const errDetail = JSON.stringify(userErr)
                         if (!errDetail.toLowerCase().includes("already exists")) {
@@ -273,8 +310,8 @@ export async function POST(req: Request) {
                     const empId = emp.id as string
                     const resultCode = emp.employee_code || empCode || ""
 
-                    // Register in email map for subsequent rows + pass 2
                     emailToId.set(email.toLowerCase(), empId)
+                    if (resultCode) codeToId.set(resultCode.toLowerCase(), empId)
 
                     inserted.push(i)
                     credentials.push({
@@ -284,15 +321,11 @@ export async function POST(req: Request) {
                         name: `${firstName} ${lastName}`.trim(),
                     })
 
-                    // Track salary for local salary store
                     const rowSalary = parseSalary(row.salary)
-                    console.log(`[import] row ${i}: salary raw="${row.salary}" parsed=${rowSalary} empId=${empId}`)
                     if (rowSalary > 0) {
                         salaryEntries.push({ employeeId: empId, salary: rowSalary })
                     }
 
-                    // If managerEmail was in the batch (not yet created when we checked above),
-                    // queue for pass 2
                     if (mgrEmail && !djangoPayload.reporting_to) {
                         pendingManagerLinks.push({
                             employeeId: empId,
@@ -302,12 +335,53 @@ export async function POST(req: Request) {
                     }
                 } else {
                     const errJson = await createRes.json().catch(() => ({}))
-                    errors.push({
-                        row: i + 1,
-                        employeeCode: empCode,
-                        email,
-                        reason: extractDjangoError(errJson),
-                    })
+                    const errMsg = extractDjangoError(errJson)
+
+                    // If duplicate employee_code or email, find existing and update
+                    if (errMsg.toLowerCase().includes("already exists")) {
+                        let foundId: string | null = null
+                        try {
+                            // Search by employee_code
+                            const searchRes = await fetch(
+                                `${base}/api/v1/employees/?search=${encodeURIComponent(empCode || email)}&include_archived=true`,
+                                { headers, signal: AbortSignal.timeout(10_000) }
+                            )
+                            if (searchRes.ok) {
+                                const searchJson = await searchRes.json()
+                                const results = searchJson.data?.results || searchJson.results || (Array.isArray(searchJson.data) ? searchJson.data : [])
+                                const match = results.find((e: Record<string, unknown>) =>
+                                    (empCode && (e.employee_code as string)?.toLowerCase() === empCode.toLowerCase()) ||
+                                    (e.email as string)?.toLowerCase() === email.toLowerCase()
+                                )
+                                if (match) foundId = match.id as string
+                            }
+                        } catch { /* search failed */ }
+
+                        if (foundId) {
+                            // Remove fields that cause conflict on update
+                            const updatePayload = { ...djangoPayload }
+                            delete updatePayload.employee_code
+                            const updateRes = await fetch(`${base}/api/v1/employees/${foundId}/`, {
+                                method: "PUT",
+                                headers,
+                                body: JSON.stringify(updatePayload),
+                                signal: AbortSignal.timeout(15_000),
+                            })
+                            if (updateRes.ok) {
+                                emailToId.set(email.toLowerCase(), foundId)
+                                inserted.push(i)
+                                const rowSalary = parseSalary(row.salary)
+                                if (rowSalary > 0) salaryEntries.push({ employeeId: foundId, salary: rowSalary })
+                            } else {
+                                const upErr = await updateRes.json().catch(() => ({}))
+                                errors.push({ row: i + 1, employeeCode: empCode, email, reason: extractDjangoError(upErr) })
+                            }
+                        } else {
+                            errors.push({ row: i + 1, employeeCode: empCode, email, reason: errMsg })
+                        }
+                    } else {
+                        errors.push({ row: i + 1, employeeCode: empCode, email, reason: errMsg })
+                    }
                 }
             } catch {
                 errors.push({ row: i + 1, employeeCode: empCode, email, reason: "Network error" })

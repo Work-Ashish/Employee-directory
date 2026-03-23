@@ -143,20 +143,21 @@ class EmployeeDetailView(APIView):
         return Response(EmployeeSerializer(updated).data)
 
     def delete(self, request, employee_id):
-        """Soft-delete: set deleted_at, mark archived, set status ARCHIVED."""
+        """Hard-delete: remove employee and linked user from the database."""
         employee = self.get_employee(employee_id)
 
         with transaction.atomic():
-            employee.deleted_at = timezone.now()
-            employee.is_archived = True
-            employee.status = Employee.Status.ARCHIVED
-            employee.save(update_fields=['deleted_at', 'is_archived', 'status'])
-
             # Unassign as manager for any direct reports
             Employee.objects.filter(
                 reporting_to=employee,
-                deleted_at__isnull=True,
             ).update(reporting_to=None)
+
+            linked_user = employee.user
+            employee.delete()
+
+            # Also remove the linked Django user account
+            if linked_user:
+                linked_user.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
