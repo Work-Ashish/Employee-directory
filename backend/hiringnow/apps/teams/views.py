@@ -31,7 +31,7 @@ class TeamListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('teams.view')]
 
     def get(self, request):
-        queryset = Team.objects.select_related('department', 'lead')
+        queryset = Team.objects.select_related('department', 'lead').order_by('name')
 
         # Non-admin users can only see teams they belong to
         user = request.user

@@ -1,3 +1,5 @@
+from datetime import date
+
 from rest_framework import serializers
 
 from apps.training.models import Training, TrainingEnrollment
@@ -80,6 +82,11 @@ class TrainingCreateSerializer(serializers.Serializer):
     )
     department_id = serializers.UUIDField(required=False, allow_null=True)
 
+    def validate_start_date(self, value):
+        if value < date.today():
+            raise serializers.ValidationError('start_date cannot be in the past.')
+        return value
+
     def validate(self, attrs):
         if attrs['start_date'] > attrs['end_date']:
             raise serializers.ValidationError({
@@ -111,3 +118,12 @@ class TrainingUpdateSerializer(serializers.Serializer):
     max_participants = serializers.IntegerField(required=False)
     status = serializers.ChoiceField(choices=Training.Status.choices, required=False)
     department_id = serializers.UUIDField(required=False, allow_null=True)
+
+    def validate(self, attrs):
+        start = attrs.get('start_date')
+        end = attrs.get('end_date')
+        if start and end and start > end:
+            raise serializers.ValidationError({
+                'end_date': 'end_date must be greater than or equal to start_date.',
+            })
+        return attrs

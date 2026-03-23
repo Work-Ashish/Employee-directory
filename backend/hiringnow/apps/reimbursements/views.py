@@ -27,7 +27,7 @@ class ReimbursementListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('reimbursements.view')]
 
     def get(self, request):
-        queryset = Reimbursement.objects.select_related('employee', 'approved_by')
+        queryset = Reimbursement.objects.select_related('employee', 'approved_by').order_by('-created_at')
 
         # Non-admin users can only see their own reimbursements
         user = request.user

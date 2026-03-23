@@ -20,9 +20,34 @@ class UserListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('users.view')]
 
     def get(self, request):
-        users = User.objects.all().order_by('created_at')
-        serializer = UserSerializer(users, many=True)
-        return Response(serializer.data)
+        queryset = User.objects.all().order_by('created_at')
+
+        # ── Filters
+        is_active = request.query_params.get('is_active')
+        search = request.query_params.get('search')
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        if search:
+            queryset = queryset.filter(email__icontains=search)
+
+        # ── Pagination
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+            limit = min(int(request.query_params.get('limit', 50)), 100)
+        except (TypeError, ValueError):
+            page, limit = 1, 50
+
+        total = queryset.count()
+        start = (page - 1) * limit
+        page_qs = queryset[start:start + limit]
+
+        return Response({
+            'results': UserSerializer(page_qs, many=True).data,
+            'total': total,
+            'page': page,
+            'limit': limit,
+            'total_pages': (total + limit - 1) // limit if total > 0 else 1,
+        })
 
     def post(self, request):
         serializer = UserCreateSerializer(data=request.data, context={'request': request})
@@ -91,3 +116,20 @@ class UserDetailView(APIView):
             )
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# POST /users/{id}/reset-password/ — admin resets another user's password
+class AdminResetPasswordView(APIView):
+    permission_classes = [IsAuthenticated, HasPermission('users.manage')]
+
+    def post(self, request, user_id):
+        password = request.data.get('password')
+        if not password or len(password) < 8:
+            return Response(
+                {'detail': 'Password must be at least 8 characters.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user = get_object_or_404(User, pk=user_id)
+        user.set_password(password)
+        user.save(update_fields=['password'])
+        return Response({'detail': 'Password reset successfully.'})

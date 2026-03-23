@@ -1,0 +1,18 @@
+[
+  "app\\api\\admin\\metrics\\route.ts",
+  "app\\api\\auth\\[...nextauth]\\route.ts",
+  "app\\api\\calendar\\route.ts",
+  "app\\api\\chat\\route.ts",
+  "app\\api\\features\\configure\\route.ts",
+  "app\\api\\health\\route.ts",
+  "app\\api\\raw-health\\route.ts",
+  "app\\api\\search\\reindex\\route.ts",
+  "app\\api\\search\\route.ts",
+  "app\\api\\search\\suggest\\route.ts",
+  "app\\api\\seed-load-test\\route.ts",
+  "app\\api\\storage\\init-buckets\\route.ts",
+  "app\\api\\storage\\test-buckets\\route.ts",
+  "app\\api\\team\\invite\\route.ts",
+  "app\\api\\upload\\route.ts",
+  "app\\api\\user\\capabilities\\route.ts"
+]

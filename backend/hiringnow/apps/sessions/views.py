@@ -22,7 +22,7 @@ class SessionListView(APIView):
         return [IsAuthenticated(), HasPermission('sessions.view')]
 
     def get(self, request):
-        queryset = UserSession.objects.select_related('user')
+        queryset = UserSession.objects.select_related('user').order_by('-created_at')
 
         user = request.user
         if not getattr(user, 'is_tenant_admin', False):

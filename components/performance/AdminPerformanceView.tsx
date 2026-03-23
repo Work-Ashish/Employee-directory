@@ -18,6 +18,7 @@ import { DailySelfReviewForm } from "./DailySelfReviewForm"
 import { ReviewDetailView } from "./ReviewDetailView"
 import { TeamReviewForm } from "./TeamReviewForm"
 import { LeaderMonthlySelfReview } from "./LeaderMonthlySelfReview"
+import { AppraisalForm } from "./AppraisalForm"
 import { PerformanceTemplateEditor } from "./PerformanceTemplateEditor"
 import { GearIcon } from "@radix-ui/react-icons"
 import { toast } from "sonner"
@@ -94,6 +95,16 @@ export function AdminPerformanceView() {
     // Team report view state
     const [teamReportOpen, setTeamReportOpen] = React.useState<{ id: string; name: string } | null>(null)
     const [teamReportSelectedReview, setTeamReportSelectedReview] = React.useState<PerformanceReview | null>(null)
+
+    // Source One top-level tab
+    const [topTab, setTopTab] = React.useState<"reviews" | "monthly" | "appraisals" | "cycles" | "pips">("reviews")
+    const [monthlyReviews, setMonthlyReviews] = React.useState<any[]>([])
+    const [appraisals, setAppraisals] = React.useState<any[]>([])
+    const [cycles, setCycles] = React.useState<any[]>([])
+    const [pips, setPips] = React.useState<any[]>([])
+    const [sourceOneLoading, setSourceOneLoading] = React.useState(false)
+    const [monthlyFormOpen, setMonthlyFormOpen] = React.useState(false)
+    const [appraisalFormOpen, setAppraisalFormOpen] = React.useState<"ANNUAL" | "SIX_MONTHLY" | null>(null)
 
     // Performance template config (initialized with defaults so editor always works)
     const [perfTemplate, setPerfTemplate] = React.useState({
@@ -268,7 +279,7 @@ export function AdminPerformanceView() {
     // Fetch performance template on mount
     const fetchTemplate = React.useCallback(async () => {
         try {
-            const { data } = await api.get<any>('/performance/config/')
+            const { data } = await api.get<any>('/performance/templates/')
             setPerfTemplate(data)
         } catch { /* non-critical -- forms fall back to hardcoded defaults */ }
     }, [])
@@ -279,6 +290,29 @@ export function AdminPerformanceView() {
     React.useEffect(() => { fetchAll() }, [fetchAll])
 
     React.useEffect(() => { fetchTemplate() }, [fetchTemplate])
+
+    // Source One data fetch
+    const fetchSourceOne = React.useCallback(async () => {
+        setSourceOneLoading(true)
+        try {
+            const [mr, ap, cy, pi] = await Promise.all([
+                PerformanceAPI.listMonthlyReviews().catch(() => ({ results: [] })),
+                PerformanceAPI.listAppraisals().catch(() => ({ results: [] })),
+                PerformanceAPI.listCycles().catch(() => ({ results: [] })),
+                PerformanceAPI.listPIPs().catch(() => ({ results: [] })),
+            ])
+            setMonthlyReviews(extractArray(mr.results || mr))
+            setAppraisals(extractArray(ap.results || ap))
+            setCycles(extractArray(cy.results || cy))
+            setPips(extractArray(pi.results || pi))
+        } finally {
+            setSourceOneLoading(false)
+        }
+    }, [])
+
+    React.useEffect(() => {
+        if (topTab !== "reviews") fetchSourceOne()
+    }, [topTab, fetchSourceOne])
 
     // Open self review dialogs — resolves employee ID on-demand if needed
     const handleOpenSelfReview = async (type: "daily" | "monthly") => {
@@ -427,6 +461,289 @@ export function AdminPerformanceView() {
                 }
             />
 
+            {/* ═══════════ TOP-LEVEL TAB BAR ═══════════ */}
+            <div className="flex items-center gap-1 bg-surface border border-border rounded-xl p-1">
+                {(["reviews", "monthly", "appraisals", "cycles", "pips"] as const).map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setTopTab(tab)}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium rounded-lg transition-all",
+                            topTab === tab ? "bg-accent text-white shadow-sm" : "text-text-3 hover:text-text hover:bg-bg-2"
+                        )}
+                    >
+                        {tab === "reviews" ? "Reviews" : tab === "monthly" ? "Monthly Reviews" : tab === "appraisals" ? "Appraisals" : tab === "cycles" ? "Review Cycles" : "PIPs"}
+                    </button>
+                ))}
+            </div>
+
+            {/* ═══════════ SOURCE ONE: MONTHLY REVIEWS ═══════════ */}
+            {topTab === "monthly" && (
+                <Card>
+                    <CardHeader className="border-b border-border flex-row items-center justify-between">
+                        <CardTitle className="text-base">Monthly Reviews (Source One)</CardTitle>
+                        <Button size="sm" variant="primary" onClick={() => setMonthlyFormOpen(true)} leftIcon={<PlusIcon className="w-4 h-4" />}>
+                            Create Monthly Review
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {sourceOneLoading ? (
+                            <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
+                        ) : monthlyReviews.length === 0 ? (
+                            <EmptyState title="No monthly reviews" description="No Source One monthly reviews found." />
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-border bg-bg-2/50 text-text-3 text-xs">
+                                            <th className="text-left px-4 py-2.5 font-medium">Employee</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Month / Year</th>
+                                            <th className="text-center px-4 py-2.5 font-medium">Rating</th>
+                                            <th className="text-center px-4 py-2.5 font-medium">Score %</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Status</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Created</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {monthlyReviews.map((mr: any) => (
+                                            <tr key={mr.id} className="hover:bg-bg-2/30 transition-colors">
+                                                <td className="px-4 py-2.5 font-medium text-text">{mr.employeeName || "—"}</td>
+                                                <td className="px-4 py-2.5 text-text-2">{mr.reviewMonth}/{mr.reviewYear}</td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    {mr.rating != null ? (
+                                                        <span className="font-semibold">{mr.rating}/5</span>
+                                                    ) : "—"}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center text-text-2">{mr.scorePercentage != null ? `${mr.scorePercentage}%` : "—"}</td>
+                                                <td className="px-4 py-2.5">
+                                                    <Badge variant={mr.status === "COMPLETED" ? "success" : mr.status === "DRAFT" ? "neutral" : "default"} size="sm">
+                                                        {mr.statusDisplay || mr.status}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-4 py-2.5 text-text-3 text-xs">{mr.createdAt ? format(new Date(mr.createdAt), "MMM d, yyyy") : "—"}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* ═══════════ SOURCE ONE: APPRAISALS ═══════════ */}
+            {topTab === "appraisals" && (
+                <Card>
+                    <CardHeader className="border-b border-border flex-row items-center justify-between">
+                        <CardTitle className="text-base">Appraisals (Source One)</CardTitle>
+                        <div className="flex gap-2">
+                            <Button size="sm" variant="primary" onClick={() => setAppraisalFormOpen("ANNUAL")} leftIcon={<PlusIcon className="w-4 h-4" />}>
+                                Annual Appraisal
+                            </Button>
+                            <Button size="sm" variant="secondary" onClick={() => setAppraisalFormOpen("SIX_MONTHLY")} leftIcon={<PlusIcon className="w-4 h-4" />}>
+                                Six-Monthly Appraisal
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {sourceOneLoading ? (
+                            <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
+                        ) : appraisals.length === 0 ? (
+                            <EmptyState title="No appraisals" description="No Source One appraisals found." />
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-border bg-bg-2/50 text-text-3 text-xs">
+                                            <th className="text-left px-4 py-2.5 font-medium">Employee</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Type</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Period</th>
+                                            <th className="text-center px-4 py-2.5 font-medium">Rating</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Status</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Created</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {appraisals.map((ap: any) => (
+                                            <tr key={ap.id} className="hover:bg-bg-2/30 transition-colors">
+                                                <td className="px-4 py-2.5 font-medium text-text">{ap.employeeName || "—"}</td>
+                                                <td className="px-4 py-2.5 text-text-2">{ap.reviewTypeDisplay || ap.reviewType}</td>
+                                                <td className="px-4 py-2.5 text-text-2">{ap.reviewPeriod || ap.financialYear || "—"}</td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    {ap.overallRating != null ? (
+                                                        <span className="font-semibold">{ap.overallRating}/5</span>
+                                                    ) : "—"}
+                                                </td>
+                                                <td className="px-4 py-2.5">
+                                                    <Badge variant={ap.status === "COMPLETED" ? "success" : ap.status === "DRAFT" ? "neutral" : "default"} size="sm">
+                                                        {ap.statusDisplay || ap.status}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-4 py-2.5 text-text-3 text-xs">{ap.createdAt ? format(new Date(ap.createdAt), "MMM d, yyyy") : "—"}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* ═══════════ SOURCE ONE: REVIEW CYCLES ═══════════ */}
+            {topTab === "cycles" && (
+                <Card>
+                    <CardHeader className="border-b border-border flex-row items-center justify-between">
+                        <CardTitle className="text-base">Review Cycles</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {sourceOneLoading ? (
+                            <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
+                        ) : cycles.length === 0 ? (
+                            <EmptyState title="No review cycles" description="No review cycles found." />
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-border bg-bg-2/50 text-text-3 text-xs">
+                                            <th className="text-left px-4 py-2.5 font-medium">Type</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Period Label</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Start - End</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Financial Year</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {cycles.map((cy: any) => (
+                                            <tr key={cy.id} className="hover:bg-bg-2/30 transition-colors">
+                                                <td className="px-4 py-2.5 font-medium text-text">{cy.cycleTypeDisplay || cy.cycleType}</td>
+                                                <td className="px-4 py-2.5 text-text-2">{cy.periodLabel || "—"}</td>
+                                                <td className="px-4 py-2.5 text-text-2">
+                                                    {cy.periodStart ? format(new Date(cy.periodStart), "MMM d, yyyy") : "—"}
+                                                    {" - "}
+                                                    {cy.periodEnd ? format(new Date(cy.periodEnd), "MMM d, yyyy") : "—"}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-text-2">{cy.financialYear || "—"}</td>
+                                                <td className="px-4 py-2.5">
+                                                    <Badge variant={cy.status === "COMPLETED" ? "success" : cy.status === "ACTIVE" ? "default" : "neutral"} size="sm">
+                                                        {cy.statusDisplay || cy.status}
+                                                    </Badge>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* ═══════════ SOURCE ONE: PIPs ═══════════ */}
+            {topTab === "pips" && (
+                <Card>
+                    <CardHeader className="border-b border-border flex-row items-center justify-between">
+                        <CardTitle className="text-base">Performance Improvement Plans</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {sourceOneLoading ? (
+                            <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
+                        ) : pips.length === 0 ? (
+                            <EmptyState title="No PIPs" description="No performance improvement plans found." />
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-border bg-bg-2/50 text-text-3 text-xs">
+                                            <th className="text-left px-4 py-2.5 font-medium">Employee</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">PIP Type</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Start - End</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Status</th>
+                                            <th className="text-left px-4 py-2.5 font-medium">Outcome</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {pips.map((pip: any) => (
+                                            <tr key={pip.id} className="hover:bg-bg-2/30 transition-colors">
+                                                <td className="px-4 py-2.5 font-medium text-text">{pip.employeeName || "—"}</td>
+                                                <td className="px-4 py-2.5 text-text-2">{pip.pipTypeDisplay || pip.pipType}</td>
+                                                <td className="px-4 py-2.5 text-text-2">
+                                                    {pip.startDate ? format(new Date(pip.startDate), "MMM d, yyyy") : "—"}
+                                                    {" - "}
+                                                    {pip.endDate ? format(new Date(pip.endDate), "MMM d, yyyy") : "—"}
+                                                </td>
+                                                <td className="px-4 py-2.5">
+                                                    <Badge variant={pip.status === "COMPLETED" ? "success" : pip.status === "ACTIVE" ? "warning" : "neutral"} size="sm">
+                                                        {pip.statusDisplay || pip.status}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-4 py-2.5 text-text-2">{pip.outcome || "—"}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* ═══════════ SOURCE ONE DIALOGS ═══════════ */}
+
+            {/* Monthly Review Form Dialog (Source One) */}
+            <Dialog open={monthlyFormOpen} onClose={() => setMonthlyFormOpen(false)} size="full">
+                <DialogHeader>
+                    <DialogTitle>Create Monthly Review (Source One)</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                    <MonthlyReviewForm
+                        employees={employees}
+                        onSubmit={async (data: any) => {
+                            try {
+                                await PerformanceAPI.createMonthlyReview(data)
+                                toast.success("Monthly review created")
+                                setMonthlyFormOpen(false)
+                                fetchSourceOne()
+                            } catch (err: any) {
+                                toast.error(err?.message || "Failed to create monthly review")
+                            }
+                        }}
+                        onCancel={() => setMonthlyFormOpen(false)}
+                        isHR={user?.role === "HR"}
+                        isTeamLead={user?.role === "TEAM_LEAD"}
+                    />
+                </DialogBody>
+            </Dialog>
+
+            {/* Appraisal Form Dialog (Source One) */}
+            <Dialog open={!!appraisalFormOpen} onClose={() => setAppraisalFormOpen(null)} size="full">
+                <DialogHeader>
+                    <DialogTitle>Create {appraisalFormOpen === "SIX_MONTHLY" ? "Six-Monthly" : "Annual"} Appraisal</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                    {appraisalFormOpen && (
+                        <AppraisalForm
+                            employees={employees}
+                            reviewType={appraisalFormOpen}
+                            onSubmit={async (data: any) => {
+                                try {
+                                    await PerformanceAPI.createAppraisal(data)
+                                    toast.success("Appraisal created")
+                                    setAppraisalFormOpen(null)
+                                    fetchSourceOne()
+                                } catch (err: any) {
+                                    toast.error(err?.message || "Failed to create appraisal")
+                                }
+                            }}
+                            onCancel={() => setAppraisalFormOpen(null)}
+                            isHR={user?.role === "HR"}
+                            isManager={user?.role === "TEAM_LEAD" || user?.role === "CEO"}
+                        />
+                    )}
+                </DialogBody>
+            </Dialog>
+
+            {topTab === "reviews" && (<>
             {/* ═══════════ TEAM REVIEW PAGE ═══════════ */}
             {teamReviewPage && (() => {
                 const teamReviews = reviews.filter(r => r.formType === "TEAM_REVIEW")
@@ -1185,6 +1502,7 @@ export function AdminPerformanceView() {
                     </Card>
                 </div>
             )}
+            </>)}
 
             {/* ═══════════ DIALOGS ═══════════ */}
 
@@ -1217,8 +1535,6 @@ export function AdminPerformanceView() {
                             employees={employees}
                             onSubmit={handleSubmitReview}
                             onCancel={() => setMonthlyOpen(false)}
-                            defaultKpis={perfTemplate.monthlyKpis}
-                            defaultCompetencies={perfTemplate.monthlyCompetencies}
                         />
                     </DialogBody>
                 </Dialog>

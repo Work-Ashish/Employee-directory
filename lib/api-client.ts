@@ -4,8 +4,12 @@
  */
 
 import { toSnakeCase, toCamelCase } from "./transform";
+import { refreshToken as doRefreshToken } from "./django-auth";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+/** Prevent concurrent refresh attempts */
+let refreshPromise: Promise<string> | null = null;
 
 export interface ApiResponse<T> {
   data: T;
@@ -82,13 +86,43 @@ export async function apiClient<T>(
     throw err;
   }
 
-  // Handle 401 → redirect to login
-  if (response.status === 401) {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    if (typeof window !== "undefined") {
+  // Handle 401 → try refresh token, then retry once
+  if (response.status === 401 && typeof window !== "undefined") {
+    try {
+      // Deduplicate concurrent refresh calls
+      if (!refreshPromise) {
+        refreshPromise = doRefreshToken().finally(() => { refreshPromise = null; });
+      }
+      const newToken = await refreshPromise;
+
+      // Retry the original request with the new token
+      headers["Authorization"] = `Bearer ${newToken}`;
+      const retryResponse = await fetch(url, {
+        ...options,
+        headers,
+        body,
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      if (retryResponse.status === 401) {
+        // Refresh succeeded but request still 401 — truly unauthorized
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        window.location.href = "/login";
+        throw new Error("Unauthorized");
+      }
+
+      // Use the retry response from here on
+      response = retryResponse;
+    } catch (refreshErr) {
+      // Refresh failed — clear tokens and redirect
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
       window.location.href = "/login";
+      throw new Error("Session expired. Please log in again.");
     }
+  } else if (response.status === 401) {
+    // Server-side (no window) — just throw
     throw new Error("Unauthorized");
   }
 

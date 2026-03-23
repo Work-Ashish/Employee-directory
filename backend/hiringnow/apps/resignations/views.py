@@ -27,7 +27,7 @@ class ResignationListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('resignations.view')]
 
     def get(self, request):
-        queryset = Resignation.objects.select_related('employee', 'approved_by')
+        queryset = Resignation.objects.select_related('employee', 'approved_by').order_by('-created_at')
 
         # Non-admin users can only see their own resignations
         user = request.user

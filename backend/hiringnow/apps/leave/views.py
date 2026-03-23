@@ -27,7 +27,7 @@ class LeaveListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('leaves.view')]
 
     def get(self, request):
-        queryset = Leave.objects.select_related('employee')
+        queryset = Leave.objects.select_related('employee').order_by('-start_date')
 
         # Non-admin users can only see their own leaves
         user = request.user

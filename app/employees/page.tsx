@@ -54,7 +54,7 @@ const getInitials = (first: string, last: string) => `${first.charAt(0)}${last.c
 
 const mapApiToTableData = (apiEmployees: EmployeeApiData[]): TableEmployee[] => {
     return apiEmployees.map((emp) => {
-        const statusMap: Record<string, string> = { "ACTIVE": "Active", "ON_LEAVE": "On Leave", "RESIGNED": "Resigned", "TERMINATED": "Terminated" }
+        const statusMap: Record<string, string> = { "ACTIVE": "Active", "ON_LEAVE": "On Leave", "RESIGNED": "Resigned", "TERMINATED": "Terminated", "active": "Active", "pre_joining": "Pre-Joining", "on_notice": "On Notice", "exited": "Exited" }
         return {
             id: emp.id,
             name: `${emp.firstName} ${emp.lastName}`,
@@ -62,7 +62,7 @@ const mapApiToTableData = (apiEmployees: EmployeeApiData[]): TableEmployee[] => 
             dept: emp.department?.name || "Unassigned",
             role: emp.designation,
             status: statusMap[emp.status] || emp.status,
-            start: format(new Date(emp.dateOfJoining), "MMM d, yyyy"),
+            start: emp.dateOfJoining ? format(new Date(emp.dateOfJoining), "MMM d, yyyy") : "—",
             initials: getInitials(emp.firstName, emp.lastName),
             color: emp.department?.color || "from-[#007aff] to-[#5856d6]",
             avatarUrl: emp.avatarUrl || null,
@@ -225,8 +225,8 @@ function EmployeesContent() {
             const data = await EmployeeAPI.resetCredentials(emp.id)
             showSuccess("Credentials Reset", `New credentials generated for ${emp.firstName} ${emp.lastName}.`)
             setCredCard({ username: data.email, password: data.tempPassword, name: `${emp.firstName} ${emp.lastName}` })
-        } catch {
-            toast.error('An error occurred')
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to reset credentials')
         } finally {
             setIsResettingCreds(null)
         }

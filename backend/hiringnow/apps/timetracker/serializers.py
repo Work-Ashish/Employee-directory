@@ -10,6 +10,7 @@ class BreakEntrySerializer(serializers.ModelSerializer):
     """Read serializer for break entries."""
 
     type_display = serializers.CharField(source='get_type_display', read_only=True)
+    duration_minutes = serializers.SerializerMethodField()
 
     class Meta:
         model = BreakEntry
@@ -20,10 +21,16 @@ class BreakEntrySerializer(serializers.ModelSerializer):
             'end_time',
             'type',
             'type_display',
+            'duration_minutes',
             'created_at',
             'updated_at',
         ]
         read_only_fields = fields
+
+    def get_duration_minutes(self, obj):
+        if obj.start_time and obj.end_time:
+            return int((obj.end_time - obj.start_time).total_seconds() / 60)
+        return None
 
 
 class ActivityLogSerializer(serializers.ModelSerializer):
@@ -39,7 +46,6 @@ class ActivityLogSerializer(serializers.ModelSerializer):
             'duration',
             'category',
             'created_at',
-            'updated_at',
         ]
         read_only_fields = fields
 

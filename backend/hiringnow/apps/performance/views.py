@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -9,6 +10,10 @@ from apps.performance.models import (
     PerformanceReview,
     PerformanceTemplate,
     PerformanceMetrics,
+    ReviewCycle,
+    MonthlyReview,
+    Appraisal,
+    PIP,
 )
 from apps.performance.serializers import (
     PerformanceReviewSerializer,
@@ -17,6 +22,27 @@ from apps.performance.serializers import (
     PerformanceTemplateSerializer,
     PerformanceTemplateCreateSerializer,
     PerformanceMetricsSerializer,
+    ReviewCycleSerializer,
+    ReviewCycleCreateSerializer,
+    MonthlyReviewSerializer,
+    MonthlyReviewCreateSerializer,
+    MonthlyReviewUpdateSerializer,
+    AppraisalSerializer,
+    AppraisalCreateSerializer,
+    AppraisalUpdateSerializer,
+    PIPSerializer,
+    PIPCreateSerializer,
+    PIPUpdateSerializer,
+)
+from apps.performance.services import (
+    compute_score_percentage,
+    rating_category_from_score,
+    rating_from_category,
+    alert_type_from_rating,
+    check_six_monthly_eligibility,
+    aggregate_monthly_summary,
+    outcome_from_rating,
+    category_from_rating,
 )
 
 
@@ -36,7 +62,7 @@ class PerformanceReviewListCreateView(APIView):
     def get(self, request):
         queryset = PerformanceReview.objects.select_related(
             'employee', 'reviewer', 'template',
-        )
+        ).order_by('-created_at')
 
         # Non-admin users can only see their own reviews
         user = request.user
@@ -228,7 +254,7 @@ class PerformanceMetricsView(APIView):
         return [IsAuthenticated(), HasPermission('performance.view')]
 
     def get(self, request):
-        queryset = PerformanceMetrics.objects.select_related('employee')
+        queryset = PerformanceMetrics.objects.select_related('employee').order_by('-created_at')
 
         # Non-admin users can only see their own metrics
         user = request.user
@@ -262,3 +288,505 @@ class PerformanceMetricsView(APIView):
             'limit': limit,
             'total_pages': (total + limit - 1) // limit if total > 0 else 1,
         })
+
+
+# ── Source One: Review Cycle List / Create ──────────────────────────────
+
+class ReviewCycleListCreateView(APIView):
+    """
+    GET  /performance/cycles/  -- list review cycles
+    POST /performance/cycles/  -- create a new cycle
+    """
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), HasPermission('performance.manage')]
+        return [IsAuthenticated(), HasPermission('performance.view')]
+
+    def get(self, request):
+        queryset = ReviewCycle.objects.all().order_by('-created_at')
+
+        # -- Filters
+        cycle_type = request.query_params.get('cycle_type')
+        financial_year = request.query_params.get('financial_year')
+
+        if cycle_type:
+            queryset = queryset.filter(cycle_type=cycle_type)
+        if financial_year:
+            queryset = queryset.filter(financial_year=financial_year)
+
+        # -- Pagination
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+            limit = min(int(request.query_params.get('limit', 50)), 100)
+        except (TypeError, ValueError):
+            page, limit = 1, 50
+
+        total = queryset.count()
+        start = (page - 1) * limit
+        page_qs = queryset[start:start + limit]
+
+        return Response({
+            'results': ReviewCycleSerializer(page_qs, many=True).data,
+            'total': total,
+            'page': page,
+            'limit': limit,
+            'total_pages': (total + limit - 1) // limit if total > 0 else 1,
+        })
+
+    def post(self, request):
+        serializer = ReviewCycleCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        cycle = serializer.save()
+        return Response(
+            ReviewCycleSerializer(cycle).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# ── Source One: Monthly Review List / Create ────────────────────────────
+
+class MonthlyReviewListCreateView(APIView):
+    """
+    GET  /performance/monthly/  -- list monthly reviews
+    POST /performance/monthly/  -- create a monthly review
+    """
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), HasPermission('performance.manage')]
+        return [IsAuthenticated(), HasPermission('performance.view')]
+
+    def get(self, request):
+        queryset = MonthlyReview.objects.select_related(
+            'employee', 'reviewer', 'reporting_manager', 'cycle',
+        ).order_by('-review_year', '-review_month')
+
+        # Non-admin users can only see their own reviews
+        user = request.user
+        if not getattr(user, 'is_tenant_admin', False):
+            queryset = queryset.filter(employee__user=user)
+
+        # -- Filters
+        employee_id = request.query_params.get('employee_id')
+        review_month = request.query_params.get('review_month')
+        review_year = request.query_params.get('review_year')
+        status_filter = request.query_params.get('status')
+
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        if review_month:
+            queryset = queryset.filter(review_month=review_month)
+        if review_year:
+            queryset = queryset.filter(review_year=review_year)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        # -- Pagination
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+            limit = min(int(request.query_params.get('limit', 50)), 100)
+        except (TypeError, ValueError):
+            page, limit = 1, 50
+
+        total = queryset.count()
+        start = (page - 1) * limit
+        page_qs = queryset[start:start + limit]
+
+        return Response({
+            'results': MonthlyReviewSerializer(page_qs, many=True).data,
+            'total': total,
+            'page': page,
+            'limit': limit,
+            'total_pages': (total + limit - 1) // limit if total > 0 else 1,
+        })
+
+    def post(self, request):
+        serializer = MonthlyReviewCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+
+        # If reviewer_id not provided, use requesting user's employee profile
+        if not data.get('reviewer_id'):
+            employee_profile = getattr(request.user, 'employee_profile', None)
+            if employee_profile:
+                data['reviewer_id'] = employee_profile.id
+
+        # Auto-compute score_percentage from recruiter_metrics
+        recruiter_metrics = data.get('recruiter_metrics', [])
+        score_pct = compute_score_percentage(recruiter_metrics)
+        data['score_percentage'] = score_pct
+
+        # Auto-set rating_category, rating, and appreciation_or_alert
+        category = rating_category_from_score(score_pct)
+        data['rating_category'] = category
+        rating = rating_from_category(category)
+        data['rating'] = rating
+        data['appreciation_or_alert'] = alert_type_from_rating(rating)
+
+        review = serializer.save()
+        return Response(
+            MonthlyReviewSerializer(review).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# ── Source One: Monthly Review Detail ───────────────────────────────────
+
+class MonthlyReviewDetailView(APIView):
+    """
+    GET /performance/monthly/{id}/  -- retrieve a single monthly review
+    PUT /performance/monthly/{id}/  -- update a monthly review
+    """
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated(), HasPermission('performance.view')]
+        return [IsAuthenticated(), HasPermission('performance.manage')]
+
+    def _get_review(self, pk):
+        return get_object_or_404(
+            MonthlyReview.objects.select_related(
+                'employee', 'reviewer', 'reporting_manager',
+            ),
+            pk=pk,
+        )
+
+    def get(self, request, pk):
+        review = self._get_review(pk)
+        return Response(MonthlyReviewSerializer(review).data)
+
+    def put(self, request, pk):
+        review = self._get_review(pk)
+
+        serializer = MonthlyReviewUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        for field, value in serializer.validated_data.items():
+            setattr(review, field, value)
+
+        # If rating changed, recompute rating_category and appreciation_or_alert
+        if 'rating' in serializer.validated_data:
+            new_rating = serializer.validated_data['rating']
+            review.rating_category = category_from_rating(new_rating)
+            review.appreciation_or_alert = alert_type_from_rating(new_rating)
+
+        review.save()
+        return Response(MonthlyReviewSerializer(review).data)
+
+
+# ── Source One: Monthly Review Sign ─────────────────────────────────────
+
+class MonthlyReviewSignView(APIView):
+    """
+    POST /performance/monthly/{id}/sign/  -- sign a monthly review
+    Accept {"role": "employee"|"manager"|"hr"} and set the corresponding
+    _signed_at timestamp to now().
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        review = get_object_or_404(MonthlyReview, pk=pk)
+        role = request.data.get('role', '').lower()
+
+        field_map = {
+            'employee': 'employee_signed_at',
+            'manager': 'manager_signed_at',
+            'hr': 'hr_signed_at',
+        }
+
+        field = field_map.get(role)
+        if not field:
+            return Response(
+                {'error': 'role must be one of: employee, manager, hr'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        setattr(review, field, timezone.now())
+        review.save(update_fields=[field, 'updated_at'])
+        return Response(MonthlyReviewSerializer(review).data)
+
+
+# ── Source One: Appraisal List / Create ─────────────────────────────────
+
+class AppraisalListCreateView(APIView):
+    """
+    GET  /performance/appraisals/  -- list appraisals
+    POST /performance/appraisals/  -- create an appraisal
+    """
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), HasPermission('performance.manage')]
+        return [IsAuthenticated(), HasPermission('performance.view')]
+
+    def get(self, request):
+        queryset = Appraisal.objects.select_related(
+            'employee', 'reporting_manager', 'hr_reviewer', 'cycle',
+        ).order_by('-created_at')
+
+        # Non-admin users can only see their own appraisals
+        user = request.user
+        if not getattr(user, 'is_tenant_admin', False):
+            queryset = queryset.filter(employee__user=user)
+
+        # -- Filters
+        review_type = request.query_params.get('review_type')
+        financial_year = request.query_params.get('financial_year')
+        status_filter = request.query_params.get('status')
+        employee_id = request.query_params.get('employee_id')
+
+        if review_type:
+            queryset = queryset.filter(review_type=review_type)
+        if financial_year:
+            queryset = queryset.filter(financial_year=financial_year)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+
+        # -- Pagination
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+            limit = min(int(request.query_params.get('limit', 50)), 100)
+        except (TypeError, ValueError):
+            page, limit = 1, 50
+
+        total = queryset.count()
+        start = (page - 1) * limit
+        page_qs = queryset[start:start + limit]
+
+        return Response({
+            'results': AppraisalSerializer(page_qs, many=True).data,
+            'total': total,
+            'page': page,
+            'limit': limit,
+            'total_pages': (total + limit - 1) // limit if total > 0 else 1,
+        })
+
+    def post(self, request):
+        serializer = AppraisalCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+
+        # For SIX_MONTHLY type, auto-check eligibility
+        if data.get('review_type') == 'SIX_MONTHLY':
+            eligibility = check_six_monthly_eligibility(
+                data['employee_id'], data['financial_year'],
+            )
+            data['is_eligible'] = eligibility['eligible']
+            data['eligibility_reason'] = eligibility['reason']
+
+        # Auto-populate monthly_summary if not provided
+        if not data.get('monthly_summary'):
+            fy = data.get('financial_year', '')
+            if fy:
+                fy_start_year = int('20' + fy.split('-')[0])
+                if data.get('review_type') == 'SIX_MONTHLY':
+                    start_month, end_month = 4, 9
+                    start_year = end_year = fy_start_year
+                else:
+                    start_month, start_year = 4, fy_start_year
+                    end_month, end_year = 3, fy_start_year + 1
+                data['monthly_summary'] = aggregate_monthly_summary(
+                    data['employee_id'],
+                    start_month, start_year,
+                    end_month, end_year,
+                )
+
+        appraisal = serializer.save()
+        return Response(
+            AppraisalSerializer(appraisal).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# ── Source One: Appraisal Detail ────────────────────────────────────────
+
+class AppraisalDetailView(APIView):
+    """
+    GET /performance/appraisals/{id}/  -- retrieve a single appraisal
+    PUT /performance/appraisals/{id}/  -- update an appraisal
+    """
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated(), HasPermission('performance.view')]
+        return [IsAuthenticated(), HasPermission('performance.manage')]
+
+    def _get_appraisal(self, pk):
+        return get_object_or_404(
+            Appraisal.objects.select_related(
+                'employee', 'reporting_manager', 'hr_reviewer', 'cycle',
+            ),
+            pk=pk,
+        )
+
+    def get(self, request, pk):
+        appraisal = self._get_appraisal(pk)
+        return Response(AppraisalSerializer(appraisal).data)
+
+    def put(self, request, pk):
+        appraisal = self._get_appraisal(pk)
+
+        serializer = AppraisalUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        for field, value in serializer.validated_data.items():
+            setattr(appraisal, field, value)
+
+        # If overall_rating changed, auto-set outcome_decision and final_rating_category
+        if 'overall_rating' in serializer.validated_data:
+            new_rating = serializer.validated_data['overall_rating']
+            appraisal.outcome_decision = outcome_from_rating(new_rating)
+            appraisal.final_rating_category = category_from_rating(new_rating)
+
+        appraisal.save()
+        return Response(AppraisalSerializer(appraisal).data)
+
+
+# ── Source One: Appraisal Eligibility ───────────────────────────────────
+
+class AppraisalEligibilityView(APIView):
+    """
+    GET /performance/appraisals/eligibility/?financial_year=25-26
+    Return eligibility status for all active employees for six-monthly appraisal.
+    """
+
+    def get_permissions(self):
+        return [IsAuthenticated(), HasPermission('performance.manage')]
+
+    def get(self, request):
+        financial_year = request.query_params.get('financial_year')
+        if not financial_year:
+            return Response(
+                {'error': 'financial_year query parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.employees.models import Employee
+
+        employees = Employee.objects.filter(
+            status='active',
+        ).order_by('first_name', 'last_name')
+
+        results = []
+        for emp in employees:
+            eligibility = check_six_monthly_eligibility(emp.id, financial_year)
+            results.append({
+                'employee_id': str(emp.id),
+                'employee_name': f"{emp.first_name} {emp.last_name}",
+                'eligible': eligibility['eligible'],
+                'reason': eligibility['reason'],
+            })
+
+        return Response({
+            'results': results,
+            'total': len(results),
+            'financial_year': financial_year,
+        })
+
+
+# ── Source One: PIP List / Create ───────────────────────────────────────
+
+class PIPListCreateView(APIView):
+    """
+    GET  /performance/pip/  -- list PIPs
+    POST /performance/pip/  -- create a PIP
+    """
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), HasPermission('performance.manage')]
+        return [IsAuthenticated(), HasPermission('performance.view')]
+
+    def get(self, request):
+        queryset = PIP.objects.select_related(
+            'employee', 'triggered_by_monthly', 'triggered_by_appraisal',
+        ).order_by('-created_at')
+
+        # Non-admin users can only see their own PIPs
+        user = request.user
+        if not getattr(user, 'is_tenant_admin', False):
+            queryset = queryset.filter(employee__user=user)
+
+        # -- Filters
+        employee_id = request.query_params.get('employee_id')
+        status_filter = request.query_params.get('status')
+        pip_type = request.query_params.get('pip_type')
+
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if pip_type:
+            queryset = queryset.filter(pip_type=pip_type)
+
+        # -- Pagination
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+            limit = min(int(request.query_params.get('limit', 50)), 100)
+        except (TypeError, ValueError):
+            page, limit = 1, 50
+
+        total = queryset.count()
+        start = (page - 1) * limit
+        page_qs = queryset[start:start + limit]
+
+        return Response({
+            'results': PIPSerializer(page_qs, many=True).data,
+            'total': total,
+            'page': page,
+            'limit': limit,
+            'total_pages': (total + limit - 1) // limit if total > 0 else 1,
+        })
+
+    def post(self, request):
+        serializer = PIPCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        pip = serializer.save()
+        return Response(
+            PIPSerializer(pip).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# ── Source One: PIP Detail ──────────────────────────────────────────────
+
+class PIPDetailView(APIView):
+    """
+    GET /performance/pip/{id}/  -- retrieve a single PIP
+    PUT /performance/pip/{id}/  -- update a PIP
+    """
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated(), HasPermission('performance.view')]
+        return [IsAuthenticated(), HasPermission('performance.manage')]
+
+    def _get_pip(self, pk):
+        return get_object_or_404(
+            PIP.objects.select_related(
+                'employee', 'triggered_by_monthly', 'triggered_by_appraisal',
+            ),
+            pk=pk,
+        )
+
+    def get(self, request, pk):
+        pip = self._get_pip(pk)
+        return Response(PIPSerializer(pip).data)
+
+    def put(self, request, pk):
+        pip = self._get_pip(pk)
+
+        serializer = PIPUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        for field, value in serializer.validated_data.items():
+            setattr(pip, field, value)
+        pip.save()
+
+        return Response(PIPSerializer(pip).data)

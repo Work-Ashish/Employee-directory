@@ -26,7 +26,7 @@ class DocumentListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('documents.view')]
 
     def get(self, request):
-        queryset = Document.objects.select_related('uploaded_by')
+        queryset = Document.objects.select_related('uploaded_by').order_by('-created_at')
 
         # Non-admin users can only see public docs or their own uploads
         user = request.user

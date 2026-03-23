@@ -28,12 +28,12 @@ class TrainingListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('training.view')]
 
     def get(self, request):
-        queryset = Training.objects.select_related('department')
+        queryset = Training.objects.select_related('department').order_by('-start_date')
 
         # Non-admin users can only see trainings they are enrolled in
         user = request.user
         if not getattr(user, 'is_tenant_admin', False):
-            queryset = queryset.filter(enrollments__employee__user=user)
+            queryset = queryset.filter(enrollments__employee__user=user).distinct()
 
         # -- Filters
         status_filter = request.query_params.get('status')
@@ -94,12 +94,16 @@ class TrainingDetailView(APIView):
         )
 
     def get(self, request, pk):
-        training = self._get_training(pk)
+        training = get_object_or_404(
+            Training.objects.select_related('department').prefetch_related(
+                'enrollments__employee',
+            ),
+            pk=pk,
+        )
         data = TrainingSerializer(training).data
-        enrollments = TrainingEnrollment.objects.filter(
-            training=training,
-        ).select_related('employee')
-        data['enrollments'] = TrainingEnrollmentSerializer(enrollments, many=True).data
+        data['enrollments'] = TrainingEnrollmentSerializer(
+            training.enrollments.all(), many=True,
+        ).data
         return Response(data)
 
     def put(self, request, pk):

@@ -27,7 +27,7 @@ class TicketListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('tickets.view')]
 
     def get(self, request):
-        queryset = Ticket.objects.select_related('created_by', 'assigned_to')
+        queryset = Ticket.objects.select_related('created_by', 'assigned_to').order_by('-created_at')
 
         # Non-admin users can only see their own tickets
         user = request.user

@@ -13,14 +13,7 @@ from apps.timetracker.serializers import (
     BreakActionSerializer,
     ActivityLogSerializer,
 )
-
-
-# ── helpers ──────────────────────────────────────────────────────────
-
-
-def _get_employee_profile(request):
-    """Return the employee profile linked to the requesting user, or None."""
-    return getattr(request.user, 'employee_profile', None)
+from common.helpers import get_employee_profile as _get_employee_profile
 
 
 # ── Time Session List ────────────────────────────────────────────────
@@ -36,7 +29,7 @@ class TimeSessionListView(APIView):
         return [IsAuthenticated(), HasPermission('timetracker.view')]
 
     def get(self, request):
-        queryset = TimeSession.objects.select_related('employee').prefetch_related('breaks')
+        queryset = TimeSession.objects.select_related('employee').prefetch_related('breaks').order_by('-start_time')
 
         user = request.user
         if not getattr(user, 'is_tenant_admin', False):
@@ -295,7 +288,7 @@ class ActivityView(APIView):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-        activities = ActivityLog.objects.filter(session=session)
+        activities = ActivityLog.objects.filter(session=session).order_by('-created_at')
 
         # ── Pagination
         try:
@@ -349,6 +342,9 @@ class StatusView(APIView):
         )
 
         if not session:
-            return Response({'session': None})
+            return Response({'session': None, 'is_active': False})
 
-        return Response({'session': TimeSessionSerializer(session).data})
+        return Response({
+            'session': TimeSessionSerializer(session).data,
+            'is_active': session.status == TimeSession.Status.ACTIVE,
+        })

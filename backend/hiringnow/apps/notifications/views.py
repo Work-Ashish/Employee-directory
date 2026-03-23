@@ -25,7 +25,7 @@ class NotificationListView(APIView):
         return [IsAuthenticated(), HasPermission('notifications.view')]
 
     def get(self, request):
-        queryset = Notification.objects.filter(user=request.user)
+        queryset = Notification.objects.filter(user=request.user).order_by('-created_at')
 
         # -- Filters
         is_read = request.query_params.get('is_read')
@@ -103,7 +103,7 @@ class AdminAlertListView(APIView):
         return [IsAuthenticated(), HasPermission('admin_alerts.view')]
 
     def get(self, request):
-        queryset = AdminAlert.objects.all()
+        queryset = AdminAlert.objects.all().order_by('-created_at')
 
         # -- Filters
         severity = request.query_params.get('severity')

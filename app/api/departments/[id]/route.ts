@@ -1,17 +1,16 @@
 /**
- * /api/departments/[id] — Django proxy (Sprint 13).
+ * /api/departments/[id] — Local handler for department delete.
+ *
+ * Since departments are just a CharField on Django's Employee model,
+ * "deleting" a department only removes it from the frontend's local store.
+ * Employees with this department string in Django are unaffected.
  */
-import { proxyToDjango } from "@/lib/django-proxy"
-import { deprecatedRoute } from "@/lib/route-deprecation"
+import { NextResponse } from "next/server"
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+    _req: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
     const { id } = await params
-    deprecatedRoute(`/api/departments/${id} GET`, "Django /api/v1/departments/:id/")
-    return proxyToDjango(req, `/departments/${id}/`)
-}
-
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
-    deprecatedRoute(`/api/departments/${id} DELETE`, "Django /api/v1/departments/:id/")
-    return proxyToDjango(req, `/departments/${id}/`)
+    return NextResponse.json({ data: { id, deleted: true } })
 }

@@ -30,7 +30,7 @@ class AnnouncementListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('announcements.view')]
 
     def get(self, request):
-        queryset = Announcement.objects.select_related('created_by').filter(is_active=True)
+        queryset = Announcement.objects.select_related('created_by').filter(is_active=True).order_by('-created_at')
 
         # Exclude expired announcements
         now = timezone.now()
@@ -143,7 +143,7 @@ class KudosListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('kudos.view')]
 
     def get(self, request):
-        queryset = Kudos.objects.select_related('from_employee', 'to_employee')
+        queryset = Kudos.objects.select_related('from_employee', 'to_employee').order_by('-created_at')
 
         # Non-admin users can only see public kudos or their own
         user = request.user

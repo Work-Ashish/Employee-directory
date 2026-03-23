@@ -76,7 +76,7 @@ class PayrollListCreateView(APIView):
             'total': total,
             'page': page,
             'limit': limit,
-            'total_pages': (total + limit - 1) // limit,
+            'total_pages': (total + limit - 1) // limit if total > 0 else 1,
         })
 
     def post(self, request):
@@ -385,7 +385,7 @@ class ProvidentFundListCreateView(APIView):
             'total': total,
             'page': page,
             'limit': limit,
-            'total_pages': (total + limit - 1) // limit,
+            'total_pages': (total + limit - 1) // limit if total > 0 else 1,
         })
 
     def post(self, request):

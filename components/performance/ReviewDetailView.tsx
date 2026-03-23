@@ -632,6 +632,279 @@ function LeaderMonthlyDetail({ formData }: { formData: any }) {
     )
 }
 
+function SourceOneMonthlyDetail({ formData }: { formData: any }) {
+    const fd = formData
+    return (
+        <div className="space-y-6">
+            {/* Recruiter Metrics Table */}
+            {fd.recruiterMetrics?.length > 0 && (
+                <div>
+                    <SectionTitle>Recruiter Performance Metrics</SectionTitle>
+                    <div className="border border-border rounded-xl overflow-hidden">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="bg-surface-2 border-b border-border">
+                                    <th className="px-4 py-2 text-xs font-bold text-text-3 text-center uppercase w-10">S.No.</th>
+                                    <th className="px-4 py-2 text-xs font-bold text-text-3 text-left uppercase">Metric</th>
+                                    <th className="px-4 py-2 text-xs font-bold text-text-3 text-center uppercase">Target</th>
+                                    <th className="px-4 py-2 text-xs font-bold text-text-3 text-center uppercase">Achieved</th>
+                                    <th className="px-4 py-2 text-xs font-bold text-text-3 text-center uppercase">Conversion %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {fd.recruiterMetrics.map((m: any, i: number) => (
+                                    <tr key={i} className="border-b border-border/50 last:border-0">
+                                        <td className="px-4 py-2.5 text-center text-xs text-text-4">{m.serialNo || i + 1}</td>
+                                        <td className="px-4 py-2.5 text-sm font-medium text-text">{m.metric}</td>
+                                        <td className="px-4 py-2.5 text-sm text-center font-mono text-text-3">{m.target ?? "—"}</td>
+                                        <td className="px-4 py-2.5 text-sm text-center font-mono font-bold text-text">{m.achieved ?? "—"}</td>
+                                        <td className="px-4 py-2.5 text-center">
+                                            <span className={cn(
+                                                "text-sm font-bold",
+                                                (m.conversionPct ?? 0) >= 100 ? "text-success" :
+                                                (m.conversionPct ?? 0) >= 75 ? "text-accent" :
+                                                (m.conversionPct ?? 0) >= 50 ? "text-warning" : "text-danger"
+                                            )}>
+                                                {m.conversionPct != null ? `${m.conversionPct}%` : "—"}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Team Lead Metrics */}
+            {fd.teamLeadMetrics?.length > 0 && (
+                <div>
+                    <SectionTitle>Team Lead Assessment Metrics</SectionTitle>
+                    <div className="border border-border rounded-xl overflow-hidden">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="bg-surface-2 border-b border-border">
+                                    <th className="px-4 py-2 text-xs font-bold text-text-3 text-center uppercase w-10">S.No.</th>
+                                    <th className="px-4 py-2 text-xs font-bold text-text-3 text-left uppercase">Metric</th>
+                                    <th className="px-4 py-2 text-xs font-bold text-text-3 text-left uppercase">Details/Evidence</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {fd.teamLeadMetrics.map((m: any, i: number) => (
+                                    <tr key={i} className="border-b border-border/50 last:border-0">
+                                        <td className="px-4 py-2.5 text-center text-xs text-text-4">{m.serialNo || i + 1}</td>
+                                        <td className="px-4 py-2.5 text-sm font-medium text-text">{m.metric}</td>
+                                        <td className="px-4 py-2.5 text-sm text-text-3">{m.details || "—"}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Rating & Score */}
+            {(fd.rating || fd.scorePercentage) && (
+                <div>
+                    <SectionTitle>Rating & Score</SectionTitle>
+                    <div className="flex items-center gap-6 p-6 bg-surface border border-border rounded-xl">
+                        {fd.rating && (
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "text-4xl font-extrabold",
+                                    fd.rating >= 4 ? "text-success" : fd.rating >= 3 ? "text-accent" : "text-warning"
+                                )}>{fd.rating}</div>
+                                <div>
+                                    <div className="text-lg font-bold text-text">/ 5</div>
+                                    <div className="text-sm text-text-3">{fd.ratingCategoryDisplay || fd.ratingCategory || ""}</div>
+                                </div>
+                            </div>
+                        )}
+                        {fd.scorePercentage != null && (
+                            <div className="ml-auto text-right">
+                                <div className="text-2xl font-bold text-accent">{fd.scorePercentage}%</div>
+                                <div className="text-xs text-text-3">Overall Score</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Reviewer Remarks */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {fd.strengthsObserved && (
+                    <div>
+                        <SectionTitle>Strengths Observed</SectionTitle>
+                        <p className="text-sm text-text bg-success/5 border border-success/10 rounded-lg p-4">{fd.strengthsObserved}</p>
+                    </div>
+                )}
+                {fd.areasForImprovement && (
+                    <div>
+                        <SectionTitle>Areas for Improvement</SectionTitle>
+                        <p className="text-sm text-text bg-warning/5 border border-warning/10 rounded-lg p-4">{fd.areasForImprovement}</p>
+                    </div>
+                )}
+            </div>
+
+            {fd.reviewerRemarks && (
+                <div>
+                    <SectionTitle>Reviewer Remarks</SectionTitle>
+                    <p className="text-sm text-text bg-bg-2/50 rounded-lg p-4">{fd.reviewerRemarks}</p>
+                </div>
+            )}
+
+            {fd.actionItems && (
+                <div>
+                    <SectionTitle>Action Items</SectionTitle>
+                    <p className="text-sm text-text bg-accent/5 border border-accent/10 rounded-lg p-4">{fd.actionItems}</p>
+                </div>
+            )}
+
+            {/* Signatures */}
+            <div>
+                <SectionTitle>Signatures</SectionTitle>
+                <div className="grid grid-cols-3 gap-3">
+                    {[
+                        { label: "Employee", date: fd.employeeSignedAt },
+                        { label: "Manager", date: fd.managerSignedAt },
+                        { label: "HR", date: fd.hrSignedAt },
+                    ].map((s, i) => (
+                        <div key={i} className="border border-border rounded-lg p-3 text-center">
+                            <div className="text-[10px] font-bold text-text-3 uppercase mb-2">{s.label}</div>
+                            {s.date ? (
+                                <div>
+                                    <Badge variant="success" size="sm">Signed</Badge>
+                                    <p className="text-xs text-text-4 mt-1">{format(new Date(s.date), "dd MMM yyyy")}</p>
+                                </div>
+                            ) : (
+                                <Badge variant="neutral" size="sm">Pending</Badge>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function SourceOneAppraisalDetail({ formData }: { formData: any }) {
+    const fd = formData
+    return (
+        <div className="space-y-6">
+            {/* Review Info */}
+            <div className="flex items-center gap-4 p-4 bg-purple/5 border border-purple/10 rounded-xl">
+                <Badge variant={fd.reviewType === "ANNUAL" ? "purple" : "default"} size="lg">
+                    {fd.reviewTypeDisplay || fd.reviewType}
+                </Badge>
+                <span className="text-sm text-text-3">Period: {fd.reviewPeriod}</span>
+                <span className="text-sm text-text-3">FY: {fd.financialYear}</span>
+                {fd.isEligible === false && fd.eligibilityReason && (
+                    <Badge variant="warning" size="sm">{fd.eligibilityReason}</Badge>
+                )}
+            </div>
+
+            {/* Overall Rating */}
+            {fd.overallRating && (
+                <div>
+                    <SectionTitle>Overall Appraisal Rating</SectionTitle>
+                    <div className="flex items-center gap-4 p-6 bg-surface border border-border rounded-xl">
+                        <div className={cn(
+                            "text-4xl font-extrabold",
+                            fd.overallRating >= 4 ? "text-success" : fd.overallRating >= 3 ? "text-accent" : "text-warning"
+                        )}>{fd.overallRating}</div>
+                        <div>
+                            <div className="text-lg font-bold text-text">/ 5</div>
+                            <div className="text-sm text-text-3">{fd.finalRatingCategory || ""}</div>
+                        </div>
+                        {fd.outcomeDisplay && (
+                            <Badge variant={fd.overallRating >= 4 ? "success" : fd.overallRating >= 3 ? "default" : "warning"} size="lg" className="ml-auto">
+                                {fd.outcomeDisplay}
+                            </Badge>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Key Sections */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {fd.keyStrengths && (
+                    <div>
+                        <SectionTitle>Key Strengths</SectionTitle>
+                        <p className="text-sm text-text bg-success/5 border border-success/10 rounded-lg p-4">{fd.keyStrengths}</p>
+                    </div>
+                )}
+                {fd.developmentAreas && (
+                    <div>
+                        <SectionTitle>Development Areas</SectionTitle>
+                        <p className="text-sm text-text bg-warning/5 border border-warning/10 rounded-lg p-4">{fd.developmentAreas}</p>
+                    </div>
+                )}
+                {fd.goalsNextPeriod && (
+                    <div>
+                        <SectionTitle>Goals for Next Period</SectionTitle>
+                        <p className="text-sm text-text bg-accent/5 border border-accent/10 rounded-lg p-4">{fd.goalsNextPeriod}</p>
+                    </div>
+                )}
+                {fd.trainingRecommended && (
+                    <div>
+                        <SectionTitle>Training Recommended</SectionTitle>
+                        <p className="text-sm text-text bg-bg-2/50 rounded-lg p-4">{fd.trainingRecommended}</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Promotion & Salary */}
+            {(fd.promotionRecommendation || fd.salaryRevisionRecommendation) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {fd.promotionRecommendation && (
+                        <div>
+                            <SectionTitle>Promotion Recommendation</SectionTitle>
+                            <p className="text-sm text-text bg-purple/5 border border-purple/10 rounded-lg p-4">{fd.promotionRecommendation}</p>
+                        </div>
+                    )}
+                    {fd.salaryRevisionRecommendation && (
+                        <div>
+                            <SectionTitle>Salary Revision Recommendation</SectionTitle>
+                            <p className="text-sm text-text bg-purple/5 border border-purple/10 rounded-lg p-4">{fd.salaryRevisionRecommendation}</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {fd.additionalHrRemarks && (
+                <div>
+                    <SectionTitle>HR Remarks</SectionTitle>
+                    <p className="text-sm text-text bg-bg-2/50 rounded-lg p-4">{fd.additionalHrRemarks}</p>
+                </div>
+            )}
+
+            {/* Signatures */}
+            <div>
+                <SectionTitle>Signatures</SectionTitle>
+                <div className="grid grid-cols-3 gap-3">
+                    {[
+                        { label: "Employee", date: fd.employeeSignedAt },
+                        { label: "Manager", date: fd.managerSignedAt },
+                        { label: "HR", date: fd.hrSignedAt },
+                    ].map((s, i) => (
+                        <div key={i} className="border border-border rounded-lg p-3 text-center">
+                            <div className="text-[10px] font-bold text-text-3 uppercase mb-2">{s.label}</div>
+                            {s.date ? (
+                                <div>
+                                    <Badge variant="success" size="sm">Signed</Badge>
+                                    <p className="text-xs text-text-4 mt-1">{format(new Date(s.date), "dd MMM yyyy")}</p>
+                                </div>
+                            ) : (
+                                <Badge variant="neutral" size="sm">Pending</Badge>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    )
+}
+
 export function ReviewDetailView({ review }: ReviewDetailViewProps) {
     const formData = review.formData
     const isDaily = review.formType === "DAILY"
@@ -647,8 +920,18 @@ export function ReviewDetailView({ review }: ReviewDetailViewProps) {
                         <h3 className="text-lg font-bold text-text">
                             {review.employee?.firstName} {review.employee?.lastName}
                         </h3>
-                        <Badge variant={isDaily ? "default" : isLeaderMonthly ? "success" : isMonthly ? "neutral" : "warning"} size="sm">
-                            {isLeaderMonthly ? "Leader Monthly" : review.formType || "Legacy"}
+                        <Badge variant={
+                            isDaily ? "default" :
+                            isLeaderMonthly ? "success" :
+                            isMonthly ? "neutral" :
+                            review.formType === "SOURCE_ONE_MONTHLY" ? "info" :
+                            review.formType === "SOURCE_ONE_APPRAISAL" ? "purple" :
+                            "warning"
+                        } size="sm">
+                            {isLeaderMonthly ? "Leader Monthly" :
+                             review.formType === "SOURCE_ONE_MONTHLY" ? "S1 Monthly Review" :
+                             review.formType === "SOURCE_ONE_APPRAISAL" ? "S1 Appraisal" :
+                             review.formType || "Legacy"}
                         </Badge>
                         {review.reviewType === "SELF" && (
                             <Badge variant="neutral" size="sm">Self Review</Badge>
@@ -683,9 +966,11 @@ export function ReviewDetailView({ review }: ReviewDetailViewProps) {
             {isDaily && formData && <DailyDetail formData={formData} />}
             {isMonthly && formData && <MonthlyDetail formData={formData} />}
             {isLeaderMonthly && formData && <LeaderMonthlyDetail formData={formData} />}
+            {review.formType === "SOURCE_ONE_MONTHLY" && formData && <SourceOneMonthlyDetail formData={formData} />}
+            {review.formType === "SOURCE_ONE_APPRAISAL" && formData && <SourceOneAppraisalDetail formData={formData} />}
 
             {/* Legacy/generic fallback */}
-            {!isDaily && !isMonthly && !isLeaderMonthly && review.comments && (
+            {!isDaily && !isMonthly && !isLeaderMonthly && review.formType !== "SOURCE_ONE_MONTHLY" && review.formType !== "SOURCE_ONE_APPRAISAL" && review.comments && (
                 <div>
                     <SectionTitle>Comments</SectionTitle>
                     <p className="text-sm text-text bg-bg-2/50 rounded-lg p-4">{review.comments}</p>

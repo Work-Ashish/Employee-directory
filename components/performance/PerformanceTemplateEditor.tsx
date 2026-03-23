@@ -155,7 +155,7 @@ export function PerformanceTemplateEditor({ open, onClose, template, onSaved }: 
 
         setSaving(true)
         try {
-            const { data: saved } = await api.put<PerformanceTemplate>('/performance/config/', draft)
+            const { data: saved } = await api.put<PerformanceTemplate>('/performance/templates/', draft)
             onSaved(saved)
             toast.success("Performance template saved")
             onClose()

@@ -7,7 +7,6 @@ import { Select } from "@/components/ui/Select"
 import { Badge } from "@/components/ui/Badge"
 import { Spinner } from "@/components/ui/Spinner"
 import { exportToCSV } from "@/lib/exportUtils"
-import { api } from "@/lib/api-client"
 
 /* ── Types ── */
 
@@ -235,7 +234,7 @@ export function BulkEmployeeImportModal({ isOpen, onClose, departments, onSucces
             if (!mapped.departmentName) {
                 errors.push("Missing department")
             } else if (!deptNames.has(String(mapped.departmentName).toLowerCase())) {
-                errors.push(`Department "${mapped.departmentName}" not found`)
+                warnings.push(`New department "${mapped.departmentName}" will be created`)
             }
             if (!mapped.salary || isNaN(Number(mapped.salary)) || Number(mapped.salary) <= 0) {
                 warnings.push("Salary missing or invalid")
@@ -264,8 +263,22 @@ export function BulkEmployeeImportModal({ isOpen, onClose, departments, onSucces
                 return mapped
             })
 
-            const { data } = await api.post<{ suggestions: HierarchySuggestion[] }>('/employees/import/resolve-hierarchy/', { rows: mappedRows })
-            setHierarchySuggestions(data.suggestions || [])
+            const headers: Record<string, string> = { "Content-Type": "application/json" }
+            if (typeof window !== "undefined") {
+                const token = localStorage.getItem("access_token")
+                if (token) headers["Authorization"] = `Bearer ${token}`
+                const slug = localStorage.getItem("tenant_slug")
+                if (slug) headers["X-Tenant-Slug"] = slug
+            }
+            const res = await fetch("/api/employees/import/resolve-hierarchy", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ rows: mappedRows }),
+            })
+            if (!res.ok) throw new Error("Hierarchy resolution failed")
+            const json = await res.json()
+            const resolved = json.data || json
+            setHierarchySuggestions(resolved.suggestions || [])
         } catch {
             setHierarchySuggestions([])
         } finally {
@@ -282,27 +295,37 @@ export function BulkEmployeeImportModal({ isOpen, onClose, departments, onSucces
     async function handleImport() {
         setStep("importing")
         try {
-            const mappedRows = rawRows.map((raw, i) => {
-                const mapped: Record<string, any> = {}
-                for (const [header, field] of Object.entries(mapping)) {
-                    if (field !== "__skip__") mapped[field] = raw[header]
-                }
+            // Build set of row indices that have validation errors — skip them
+            const errorRowIndices = new Set(
+                validations.filter(v => v.errors.length > 0).map(v => v.rowIndex)
+            )
 
-                // Apply hierarchy suggestions + overrides
-                if (hierarchySuggestions.length > 0) {
-                    const override = hierarchyOverrides[i]
-                    if (override !== undefined) {
-                        mapped.managerEmail = override || null
-                    } else {
-                        const suggestion = hierarchySuggestions.find(s => s.rowIndex === i)
-                        if (suggestion?.suggestedManagerEmail && !mapped.managerEmail) {
-                            mapped.managerEmail = suggestion.suggestedManagerEmail
+            const mappedRows = rawRows
+                .map((raw, i) => {
+                    // Skip rows with validation errors
+                    if (errorRowIndices.has(i)) return null
+
+                    const mapped: Record<string, any> = {}
+                    for (const [header, field] of Object.entries(mapping)) {
+                        if (field !== "__skip__") mapped[field] = raw[header]
+                    }
+
+                    // Apply hierarchy suggestions + overrides
+                    if (hierarchySuggestions.length > 0) {
+                        const override = hierarchyOverrides[i]
+                        if (override !== undefined) {
+                            mapped.managerEmail = override || null
+                        } else {
+                            const suggestion = hierarchySuggestions.find(s => s.rowIndex === i)
+                            if (suggestion?.suggestedManagerEmail && !mapped.managerEmail) {
+                                mapped.managerEmail = suggestion.suggestedManagerEmail
+                            }
                         }
                     }
-                }
 
-                return mapped
-            })
+                    return mapped
+                })
+                .filter((row): row is Record<string, any> => row !== null)
 
             // Build audit log of hierarchy resolutions
             const hierarchyAudit = hierarchySuggestions.map(s => {
@@ -318,7 +341,21 @@ export function BulkEmployeeImportModal({ isOpen, onClose, departments, onSucces
                 }
             })
 
-            const { data } = await api.post<ImportResult>('/employees/import/', { rows: mappedRows, mode: importMode, hierarchyAudit })
+            const importHeaders: Record<string, string> = { "Content-Type": "application/json" }
+            if (typeof window !== "undefined") {
+                const token = localStorage.getItem("access_token")
+                if (token) importHeaders["Authorization"] = `Bearer ${token}`
+                const slug = localStorage.getItem("tenant_slug")
+                if (slug) importHeaders["X-Tenant-Slug"] = slug
+            }
+            const importRes = await fetch("/api/employees/import", {
+                method: "POST",
+                headers: importHeaders,
+                body: JSON.stringify({ rows: mappedRows, mode: importMode, hierarchyAudit }),
+            })
+            if (!importRes.ok) throw new Error("Import failed")
+            const importJson = await importRes.json()
+            const data = importJson.data || importJson
             setResult({
                 inserted: data.inserted ?? 0,
                 skipped: data.skipped ?? 0,

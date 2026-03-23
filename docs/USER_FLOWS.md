@@ -16,13 +16,45 @@
 4. Submit the form.
 5. The system creates the employee plus linked login credentials.
 
-### Performance Review Management
+### Performance Review Management (Legacy)
 
 1. Navigate to `/performance`.
 2. Choose **Daily Review** or **Monthly Review**.
 3. Select an employee.
 4. Complete structured form sections.
 5. Submit and review history in the table view.
+
+### Source One Performance — Review Cycles
+
+1. Navigate to `/performance`.
+2. Open the **Cycles** tab.
+3. Click **Create Cycle** and specify name, type (annual/six-monthly), and date range.
+4. The cycle appears in the list with status tracking.
+
+### Source One Performance — Monthly Reviews
+
+1. Navigate to `/performance`.
+2. Open the **Monthly Reviews** tab.
+3. Click **Create Review** and select an employee, month, and year.
+4. Enter scores and comments across evaluation dimensions.
+5. Submit the review.
+6. The employee, manager, and HR each sign the review via the **Sign** action.
+
+### Source One Performance — Appraisals
+
+1. Navigate to `/performance`.
+2. Open the **Appraisals** tab.
+3. Click **Create Appraisal** and select an employee, cycle, and appraisal type.
+4. Enter overall rating and detailed comments.
+5. Submit the appraisal linked to the review cycle.
+
+### Source One Performance — PIPs
+
+1. Navigate to `/performance`.
+2. Open the **PIPs** tab.
+3. Click **Create PIP** and select an employee.
+4. Specify duration (60 or 90 days), improvement goals, and support plan.
+5. Track PIP progress and update status as the plan progresses.
 
 ### Agent Tracking Management
 
@@ -59,12 +91,19 @@
 5. In agent-enabled orgs, review team activity visibility where permitted.
 6. Track priority items using the personal To-Do list widget.
 
-### Daily or Monthly Reviews
+### Daily or Monthly Reviews (Legacy)
 
 1. Navigate to `/performance`.
 2. Select a team member.
 3. Fill the appropriate review form.
 4. Submit and review historical entries.
+
+### Source One Monthly Reviews (Team Lead)
+
+1. Navigate to `/performance`.
+2. Open **Monthly Reviews** tab.
+3. Select a team member and create/update a monthly review.
+4. After submission, sign the review as manager via **Sign** action.
 
 ## Employee
 

@@ -231,7 +231,7 @@
 
 ## EPIC-07: Performance Management
 
-**Owner**: Full-stack Team | **Total SP**: 24 | **Status**: DONE
+**Owner**: Full-stack Team | **Total SP**: 47 | **Status**: DONE
 
 | ID | Type | Title | SP | Priority | Sprint | Status |
 |----|------|-------|----|----------|--------|--------|
@@ -245,6 +245,13 @@
 | EP07-S08 | Story | Employee self-review forms | 8 | P1 | 1 | DONE |
 | EP07-S09 | Story | AI-powered performance evaluation cron | 3 | P1 | 1 | DONE |
 | EP07-S10 | Story | Burnout analytics dashboard | 3 | P2 | 1 | DONE |
+| EP07-S11 | Story | Source One review cycle management | 3 | P0 | 2 | DONE |
+| EP07-S12 | Story | Source One monthly reviews with digital signatures | 5 | P0 | 2 | DONE |
+| EP07-S13 | Story | Source One annual/six-monthly appraisals | 5 | P0 | 2 | DONE |
+| EP07-S14 | Story | Source One employee eligibility check | 2 | P1 | 2 | DONE |
+| EP07-S15 | Story | Source One PIPs (60-day/90-day) | 3 | P0 | 2 | DONE |
+| EP07-S16 | Story | Source One performance proxy routes + unit tests | 3 | P1 | 2 | DONE |
+| EP07-S17 | Story | Source One performance load testing | 2 | P1 | 2 | DONE |
 
 <details>
 <summary>Story Details</summary>

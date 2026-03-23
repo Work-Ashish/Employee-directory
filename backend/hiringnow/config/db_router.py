@@ -24,8 +24,14 @@ class TenantDatabaseRouter:
         if model._meta.app_label in self.tenant_scoped_apps:
             tenant = get_current_tenant()
             if tenant and getattr(tenant, "db_name", None):
-                if tenant.db_name in settings.DATABASES:
-                    return tenant.db_name
+                db_name = tenant.db_name
+                # Dynamically register tenant DB if not already in DATABASES
+                if db_name not in settings.DATABASES:
+                    default = settings.DATABASES["default"].copy()
+                    default["NAME"] = db_name
+                    settings.DATABASES[db_name] = default
+                if db_name in settings.DATABASES:
+                    return db_name
         raise RuntimeError(
             f"Tenant context is not set or DB '{getattr(get_current_tenant(), 'db_name', None)}' "
             "is not in DATABASES. Cannot route query without tenant context."

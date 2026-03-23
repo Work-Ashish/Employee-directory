@@ -40,7 +40,7 @@ class AttendanceListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('attendance.view')]
 
     def get(self, request):
-        qs = Attendance.objects.select_related('employee')
+        qs = Attendance.objects.select_related('employee').order_by('-date')
 
         # Filters
         date_filter = request.query_params.get('date')
@@ -70,7 +70,7 @@ class AttendanceListCreateView(APIView):
             'total': total,
             'page': page,
             'limit': limit,
-            'total_pages': (total + limit - 1) // limit,
+            'total_pages': (total + limit - 1) // limit if total > 0 else 1,
         })
 
     def post(self, request):
@@ -292,7 +292,7 @@ class TimeSessionListView(APIView):
         return [IsAuthenticated(), HasPermission('attendance.view')]
 
     def get(self, request):
-        qs = TimeSession.objects.select_related('employee').prefetch_related('breaks')
+        qs = TimeSession.objects.select_related('employee').prefetch_related('breaks').order_by('-check_in')
 
         employee_id = request.query_params.get('employee_id')
         status_filter = request.query_params.get('status')
@@ -321,5 +321,5 @@ class TimeSessionListView(APIView):
             'total': total,
             'page': page,
             'limit': limit,
-            'total_pages': (total + limit - 1) // limit,
+            'total_pages': (total + limit - 1) // limit if total > 0 else 1,
         })

@@ -67,3 +67,4 @@ __pycache__/
 # ── Temp / generated ──────────────────────────────────────
 /tmp/
 cookies.txt
+.salary-data.json

@@ -81,7 +81,22 @@ async function authFetch<T>(path: string, body: Record<string, unknown>): Promis
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const json = await response.json();
+  const text = await response.text();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let json: any;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    // Log the raw response for debugging
+    console.error(`[authFetch] ${path} returned status=${response.status}, body starts with: ${text.slice(0, 200)}`);
+    if (!response.ok) {
+      // Try to extract error from HTML if it's a Django debug page
+      const match = text.match(/exception_value[^>]*>([^<]+)</);
+      const djangoError = match?.[1]?.replace(/&#x27;/g, "'") || "";
+      throw new Error(djangoError || `Server error (${response.status}). Check Django server logs.`);
+    }
+    throw new Error("Invalid response from server");
+  }
   if (!response.ok) {
     // Django wraps errors as {"data":null,"error":{"detail":[...]},"meta":{}}
     const errObj = json.error || json;

@@ -96,13 +96,48 @@ Both Django and Next.js use the same envelope:
 - `DELETE /api/employees/{id}`
 - `POST /api/employees/{id}/credentials`
 
-### Performance
+### Performance (Legacy — Daily/Monthly Reviews)
 
 - `GET /api/performance`
 - `POST /api/performance`
 - `POST /api/cron/evaluate-performance`
 - `GET /api/admin/performance`
 - `GET /api/employee/performance`
+
+### Performance — Source One Module (Django-backed)
+
+All Source One performance routes proxy to Django via `proxyToDjango()`. They require Django JWT auth and `X-Tenant-Slug` header.
+
+#### Review Cycles
+
+- `GET /api/performance/cycles` — List review cycles (filterable by status, year)
+- `POST /api/performance/cycles` — Create a new review cycle (name, type, start/end dates)
+
+#### Monthly Reviews
+
+- `GET /api/performance/monthly` — List monthly reviews (filterable by employee, month, year)
+- `POST /api/performance/monthly` — Create monthly review (employee_id, review_month, review_year, scores, comments)
+- `GET /api/performance/monthly/{id}` — Get monthly review detail
+- `PUT /api/performance/monthly/{id}` — Update monthly review
+- `POST /api/performance/monthly/{id}/sign` — Collect digital signature (role: employee, manager, or hr)
+
+#### Appraisals
+
+- `GET /api/performance/appraisals` — List appraisals (filterable by type: annual, six_monthly)
+- `POST /api/performance/appraisals` — Create appraisal (employee_id, type, cycle_id, overall_rating, comments)
+- `GET /api/performance/appraisals/{id}` — Get appraisal detail
+- `PUT /api/performance/appraisals/{id}` — Update appraisal
+
+#### Eligibility
+
+- `GET /api/performance/eligibility` — List active employees eligible for performance reviews
+
+#### Performance Improvement Plans (PIPs)
+
+- `GET /api/performance/pip` — List PIPs (filterable by status, employee)
+- `POST /api/performance/pip` — Create PIP (employee_id, duration_days: 60 or 90, goals, support_plan)
+- `GET /api/performance/pip/{id}` — Get PIP detail
+- `PUT /api/performance/pip/{id}` — Update PIP (status, progress notes)
 
 ### Attendance and Time Tracking
 
@@ -209,6 +244,15 @@ Defined in `lib/schemas/agent.ts`:
 | `/api/v1/audit-logs/` | POST/GET | Audit event ingestion/listing | `lib/logger.ts` |
 | `/api/v1/employees/` | GET/POST | Employee CRUD | `features/employees/api/client.ts` |
 | `/api/v1/leaves/` | GET/POST | Leave management | `features/leave/api/client.ts` |
+| `/api/v1/performance/cycles/` | GET/POST | Review cycle management | `app/api/performance/cycles/` |
+| `/api/v1/performance/monthly/` | GET/POST | Monthly review CRUD | `app/api/performance/monthly/` |
+| `/api/v1/performance/monthly/{id}/` | GET/PUT | Monthly review detail | `app/api/performance/monthly/[id]/` |
+| `/api/v1/performance/monthly/{id}/sign/` | POST | Digital signature | `app/api/performance/monthly/[id]/sign/` |
+| `/api/v1/performance/appraisals/` | GET/POST | Appraisal management | `app/api/performance/appraisals/` |
+| `/api/v1/performance/appraisals/{id}/` | GET/PUT | Appraisal detail | `app/api/performance/appraisals/[id]/` |
+| `/api/v1/performance/eligibility/` | GET | Employee eligibility | `app/api/performance/eligibility/` |
+| `/api/v1/performance/pip/` | GET/POST | PIP management | `app/api/performance/pip/` |
+| `/api/v1/performance/pip/{id}/` | GET/PUT | PIP detail | `app/api/performance/pip/[id]/` |
 | `/api/v1/dashboard/` | GET | Dashboard stats | Dashboard components |
 
 All feature API clients in `features/*/api/client.ts` call Django via `api.get/post/put/delete` from `lib/api-client.ts`.

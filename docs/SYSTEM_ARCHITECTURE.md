@@ -2,7 +2,7 @@
 
 ## Overview
 
-EMS Pro is a multi-tenant HRMS with a **Next.js 16 / React 19 / TailwindCSS 3.4** frontend and a **Django 5.1 + Django REST Framework** backend (`backend/`) using DB-per-tenant PostgreSQL isolation, SimpleJWT authentication, and dynamic RBAC. The system has 7 roles, 18 modules (63 permission codenames), 100+ API routes, 64 database models, AI-assisted workflows, and a desktop agent telemetry/reporting pipeline. 12 of 18 modules are fully migrated to Django; 6 remain partial (Payroll, Performance, Feedback, Reports, Settings, Dashboard).
+EMS Pro is a multi-tenant HRMS with a **Next.js 16 / React 19 / TailwindCSS 3.4** frontend and a **Django 5.1 + Django REST Framework** backend (`backend/`) using DB-per-tenant PostgreSQL isolation, SimpleJWT authentication, and dynamic RBAC. The system has 7 roles, 18 modules (63 permission codenames), 110+ API routes, 68 database models, AI-assisted workflows, and a desktop agent telemetry/reporting pipeline. 13 of 18 modules are fully migrated to Django; 5 remain partial (Payroll, Feedback, Reports, Settings, Dashboard).
 
 ---
 
@@ -76,7 +76,7 @@ graph TB
 
 ## API Layer
 
-The repository currently contains 100+ route handlers.
+The repository currently contains 110+ route handlers.
 
 ### Main route groups
 
@@ -86,7 +86,7 @@ The repository currently contains 100+ route handlers.
 | `/api/attendance` | Attendance, shifts, holidays, regularization, policies |
 | `/api/time-tracker` | Check-in/out, heartbeat, break, history, status |
 | `/api/payroll` | Payroll CRUD, config, import, run, payslip |
-| `/api/performance` | Daily/monthly performance reviews |
+| `/api/performance` | Daily/monthly reviews, Source One module (cycles, monthly, appraisals, eligibility, PIPs, signatures) |
 | `/api/agent` | Device registration, heartbeat, config, commands, activity, idle events, report fetch |
 | `/api/admin/agent` | Agent dashboard, device inventory, remote commands |
 | `/api/cron` | AI performance evaluation, agent aggregation, agent reports, scheduled jobs |
@@ -211,6 +211,13 @@ The current Prisma schema has **63 models** and **38 enums**.
 - `WebhookDelivery`
 - `AuditLog`
 
+### Performance — Source One (Django)
+
+- `ReviewCycle` — Review cycle definitions (annual, six-monthly)
+- `MonthlyReview` — Monthly performance reviews with digital signatures
+- `Appraisal` — Annual and six-monthly appraisals linked to review cycles
+- `PIP` — Performance improvement plans (60-day, 90-day)
+
 ### AI and monitoring
 
 - `PerformanceMetrics`
@@ -325,6 +332,7 @@ The new backend follows the HiringNow platform architecture:
 | `apps.dashboard` | Stats API (department split, status counts, salary, logins) | New |
 | `apps.features` | Feature flags per tenant. `seed_features` command: 14 module flags | Extended |
 | `apps.audit` | AuditLog model + REST API. Receives events from Next.js `auditLog()` | New |
+| `apps.performance` | Source One performance module: ReviewCycle, MonthlyReview, Appraisal, PIP. 14 endpoints with RBAC + digital signatures | New |
 
 ### Management Commands
 
@@ -351,6 +359,15 @@ The new backend follows the HiringNow platform architecture:
 | `/api/v1/departments/{id}/` | GET/DELETE | Detail / Delete (guarded) |
 | `/api/v1/dashboard/` | GET | Dashboard aggregated stats |
 | `/api/v1/dashboard/logins/` | GET | Login analytics |
+| `/api/v1/performance/cycles/` | GET/POST | Review cycle management |
+| `/api/v1/performance/monthly/` | GET/POST | Monthly review CRUD |
+| `/api/v1/performance/monthly/{id}/` | GET/PUT | Monthly review detail |
+| `/api/v1/performance/monthly/{id}/sign/` | POST | Digital signature collection |
+| `/api/v1/performance/appraisals/` | GET/POST | Appraisal management |
+| `/api/v1/performance/appraisals/{id}/` | GET/PUT | Appraisal detail |
+| `/api/v1/performance/eligibility/` | GET | Active employee eligibility |
+| `/api/v1/performance/pip/` | GET/POST | PIP management |
+| `/api/v1/performance/pip/{id}/` | GET/PUT | PIP detail |
 
 ### Data Migration
 

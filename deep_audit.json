@@ -1,0 +1,164 @@
+[
+  {
+    "file": "app\\api\\admin\\metrics\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\auth\\[...nextauth]\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\calendar\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\chat\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\cron\\evaluate-performance\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\dashboard\\logins\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\dashboard\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\departments\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\departments\\[id]\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\employees\\create\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\employees\\import\\resolve-hierarchy\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\employees\\import\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\employees\\managers\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\employees\\salaries\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\employees\\[id]\\credentials\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\features\\configure\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\health\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\raw-health\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\search\\reindex\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\search\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\search\\suggest\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\seed-load-test\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\storage\\init-buckets\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\storage\\test-buckets\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\team\\invite\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\upload\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  },
+  {
+    "file": "app\\api\\user\\capabilities\\route.ts",
+    "reasons": [
+      "No proxyToDjango found"
+    ]
+  }
+]

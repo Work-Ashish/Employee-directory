@@ -30,7 +30,7 @@ class ReportListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('reports.view')]
 
     def get(self, request):
-        queryset = SavedReport.objects.select_related('created_by').prefetch_related('schedules')
+        queryset = SavedReport.objects.select_related('created_by').prefetch_related('schedules').order_by('-created_at')
 
         # ── Filters
         report_type = request.query_params.get('type')

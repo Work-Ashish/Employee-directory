@@ -4,6 +4,30 @@ All notable changes to EMS Pro are documented here.
 
 ---
 
+## [5.3.0] - 2026-03-23
+
+### Added
+
+- **Source One Performance Module** — Full Django-backed performance management system with 6 sub-modules: Review Cycles, Monthly Reviews, Appraisals (annual + six-monthly), Eligibility Checks, PIPs (60-day + 90-day), and Digital Signatures (employee/manager/HR)
+- **Django `apps.performance`** — New Django app with 4 models: `ReviewCycle`, `MonthlyReview`, `Appraisal`, `PIP`. Registered in `config/settings/base.py`, `config/urls.py`, and `config/db_router.py` (`tenant_scoped_apps`)
+- **9 Next.js Proxy Routes** — All performance endpoints proxied via `proxyToDjango()` in `app/api/performance/`:
+  - `cycles/` (GET/POST) — Review cycle management
+  - `monthly/` (GET/POST) and `monthly/[id]/` (GET/PUT) — Monthly review CRUD
+  - `monthly/[id]/sign/` (POST) — Digital signature collection (employee, manager, HR)
+  - `appraisals/` (GET/POST) and `appraisals/[id]/` (GET/PUT) — Annual/six-monthly appraisals
+  - `eligibility/` (GET) — Active employee eligibility for reviews
+  - `pip/` (GET/POST) and `pip/[id]/` (GET/PUT) — Performance improvement plans
+- **14 Django REST Endpoints** — Full CRUD with RBAC via `HasPermission`, tenant-scoped queries, `is_tenant_admin` bypass
+- **Performance Proxy Unit Tests** — 36 tests in `__tests__/api/performance-sourceone.test.ts` covering all 9 proxy routes, error propagation (500, 422), and method handling
+- **Performance Load Test Script** — `scripts/load_test_performance.js` with 13 endpoints, Django JWT auth, concurrent workers, P50/P95/P99 percentile reporting, and pass/fail gates (96.9% success rate on live server)
+
+### Changed
+
+- **Performance route group** — `/api/performance` now includes Source One sub-routes alongside legacy daily/monthly review endpoints
+- **Django DB Router** — `performance` added to `tenant_scoped_apps` in `TenantDatabaseRouter`
+
+---
+
 ## [5.2.0] - 2026-03-21
 
 ### Added

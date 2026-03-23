@@ -14,7 +14,7 @@ class AuditLogListView(APIView):
         return [IsAuthenticated(), HasPermission('audit.view')]
 
     def get(self, request):
-        qs = AuditLog.objects.select_related('user').all()
+        qs = AuditLog.objects.select_related('user').all().order_by('-created_at')
 
         action = request.query_params.get('action')
         resource = request.query_params.get('resource')

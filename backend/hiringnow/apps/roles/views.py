@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +12,14 @@ from apps.roles.serializers import (
     FunctionalRoleCreateSerializer,
     FunctionalRoleUpdateSerializer,
 )
+
+
+# ── Shared queryset ─────────────────────────────────────────────────
+
+
+def _role_queryset():
+    """Base queryset for functional roles with capabilities prefetched."""
+    return FunctionalRole.objects.prefetch_related('capabilities')
 
 
 # ── Role List / Create ───────────────────────────────────────────────
@@ -28,7 +37,7 @@ class RoleListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('roles.view')]
 
     def get(self, request):
-        queryset = FunctionalRole.objects.prefetch_related('capabilities')
+        queryset = _role_queryset()
 
         # ── Filters
         is_active = request.query_params.get('is_active')
@@ -85,10 +94,7 @@ class RoleDetailView(APIView):
         return [IsAuthenticated(), HasPermission('roles.manage')]
 
     def _get_role(self, pk):
-        return get_object_or_404(
-            FunctionalRole.objects.prefetch_related('capabilities'),
-            pk=pk,
-        )
+        return get_object_or_404(_role_queryset(), pk=pk)
 
     def get(self, request, pk):
         role = self._get_role(pk)
@@ -99,26 +105,27 @@ class RoleDetailView(APIView):
         serializer = FunctionalRoleUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Update scalar fields
-        for field in ('name', 'description', 'is_active'):
-            if field in serializer.validated_data:
-                setattr(role, field, serializer.validated_data[field])
+        with transaction.atomic():
+            # Update scalar fields
+            for field in ('name', 'description', 'is_active'):
+                if field in serializer.validated_data:
+                    setattr(role, field, serializer.validated_data[field])
 
-        update_fields = [
-            f for f in ('name', 'description', 'is_active')
-            if f in serializer.validated_data
-        ]
-        if update_fields:
-            role.save(update_fields=[*update_fields, 'updated_at'])
+            update_fields = [
+                f for f in ('name', 'description', 'is_active')
+                if f in serializer.validated_data
+            ]
+            if update_fields:
+                role.save(update_fields=[*update_fields, 'updated_at'])
 
-        # Replace capabilities if provided
-        capabilities = serializer.validated_data.get('capabilities')
-        if capabilities is not None:
-            role.capabilities.all().delete()
-            RoleCapability.objects.bulk_create([
-                RoleCapability(role=role, capability=cap)
-                for cap in capabilities
-            ])
+            # Replace capabilities if provided
+            capabilities = serializer.validated_data.get('capabilities')
+            if capabilities is not None:
+                role.capabilities.all().delete()
+                RoleCapability.objects.bulk_create([
+                    RoleCapability(role=role, capability=cap)
+                    for cap in capabilities
+                ])
 
         # Refresh to pick up new capabilities
         role = self._get_role(pk)
@@ -153,14 +160,12 @@ class CapabilitiesView(APIView):
         # Fetch all functional role assignments for the employee
         assignments = EmployeeFunctionalRole.objects.filter(
             employee=employee_profile,
-        ).select_related('role')
+        ).select_related('role').order_by('-assigned_at')
 
-        role_ids = [a.role_id for a in assignments]
-
-        # Fetch all unique capabilities across those roles
+        # Fetch all unique capabilities across assigned roles in a single query
         capabilities = (
             RoleCapability.objects
-            .filter(role_id__in=role_ids)
+            .filter(role__assignments__employee=employee_profile)
             .values_list('capability', flat=True)
             .distinct()
         )

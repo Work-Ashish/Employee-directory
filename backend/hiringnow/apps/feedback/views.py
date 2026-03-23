@@ -29,7 +29,7 @@ class FeedbackListCreateView(APIView):
     def get(self, request):
         queryset = EmployeeFeedback.objects.select_related(
             'from_employee', 'to_employee',
-        )
+        ).order_by('-created_at')
 
         # Non-admin users see feedback they gave or received
         user = request.user

@@ -13,6 +13,7 @@ import { DailySelfReviewForm } from "./DailySelfReviewForm"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { PerformanceAPI } from "@/features/performance/api/client"
+import type { MonthlyReviewData, AppraisalData } from "@/features/performance/api/client"
 import { api } from "@/lib/api-client"
 
 type PerformanceReview = {
@@ -46,6 +47,10 @@ export function EmployeePerformanceView() {
     const [viewReview, setViewReview] = React.useState<PerformanceReview | null>(null)
     const [dailySelfOpen, setDailySelfOpen] = React.useState(false)
     const [selfEmployeeId, setSelfEmployeeId] = React.useState<string | null>(null)
+    const [activeTab, setActiveTab] = React.useState<"reviews" | "monthly" | "appraisals">("reviews")
+    const [monthlyReviews, setMonthlyReviews] = React.useState<MonthlyReviewData[]>([])
+    const [appraisalsList, setAppraisalsList] = React.useState<AppraisalData[]>([])
+    const [sourceLoading, setSourceLoading] = React.useState(false)
 
     const fetchReviews = React.useCallback(async () => {
         try {
@@ -74,6 +79,24 @@ export function EmployeePerformanceView() {
     }, [selfEmployeeId])
 
     React.useEffect(() => { resolveSelfEmployeeId() }, [resolveSelfEmployeeId])
+
+    const fetchSourceOne = React.useCallback(async () => {
+        setSourceLoading(true)
+        try {
+            const [mr, ap] = await Promise.all([
+                PerformanceAPI.listMonthlyReviews().catch(() => ({ results: [] })),
+                PerformanceAPI.listAppraisals().catch(() => ({ results: [] })),
+            ])
+            setMonthlyReviews(extractArray(mr.results || mr))
+            setAppraisalsList(extractArray(ap.results || ap))
+        } finally {
+            setSourceLoading(false)
+        }
+    }, [])
+
+    React.useEffect(() => {
+        if (activeTab !== "reviews") fetchSourceOne()
+    }, [activeTab, fetchSourceOne])
 
     const handleOpenSelfReview = async () => {
         const empId = await resolveSelfEmployeeId()
@@ -113,6 +136,22 @@ export function EmployeePerformanceView() {
                 </Button>
             </div>
 
+            <div className="flex items-center gap-1 bg-surface border border-border rounded-xl p-1">
+                {(["reviews", "monthly", "appraisals"] as const).map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => { setActiveTab(tab); if (tab !== "reviews") fetchSourceOne() }}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium rounded-lg transition-all",
+                            activeTab === tab ? "bg-accent text-white shadow-sm" : "text-text-3 hover:text-text hover:bg-bg-2"
+                        )}
+                    >
+                        {tab === "reviews" ? "My Reviews" : tab === "monthly" ? "Monthly Reviews" : "Appraisals"}
+                    </button>
+                ))}
+            </div>
+
+            {activeTab === "reviews" && (<>
             {/* Hero Stats */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
                 <Card className="p-8 bg-gradient-to-br from-accent to-purple text-white relative overflow-hidden">
@@ -303,6 +342,111 @@ export function EmployeePerformanceView() {
                     {viewReview && <ReviewDetailView review={viewReview} />}
                 </DialogBody>
             </Dialog>
+            </>)}
+
+            {activeTab === "monthly" && (
+                <Card>
+                    <CardHeader className="border-b border-border">
+                        <CardTitle>My Monthly Reviews</CardTitle>
+                    </CardHeader>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="border-b border-border bg-surface-2">
+                                    {["Month/Year", "Rating", "Score %", "Category", "Status", "Updated"].map(h => (
+                                        <th key={h} className="px-4 py-3 text-xs font-bold text-text-3 text-left uppercase tracking-wider">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sourceLoading ? (
+                                    <tr><td colSpan={6} className="p-10 text-center"><Spinner size="lg" className="mx-auto" /></td></tr>
+                                ) : monthlyReviews.length === 0 ? (
+                                    <tr><td colSpan={6} className="p-10 text-center text-text-3">No monthly reviews yet.</td></tr>
+                                ) : monthlyReviews.map(mr => (
+                                    <tr key={mr.id} className="border-b border-border/30 last:border-0 hover:bg-accent/[0.03] transition-colors">
+                                        <td className="px-4 py-3.5 text-sm text-text font-mono">
+                                            {["", "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][mr.reviewMonth]} {mr.reviewYear}
+                                        </td>
+                                        <td className="px-4 py-3.5">
+                                            {mr.rating ? (
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-warning">{"★".repeat(mr.rating)}</span>
+                                                    <span className="text-text-4">{"★".repeat(5 - mr.rating)}</span>
+                                                    <span className="text-sm text-text-3 ml-1">{mr.rating}/5</span>
+                                                </div>
+                                            ) : <span className="text-text-4">—</span>}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-sm font-mono">{mr.scorePercentage != null ? `${mr.scorePercentage}%` : "—"}</td>
+                                        <td className="px-4 py-3.5">
+                                            <Badge variant={mr.ratingCategory === "OUTSTANDING" ? "success" : mr.ratingCategory === "EXCELLENT" ? "default" : mr.ratingCategory === "GOOD" ? "neutral" : "warning"} size="sm">
+                                                {mr.ratingCategoryDisplay || mr.ratingCategory || "—"}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-4 py-3.5">
+                                            <Badge variant={mr.status === "ACKNOWLEDGED" ? "success" : mr.status === "REVIEWED" ? "default" : "neutral"} size="sm">
+                                                {mr.statusDisplay || mr.status}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-4 py-3.5 text-sm text-text-3">{format(new Date(mr.updatedAt), "MMM d, yyyy")}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+            )}
+
+            {activeTab === "appraisals" && (
+                <Card>
+                    <CardHeader className="border-b border-border">
+                        <CardTitle>My Appraisals</CardTitle>
+                    </CardHeader>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="border-b border-border bg-surface-2">
+                                    {["Type", "Period", "Financial Year", "Rating", "Status", "Updated"].map(h => (
+                                        <th key={h} className="px-4 py-3 text-xs font-bold text-text-3 text-left uppercase tracking-wider">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sourceLoading ? (
+                                    <tr><td colSpan={6} className="p-10 text-center"><Spinner size="lg" className="mx-auto" /></td></tr>
+                                ) : appraisalsList.length === 0 ? (
+                                    <tr><td colSpan={6} className="p-10 text-center text-text-3">No appraisals yet.</td></tr>
+                                ) : appraisalsList.map(ap => (
+                                    <tr key={ap.id} className="border-b border-border/30 last:border-0 hover:bg-accent/[0.03] transition-colors">
+                                        <td className="px-4 py-3.5">
+                                            <Badge variant={ap.reviewType === "ANNUAL" ? "purple" : "default"} size="sm">
+                                                {ap.reviewTypeDisplay || ap.reviewType}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-4 py-3.5 text-sm text-text">{ap.reviewPeriod}</td>
+                                        <td className="px-4 py-3.5 text-sm text-text-3">{ap.financialYear}</td>
+                                        <td className="px-4 py-3.5">
+                                            {ap.overallRating ? (
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-warning">{"★".repeat(ap.overallRating)}</span>
+                                                    <span className="text-text-4">{"★".repeat(5 - ap.overallRating)}</span>
+                                                    <span className="text-sm text-text-3 ml-1">{ap.overallRating}/5</span>
+                                                </div>
+                                            ) : <span className="text-text-4">—</span>}
+                                        </td>
+                                        <td className="px-4 py-3.5">
+                                            <Badge variant={ap.status === "COMPLETED" ? "success" : ap.status === "HR_CALIBRATION" ? "info" : "neutral"} size="sm">
+                                                {ap.statusDisplay || ap.status}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-4 py-3.5 text-sm text-text-3">{format(new Date(ap.updatedAt), "MMM d, yyyy")}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+            )}
         </div>
     )
 }

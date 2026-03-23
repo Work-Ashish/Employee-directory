@@ -27,7 +27,7 @@ class AssetListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('assets.view')]
 
     def get(self, request):
-        queryset = Asset.objects.select_related('assigned_to')
+        queryset = Asset.objects.select_related('assigned_to').order_by('-created_at')
 
         # Non-admin users can only see assets assigned to them
         user = request.user
