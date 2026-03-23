@@ -68,8 +68,12 @@ export function TeamDetailModal({
     // IDs already in team (lead + members)
     const memberIds = React.useMemo(() => {
         const ids = new Set<string>()
-        ids.add(team.leadId)
-        team.members.forEach(m => ids.add(m.employee.id))
+        if (team.leadId) ids.add(team.leadId)
+        else if (team.lead && typeof team.lead === "object") ids.add(team.lead.id)
+        ;(team.members || []).forEach(m => {
+            const empId = typeof m.employee === "object" ? m.employee.id : m.employee
+            if (empId) ids.add(empId)
+        })
         return ids
     }, [team])
 
@@ -101,7 +105,7 @@ export function TeamDetailModal({
         if (!await confirmDanger("Remove Member?", "This member will be removed from the team.")) return
         setActionLoading(employeeId)
         try {
-            await api.delete(`/teams/${team.id}/members/?employeeId=${employeeId}`)
+            await api.delete(`/teams/${team.id}/members/?employee_id=${employeeId}`)
             showSuccess("Removed", "Member removed from team")
             onMembersChanged()
         } catch { /* empty */ }
@@ -131,22 +135,26 @@ export function TeamDetailModal({
                             </Button>
                         )}
                     </div>
+                    {team.lead ? (
                     <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/5 border border-accent/15">
                         <Avatar
-                            src={team.lead.avatarUrl}
-                            name={`${team.lead.firstName} ${team.lead.lastName}`}
+                            src={typeof team.lead === "object" ? team.lead.avatarUrl : undefined}
+                            name={typeof team.lead === "object" ? `${team.lead.firstName} ${team.lead.lastName}` : "Lead"}
                             size="sm"
                         />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-text">
-                                {team.lead.firstName} {team.lead.lastName}
+                                {typeof team.lead === "object" ? `${team.lead.firstName} ${team.lead.lastName}` : (team as any).leadName || "Team Lead"}
                             </p>
-                            {team.lead.designation && (
+                            {typeof team.lead === "object" && team.lead.designation && (
                                 <p className="text-xs text-text-3">{team.lead.designation}</p>
                             )}
                         </div>
                         <Badge variant="default" size="sm">Lead</Badge>
                     </div>
+                    ) : (
+                        <p className="text-sm text-text-3 py-2">No team lead assigned</p>
+                    )}
                 </div>
 
                 {/* Members Section */}
@@ -215,27 +223,31 @@ export function TeamDetailModal({
                     )}
 
                     {/* Current members list */}
-                    {team.members.length === 0 ? (
+                    {(team.members || []).length === 0 ? (
                         <p className="text-sm text-text-3 text-center py-4">No members yet. Add members to this team.</p>
                     ) : (
                         <div className="divide-y divide-border rounded-lg border border-border">
-                            {team.members.map(m => (
-                                <div key={m.employee.id} className="flex items-center gap-3 p-3">
+                            {(team.members || []).map(m => {
+                                const emp = typeof m.employee === "object"
+                                    ? m.employee
+                                    : { id: m.employee || (m as any).id, firstName: ((m as any).employeeName || "").split(/\s+/)[0] || "", lastName: ((m as any).employeeName || "").split(/\s+/).slice(1).join(" ") || "", avatarUrl: undefined, designation: (m as any).role || "" }
+                                return (
+                                <div key={emp.id} className="flex items-center gap-3 p-3">
                                     <Avatar
-                                        src={m.employee.avatarUrl}
-                                        name={`${m.employee.firstName} ${m.employee.lastName}`}
+                                        src={emp.avatarUrl}
+                                        name={`${emp.firstName} ${emp.lastName}`}
                                         size="sm"
                                     />
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-text truncate">
-                                            {m.employee.firstName} {m.employee.lastName}
+                                            {emp.firstName} {emp.lastName}
                                         </p>
-                                        <p className="text-xs text-text-3 truncate">{m.employee.designation}</p>
+                                        <p className="text-xs text-text-3 truncate">{emp.designation}</p>
                                     </div>
                                     {canAssign && (
                                         <button
-                                            onClick={() => handleRemoveMember(m.employee.id)}
-                                            disabled={actionLoading === m.employee.id}
+                                            onClick={() => handleRemoveMember(emp.id)}
+                                            disabled={actionLoading === emp.id}
                                             className="p-1.5 rounded-md text-text-4 hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
                                             title="Remove member"
                                         >
@@ -243,7 +255,8 @@ export function TeamDetailModal({
                                         </button>
                                     )}
                                 </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     )}
                 </div>

@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -5,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.rbac.permissions import HasPermission
+from apps.rbac.services import user_has_permission
 from apps.leave.models import Leave
 from apps.leave.serializers import (
     LeaveSerializer,
@@ -29,10 +31,48 @@ class LeaveListCreateView(APIView):
     def get(self, request):
         queryset = Leave.objects.select_related('employee').order_by('-start_date')
 
-        # Non-admin users can only see their own leaves
+        # ── Row-level scoping ────────────────────────────────────────
+        # Admin / leaves.manage → see all leaves
+        # Manager → own + direct reports + team members
+        # Regular employee → own leaves only
         user = request.user
-        if not getattr(user, 'is_tenant_admin', False):
-            queryset = queryset.filter(employee__user=user)
+        is_admin = getattr(user, 'is_tenant_admin', False)
+        has_manage = user_has_permission(user, 'leaves.manage')
+
+        if not is_admin and not has_manage:
+            from apps.employees.models import Employee
+            from apps.teams.models import TeamMember
+
+            emp = Employee.objects.filter(
+                user=user, deleted_at__isnull=True,
+            ).first()
+
+            if emp:
+                visible = Q(employee=emp)
+
+                # Direct reports
+                direct_report_ids = list(
+                    Employee.objects.filter(
+                        reporting_to=emp, deleted_at__isnull=True,
+                    ).values_list('id', flat=True)
+                )
+                if direct_report_ids:
+                    visible |= Q(employee_id__in=direct_report_ids)
+
+                # Team members (teams this user leads)
+                led_team_ids = list(emp.led_teams.values_list('id', flat=True))
+                if led_team_ids:
+                    team_member_ids = list(
+                        TeamMember.objects.filter(
+                            team_id__in=led_team_ids,
+                        ).values_list('employee_id', flat=True)
+                    )
+                    if team_member_ids:
+                        visible |= Q(employee_id__in=team_member_ids)
+
+                queryset = queryset.filter(visible)
+            else:
+                queryset = queryset.none()
 
         # ── Filters
         status_filter = request.query_params.get('status')

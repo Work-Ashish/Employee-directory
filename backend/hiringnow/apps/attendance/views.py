@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -5,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.rbac.permissions import HasPermission
+from apps.rbac.services import user_has_permission
 from apps.attendance.models import (
     Attendance,
     AttendancePolicy,
@@ -42,7 +44,52 @@ class AttendanceListCreateView(APIView):
     def get(self, request):
         qs = Attendance.objects.select_related('employee').order_by('-date')
 
-        # Filters
+        # ── Row-level scoping ────────────────────────────────────────
+        # Admin / attendance.manage → see all records
+        # Manager → own + direct reports + team members
+        # Regular employee → own records only
+        user = request.user
+        is_admin = getattr(user, 'is_tenant_admin', False)
+        has_manage = user_has_permission(user, 'attendance.manage')
+
+        if not is_admin and not has_manage:
+            from apps.employees.models import Employee
+            from apps.teams.models import TeamMember
+
+            emp = Employee.objects.filter(
+                user=user, deleted_at__isnull=True,
+            ).first()
+
+            if emp:
+                # IDs this user is allowed to see
+                visible = Q(employee=emp)
+
+                # Direct reports (employees who report to this manager)
+                direct_report_ids = list(
+                    Employee.objects.filter(
+                        reporting_to=emp, deleted_at__isnull=True,
+                    ).values_list('id', flat=True)
+                )
+                if direct_report_ids:
+                    visible |= Q(employee_id__in=direct_report_ids)
+
+                # Team members (teams this user leads)
+                led_team_ids = list(emp.led_teams.values_list('id', flat=True))
+                if led_team_ids:
+                    team_member_ids = list(
+                        TeamMember.objects.filter(
+                            team_id__in=led_team_ids,
+                        ).values_list('employee_id', flat=True)
+                    )
+                    if team_member_ids:
+                        visible |= Q(employee_id__in=team_member_ids)
+
+                qs = qs.filter(visible)
+            else:
+                # No employee profile linked — return nothing
+                qs = qs.none()
+
+        # ── Query param filters ──────────────────────────────────────
         date_filter = request.query_params.get('date')
         employee_id = request.query_params.get('employee_id')
         status_filter = request.query_params.get('status')

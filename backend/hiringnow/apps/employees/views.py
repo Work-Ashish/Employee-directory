@@ -15,6 +15,7 @@ from apps.employees.serializers import (
     EmployeeUpdateSerializer,
     EmployeeMinimalSerializer,
     EmploymentTypeSerializer,
+    EmployeeProfileFlatSerializer,
 )
 
 
@@ -106,6 +107,8 @@ class EmployeeListCreateView(APIView):
                     first_name=employee.first_name,
                     last_name=employee.last_name,
                 )
+                user.must_change_password = True
+                user.save(update_fields=['must_change_password'])
                 employee.user = user
                 employee.save(update_fields=['user'])
 
@@ -205,3 +208,43 @@ class ManagerListView(APIView):
             deleted_at__isnull=True,
         ).order_by('first_name', 'last_name')
         return Response(EmployeeMinimalSerializer(managers, many=True).data)
+
+
+# ── My Profile (current user) ────────────────────────────────────────
+
+class EmployeeMyProfileView(APIView):
+    """GET/PUT /employees/profile/ — current user's own employee profile."""
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_employee(self, user):
+        try:
+            return Employee.objects.select_related(
+                'employment_type', 'reporting_to', 'department_ref',
+            ).prefetch_related('profile', 'address_info', 'banking').get(
+                user=user, deleted_at__isnull=True,
+            )
+        except Employee.DoesNotExist:
+            return None
+
+    def get(self, request):
+        employee = self._get_employee(request.user)
+        if not employee:
+            return Response(
+                {'detail': 'No employee profile linked to this account.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(EmployeeProfileFlatSerializer(employee).data)
+
+    def put(self, request):
+        employee = self._get_employee(request.user)
+        if not employee:
+            return Response(
+                {'detail': 'No employee profile linked to this account.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = EmployeeProfileFlatSerializer(employee, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated = serializer.save()
+        return Response(EmployeeProfileFlatSerializer(updated).data)

@@ -88,7 +88,25 @@ export function AdminAttendanceView() {
     const fetchRecords = React.useCallback(async () => {
         try {
             const response = await AttendanceAPI.list()
-            setRecords(response.results as unknown as AttendanceRecord[])
+            const normalized = (response.results || []).map((r: any) => {
+                // Django returns employee as UUID + employeeName as separate string
+                const empIsObject = r.employee && typeof r.employee === "object"
+                const empNameStr: string = r.employeeName || ""
+                const [fn = "", ...ln] = empNameStr.split(/\s+/)
+                return {
+                    ...r,
+                    employee: empIsObject ? r.employee : {
+                        id: r.employee || r.employeeId || r.id,
+                        firstName: fn,
+                        lastName: ln.join(" "),
+                        employeeCode: r.employeeCode || "",
+                    },
+                    employeeId: empIsObject ? r.employee.id : (r.employee || r.employeeId),
+                    // Django status is lowercase; UI expects uppercase
+                    status: (r.status || "").toUpperCase().replace(/ /g, "_"),
+                } as AttendanceRecord
+            })
+            setRecords(normalized)
         } catch {
             toast.error("Failed to load attendance records")
         } finally {

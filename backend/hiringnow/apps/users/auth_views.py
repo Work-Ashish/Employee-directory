@@ -23,6 +23,8 @@ class RegisterView(APIView):
         result = serializer.save()
         user = result["user"]
         tenant = result["tenant"]
+        # Refresh user from DB so employee_profile reverse relation is available
+        user.refresh_from_db()
         token_serializer = CustomTokenObtainPairSerializer()
         tokens = token_serializer.get_token(user)
         refresh = tokens

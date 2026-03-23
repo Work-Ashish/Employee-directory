@@ -16,7 +16,7 @@ import ReactFlow, {
     addEdge,
     MarkerType,
 } from "reactflow"
-import dagre from "dagre"
+import * as dagre from "dagre"
 import "reactflow/dist/style.css"
 import { Avatar } from "@/components/ui/Avatar"
 import { Badge } from "@/components/ui/Badge"
@@ -255,7 +255,22 @@ export default function OrgChartPage() {
                 TeamAPI.orgChart(),
                 DepartmentAPI.list().catch(() => []),
             ])
-            setEmployees(chartData as unknown as OrgEmployee[] || [])
+            const mapped: OrgEmployee[] = (chartData || []).map((n: any) => ({
+                id: n.id,
+                firstName: n.firstName || "",
+                lastName: n.lastName || "",
+                designation: n.designation || "",
+                managerId: n.reportingTo || null,
+                avatarUrl: n.avatarUrl || null,
+                employeeCode: n.employeeCode || "",
+                email: n.email || "",
+                phone: n.phone || "",
+                department: typeof n.department === "string"
+                    ? { id: n.department, name: n.department, color: getDeptColor(n.department) }
+                    : n.department,
+                user: n.user || null,
+            }))
+            setEmployees(mapped)
             setDepartments(Array.isArray(deptData) ? deptData : [])
         } catch (err: any) {
             setError(err.message)

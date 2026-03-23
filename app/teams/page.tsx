@@ -31,6 +31,39 @@ interface Team {
     _count: { members: number }
 }
 
+/** Normalize Django team response into the shape the UI expects */
+function normalizeTeam(raw: any): Team {
+    const leadIsObject = raw.lead && typeof raw.lead === "object"
+    const leadId = leadIsObject ? raw.lead.id : (raw.leadId || raw.lead || "")
+    const leadNameStr: string = raw.leadName || ""
+    const [leadFirst = "", ...leadRest] = leadNameStr.split(/\s+/)
+    const lead = leadIsObject
+        ? raw.lead
+        : { id: leadId, firstName: leadFirst, lastName: leadRest.join(" "), avatarUrl: null, designation: "" }
+
+    const membersCount = raw._count?.members ?? raw.membersCount ?? raw.members?.length ?? 0
+
+    const members: TeamMember[] = (raw.members || []).map((m: any) => {
+        if (m.employee && typeof m.employee === "object") return m
+        const empNameStr: string = m.employeeName || ""
+        const [fn = "", ...ln] = empNameStr.split(/\s+/)
+        return {
+            ...m,
+            employee: { id: m.employee || m.id, firstName: fn, lastName: ln.join(" "), avatarUrl: null, designation: m.role || "" },
+        }
+    })
+
+    return {
+        id: raw.id,
+        name: raw.name,
+        description: raw.description,
+        leadId,
+        lead,
+        members,
+        _count: { members: membersCount },
+    }
+}
+
 export default function TeamsPage() {
     const { user, isLoading } = useAuth()
     const router = useRouter()
@@ -57,7 +90,8 @@ export default function TeamsPage() {
         try {
             const data = await TeamAPI.list()
             const arr = data.results || data
-            setTeams(Array.isArray(arr) ? arr as Team[] : [])
+            const list = Array.isArray(arr) ? arr : []
+            setTeams(list.map(normalizeTeam))
         } catch { /* empty */ }
         finally { setLoading(false) }
     }, [])
@@ -118,7 +152,14 @@ export default function TeamsPage() {
                         <Card
                             key={team.id}
                             className="p-5 hover:shadow-md transition-shadow cursor-pointer group"
-                            onClick={() => setDetailTeam(team)}
+                            onClick={async () => {
+                                try {
+                                    const full = await TeamAPI.get(team.id)
+                                    setDetailTeam(normalizeTeam(full))
+                                } catch {
+                                    setDetailTeam(team)
+                                }
+                            }}
                         >
                             <div className="flex items-start justify-between mb-3">
                                 <div className="flex-1 min-w-0">

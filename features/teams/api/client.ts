@@ -64,7 +64,28 @@ export const TeamAPI = {
   },
 
   orgChart: async (): Promise<OrgChartNode[]> => {
-    const { data } = await api.get<OrgChartNode[]>("/teams/org-chart/")
-    return data
+    const { data } = await api.get<any>("/teams/org-chart/")
+    // Django returns { orgChart: [{ id, name, designation, department, children }] }
+    // Flatten the nested tree into a flat array with reportingTo references
+    const tree: any[] = Array.isArray(data) ? data : (data?.orgChart || [])
+    const flat: OrgChartNode[] = []
+    function walk(nodes: any[], parentId: string | null) {
+      for (const n of nodes) {
+        const parts = (n.name || "").split(/\s+/)
+        flat.push({
+          id: n.id,
+          firstName: n.firstName || parts[0] || "",
+          lastName: n.lastName || parts.slice(1).join(" ") || "",
+          designation: n.designation || "",
+          department: n.department || "",
+          avatarUrl: n.avatarUrl || null,
+          reportingTo: parentId,
+          directReports: [],
+        })
+        if (n.children?.length) walk(n.children, n.id)
+      }
+    }
+    walk(tree, null)
+    return flat
   },
 }

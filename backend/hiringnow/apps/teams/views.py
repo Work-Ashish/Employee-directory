@@ -116,6 +116,57 @@ class TeamDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+# -- Team Members --------------------------------------------------------------
+
+class TeamMemberView(APIView):
+    """
+    POST   /teams/{id}/members/  -- add a member to the team
+    DELETE /teams/{id}/members/  -- remove a member from the team
+    """
+
+    def get_permissions(self):
+        return [IsAuthenticated(), HasPermission('teams.manage')]
+
+    def _get_team(self, pk):
+        return get_object_or_404(Team, pk=pk)
+
+    def post(self, request, pk):
+        team = self._get_team(pk)
+        employee_id = request.data.get('employee_id')
+        if not employee_id:
+            return Response(
+                {'error': 'employee_id is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        employee = get_object_or_404(Employee, pk=employee_id)
+        member, created = TeamMember.objects.get_or_create(
+            team=team,
+            employee=employee,
+            defaults={'role': request.data.get('role', '')},
+        )
+        if not created:
+            return Response(
+                {'error': 'Employee is already a member of this team'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            TeamMemberSerializer(member).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request, pk):
+        team = self._get_team(pk)
+        employee_id = request.query_params.get('employee_id')
+        if not employee_id:
+            return Response(
+                {'error': 'employee_id query param is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        member = get_object_or_404(TeamMember, team=team, employee_id=employee_id)
+        member.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 # -- Org Chart -----------------------------------------------------------------
 
 class OrgChartView(APIView):

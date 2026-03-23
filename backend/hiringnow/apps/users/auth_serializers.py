@@ -58,6 +58,31 @@ class RegisterSerializer(serializers.Serializer):
             last_name = validated_data.get('last_name', ''),
             is_tenant_admin = True,
         )
+
+        # Auto-create an Employee record linked to the registering user
+        from apps.employees.models import Employee
+        Employee.objects.create(
+            user=user,
+            first_name=user.first_name or tenant_name,
+            last_name=user.last_name,
+            email=user.email,
+            designation='Admin',
+            status=Employee.Status.ACTIVE,
+        )
+
+        # Seed RBAC roles/permissions and assign admin role to this user
+        try:
+            call_command('seed_rbac', '--database', db_name, verbosity=0)
+        except Exception:
+            pass  # non-fatal — roles can be seeded later
+        try:
+            from apps.rbac.models import Role, UserRole
+            admin_role = Role.objects.filter(slug='admin').first()
+            if admin_role:
+                UserRole.objects.get_or_create(user=user, role=admin_role)
+        except Exception:
+            pass  # non-fatal
+
         return {'tenant': tenant, 'user': user}
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

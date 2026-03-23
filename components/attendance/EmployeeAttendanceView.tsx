@@ -1,18 +1,19 @@
 "use client"
 
 import * as React from "react"
-import { extractArray } from "@/lib/utils"
 import { ClockIcon, CalendarIcon } from "@radix-ui/react-icons"
 import { toast } from "sonner"
 import { format, differenceInMinutes, startOfMonth, endOfMonth } from "date-fns"
 import { Button } from "@/components/ui/Button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
+import { Avatar } from "@/components/ui/Avatar"
 import { StatCard } from "@/components/ui/StatCard"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
 import { AttendanceAPI } from "@/features/attendance/api/client"
+import { useAuth } from "@/context/AuthContext"
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "HALF_DAY" | "ON_LEAVE" | "WEEKEND"
 
@@ -23,6 +24,8 @@ interface AttendanceRecord {
     checkOut: string | null
     workHours: number | null
     status: AttendanceStatus
+    employee: string
+    employeeName: string
     createdAt: string
 }
 
@@ -48,26 +51,38 @@ const fmtTime = (iso: string | null) => {
 }
 
 export function EmployeeAttendanceView() {
+    const { user } = useAuth()
     const [records, setRecords] = React.useState<AttendanceRecord[]>([])
     const [loading, setLoading] = React.useState(true)
     const [todayRecord, setTodayRecord] = React.useState<AttendanceRecord | null>(null)
     const [checking, setChecking] = React.useState(false)
+    const [tab, setTab] = React.useState<"mine" | "team">("mine")
+
+    // The logged-in user's employee ID (from auth context)
+    const myEmployeeId = user?.employeeId || ""
 
     const fetchRecords = React.useCallback(async () => {
         try {
             const response = await AttendanceAPI.list()
-            const data = response.results as unknown as AttendanceRecord[]
+            const data = (response.results || []).map((r: any) => ({
+                ...r,
+                status: (r.status || "").toUpperCase().replace(/ /g, "_"),
+                employee: typeof r.employee === "object" ? r.employee.id || r.employee : r.employee,
+                employeeName: r.employeeName || "",
+            })) as AttendanceRecord[]
             setRecords(data)
 
             const todayStr = format(new Date(), "yyyy-MM-dd")
-            const today = data.find((r: AttendanceRecord) => format(new Date(r.date), "yyyy-MM-dd") === todayStr)
+            const today = data.find(
+                (r) => r.employee === myEmployeeId && format(new Date(r.date), "yyyy-MM-dd") === todayStr,
+            )
             setTodayRecord(today || null)
         } catch {
             toast.error("Failed to load attendance")
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [myEmployeeId])
 
     React.useEffect(() => {
         fetchRecords()
@@ -114,19 +129,27 @@ export function EmployeeAttendanceView() {
         }
     }
 
-    const monthRecords = records.filter(r => {
+    // Split records: mine vs team
+    const myRecords = records.filter((r) => r.employee === myEmployeeId)
+    const teamRecords = records.filter((r) => r.employee !== myEmployeeId)
+    const hasTeamRecords = teamRecords.length > 0
+
+    const displayRecords = tab === "mine" ? myRecords : teamRecords
+
+    // Stats from own records this month
+    const monthRecords = myRecords.filter((r) => {
         const d = new Date(r.date)
         const now = new Date()
         return d >= startOfMonth(now) && d <= endOfMonth(now)
     })
 
     const totalHours = monthRecords.reduce((sum, r) => sum + (r.workHours || 0), 0)
-    const presentDays = monthRecords.filter(r => r.status === "PRESENT" || r.status === "HALF_DAY").length
+    const presentDays = monthRecords.filter((r) => r.status === "PRESENT" || r.status === "HALF_DAY").length
     const totalDays = monthRecords.length || 1
     const attendancePct = Math.round((presentDays / totalDays) * 100)
 
     const avgCheckIn = (() => {
-        const checkIns = monthRecords.filter(r => r.checkIn).map(r => new Date(r.checkIn!))
+        const checkIns = monthRecords.filter((r) => r.checkIn).map((r) => new Date(r.checkIn!))
         if (checkIns.length === 0) return "\u2014"
         const avgMs = checkIns.reduce((sum, d) => sum + (d.getHours() * 60 + d.getMinutes()), 0) / checkIns.length
         const h = Math.floor(avgMs / 60)
@@ -195,6 +218,32 @@ export function EmployeeAttendanceView() {
                 />
             </div>
 
+            {/* Tabs: My Logs / Team Attendance (only if manager has team records) */}
+            {hasTeamRecords && (
+                <div className="flex gap-1 p-1 bg-bg-2 rounded-lg w-fit">
+                    <button
+                        onClick={() => setTab("mine")}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                            tab === "mine"
+                                ? "bg-surface text-text shadow-sm"
+                                : "text-text-3 hover:text-text"
+                        }`}
+                    >
+                        My Logs ({myRecords.length})
+                    </button>
+                    <button
+                        onClick={() => setTab("team")}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                            tab === "team"
+                                ? "bg-surface text-text shadow-sm"
+                                : "text-text-3 hover:text-text"
+                        }`}
+                    >
+                        Team Attendance ({teamRecords.length})
+                    </button>
+                </div>
+            )}
+
             {loading ? (
                 <div className="flex items-center justify-center py-20 gap-3 text-text-3">
                     <Spinner size="lg" />
@@ -203,29 +252,37 @@ export function EmployeeAttendanceView() {
             ) : (
                 <Card>
                     <CardHeader className="flex-row items-center justify-between pb-0">
-                        <CardTitle>My Logs</CardTitle>
+                        <CardTitle>{tab === "mine" ? "My Logs" : "Team Attendance"}</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0 pt-4">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="border-b border-border bg-bg-2">
-                                    {["Date", "Check In", "Check Out", "Hours", "Status"].map(h => (
+                                    {(tab === "team" ? ["Employee", "Date", "Check In", "Check Out", "Hours", "Status"] : ["Date", "Check In", "Check Out", "Hours", "Status"]).map((h) => (
                                         <th key={h} className="px-4 py-3 text-xs font-bold text-text-3 text-left uppercase tracking-wide">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {records.length === 0 ? (
+                                {displayRecords.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5}>
+                                        <td colSpan={tab === "team" ? 6 : 5}>
                                             <EmptyState
-                                                title="No attendance records yet"
-                                                description="Your attendance logs will appear here once you start checking in."
+                                                title={tab === "mine" ? "No attendance records yet" : "No team records found"}
+                                                description={tab === "mine" ? "Your attendance logs will appear here once you start checking in." : "Your team members' attendance will appear here."}
                                             />
                                         </td>
                                     </tr>
-                                ) : records.map((rec) => (
+                                ) : displayRecords.map((rec) => (
                                     <tr key={rec.id} className="group hover:bg-accent/[0.03] transition-colors duration-200 border-b border-border last:border-0">
+                                        {tab === "team" && (
+                                            <td className="px-4 py-3 text-sm text-text">
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar name={rec.employeeName || "?"} size="xs" />
+                                                    <span className="font-medium truncate">{rec.employeeName || "Unknown"}</span>
+                                                </div>
+                                            </td>
+                                        )}
                                         <td className="px-4 py-3 font-mono text-sm text-text">{format(new Date(rec.date), "MMM d, yyyy")}</td>
                                         <td className="px-4 py-3 font-mono text-sm text-text">
                                             <div className="flex items-center gap-1.5">

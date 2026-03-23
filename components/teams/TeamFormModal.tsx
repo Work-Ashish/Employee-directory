@@ -49,7 +49,7 @@ export function TeamFormModal({ isOpen, onClose, team, onSaved }: TeamFormModalP
         if (team) {
             setName(team.name)
             setDescription(team.description ?? "")
-            setLeadId(team.leadId)
+            setLeadId(team.leadId || (typeof team.lead === "object" ? team.lead?.id : team.lead as any) || "")
         } else {
             setName("")
             setDescription("")

@@ -115,7 +115,22 @@ export function AdminLeaveView() {
     const fetchLeaves = React.useCallback(async () => {
         try {
             const response = await LeaveAPI.list(`page=${page}&limit=${limit}`)
-            setLeaves(response.results as unknown as LeaveRequest[])
+            const normalized = (response.results || []).map((r: any) => {
+                const empIsObject = r.employee && typeof r.employee === "object"
+                const empNameStr: string = r.employeeName || ""
+                const [fn = "", ...ln] = empNameStr.split(/\s+/)
+                return {
+                    ...r,
+                    employee: empIsObject ? r.employee : {
+                        id: r.employee || r.employeeId || r.id,
+                        firstName: fn,
+                        lastName: ln.join(" "),
+                        employeeCode: r.employeeCode || "",
+                    },
+                    employeeId: empIsObject ? r.employee.id : (r.employee || r.employeeId),
+                } as LeaveRequest
+            })
+            setLeaves(normalized)
             setTotalRows(response.total)
             setPageCount(Math.ceil(response.total / limit))
         } catch {
