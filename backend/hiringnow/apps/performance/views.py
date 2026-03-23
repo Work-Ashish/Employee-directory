@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.employees.models import Employee
+from apps.rbac.models import UserRole
 from apps.rbac.permissions import HasPermission
 from apps.rbac.services import user_has_permission
 from apps.teams.models import TeamMember
@@ -50,11 +51,27 @@ from apps.performance.services import (
 )
 
 
+def _is_full_access(user):
+    """Admin, CEO, and HR get unscoped (full) access."""
+    if getattr(user, 'is_tenant_admin', False):
+        return True
+    # Check the user's role slugs via RBAC — admin/ceo/hr_manager get full access
+    FULL_ACCESS_SLUGS = {'admin', 'ceo', 'hr_manager'}
+    user_slugs = set(
+        UserRole.objects.filter(user=user)
+        .values_list('role__slug', flat=True)
+    )
+    return bool(user_slugs & FULL_ACCESS_SLUGS)
+
+
 def _scope_queryset(queryset, user, permission_codename='performance.manage'):
-    """Apply 3-tier row-level scoping: admin → all, manager → own+team, employee → own."""
-    is_admin = getattr(user, 'is_tenant_admin', False)
-    has_manage = user_has_permission(user, permission_codename)
-    if is_admin or has_manage:
+    """
+    Apply 3-tier row-level scoping:
+      - Admin / CEO / HR  → see ALL records
+      - Team Lead (has manage but not full-access) → own + direct reports + team members
+      - Employee (view only) → own records only
+    """
+    if _is_full_access(user):
         return queryset
 
     emp = Employee.objects.filter(user=user, deleted_at__isnull=True).first()
@@ -62,24 +79,60 @@ def _scope_queryset(queryset, user, permission_codename='performance.manage'):
         return queryset.none()
 
     visible = Q(employee=emp)
-    # Direct reports
-    direct_report_ids = list(
-        Employee.objects.filter(reporting_to=emp, deleted_at__isnull=True)
-        .values_list('id', flat=True)
-    )
-    if direct_report_ids:
-        visible |= Q(employee_id__in=direct_report_ids)
-    # Team members (teams the user leads)
-    led_team_ids = list(emp.led_teams.values_list('id', flat=True))
-    if led_team_ids:
-        team_member_ids = list(
-            TeamMember.objects.filter(team_id__in=led_team_ids)
-            .values_list('employee_id', flat=True)
+
+    # If the user has manage permission (e.g. team_lead), expand to reports + team
+    has_manage = user_has_permission(user, permission_codename)
+    if has_manage:
+        # Direct reports
+        direct_report_ids = list(
+            Employee.objects.filter(reporting_to=emp, deleted_at__isnull=True)
+            .values_list('id', flat=True)
         )
-        if team_member_ids:
-            visible |= Q(employee_id__in=team_member_ids)
+        if direct_report_ids:
+            visible |= Q(employee_id__in=direct_report_ids)
+        # Team members (teams the user leads)
+        led_team_ids = list(emp.led_teams.values_list('id', flat=True))
+        if led_team_ids:
+            team_member_ids = list(
+                TeamMember.objects.filter(team_id__in=led_team_ids)
+                .values_list('employee_id', flat=True)
+            )
+            if team_member_ids:
+                visible |= Q(employee_id__in=team_member_ids)
 
     return queryset.filter(visible)
+
+
+def _can_access_record(record, user):
+    """Check if user can access a specific employee-linked record (detail views)."""
+    if _is_full_access(user):
+        return True
+    emp = Employee.objects.filter(user=user, deleted_at__isnull=True).first()
+    if not emp:
+        return False
+    record_emp_id = str(getattr(record, 'employee_id', ''))
+    # Own record
+    if record_emp_id == str(emp.id):
+        return True
+    # Manager with manage perm: direct reports + team members
+    if user_has_permission(user, 'performance.manage'):
+        direct_ids = set(
+            str(i) for i in Employee.objects.filter(
+                reporting_to=emp, deleted_at__isnull=True
+            ).values_list('id', flat=True)
+        )
+        if record_emp_id in direct_ids:
+            return True
+        led_team_ids = list(emp.led_teams.values_list('id', flat=True))
+        if led_team_ids:
+            team_ids = set(
+                str(i) for i in TeamMember.objects.filter(
+                    team_id__in=led_team_ids
+                ).values_list('employee_id', flat=True)
+            )
+            if record_emp_id in team_ids:
+                return True
+    return False
 
 
 # -- Performance Review List / Create -----------------------------------------
@@ -173,10 +226,14 @@ class PerformanceReviewDetailView(APIView):
 
     def get(self, request, pk):
         review = self._get_review(pk)
+        if not _can_access_record(review, request.user):
+            return Response({'error': 'Not authorized to view this review'}, status=status.HTTP_403_FORBIDDEN)
         return Response(PerformanceReviewSerializer(review).data)
 
     def put(self, request, pk):
         review = self._get_review(pk)
+        if not _can_access_record(review, request.user):
+            return Response({'error': 'Not authorized to modify this review'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = PerformanceReviewUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -482,10 +539,14 @@ class MonthlyReviewDetailView(APIView):
 
     def get(self, request, pk):
         review = self._get_review(pk)
+        if not _can_access_record(review, request.user):
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         return Response(MonthlyReviewSerializer(review).data)
 
     def put(self, request, pk):
         review = self._get_review(pk)
+        if not _can_access_record(review, request.user):
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = MonthlyReviewUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -510,6 +571,7 @@ class MonthlyReviewSignView(APIView):
     POST /performance/monthly/{id}/sign/  -- sign a monthly review
     Accept {"role": "employee"|"manager"|"hr"} and set the corresponding
     _signed_at timestamp to now().
+    Validates that the signer matches the role they claim.
     """
 
     permission_classes = [IsAuthenticated]
@@ -530,6 +592,15 @@ class MonthlyReviewSignView(APIView):
                 {'error': 'role must be one of: employee, manager, hr'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Validate signer matches claimed role
+        user_emp = Employee.objects.filter(user=request.user, deleted_at__isnull=True).first()
+        if role == 'employee' and (not user_emp or user_emp.id != review.employee_id):
+            return Response({'error': 'You can only sign your own review as employee'}, status=status.HTTP_403_FORBIDDEN)
+        if role == 'manager' and (not user_emp or user_emp.id != review.reporting_manager_id):
+            return Response({'error': 'Only the reporting manager can sign as manager'}, status=status.HTTP_403_FORBIDDEN)
+        if role == 'hr' and not _is_full_access(request.user):
+            return Response({'error': 'Only HR/Admin can sign as HR'}, status=status.HTTP_403_FORBIDDEN)
 
         setattr(review, field, timezone.now())
         review.save(update_fields=[field, 'updated_at'])
@@ -651,10 +722,14 @@ class AppraisalDetailView(APIView):
 
     def get(self, request, pk):
         appraisal = self._get_appraisal(pk)
+        if not _can_access_record(appraisal, request.user):
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         return Response(AppraisalSerializer(appraisal).data)
 
     def put(self, request, pk):
         appraisal = self._get_appraisal(pk)
+        if not _can_access_record(appraisal, request.user):
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = AppraisalUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -694,6 +769,27 @@ class AppraisalEligibilityView(APIView):
         employees = Employee.objects.filter(
             status='active',
         ).order_by('first_name', 'last_name')
+
+        # Scope employee list: admin/CEO/HR see all, team lead sees own team only
+        if not _is_full_access(request.user):
+            user_emp = Employee.objects.filter(user=request.user, deleted_at__isnull=True).first()
+            if user_emp:
+                visible_ids = {user_emp.id}
+                # Direct reports
+                visible_ids.update(
+                    Employee.objects.filter(reporting_to=user_emp, deleted_at__isnull=True)
+                    .values_list('id', flat=True)
+                )
+                # Team members
+                led_team_ids = list(user_emp.led_teams.values_list('id', flat=True))
+                if led_team_ids:
+                    visible_ids.update(
+                        TeamMember.objects.filter(team_id__in=led_team_ids)
+                        .values_list('employee_id', flat=True)
+                    )
+                employees = employees.filter(id__in=visible_ids)
+            else:
+                employees = employees.none()
 
         results = []
         for emp in employees:
@@ -796,10 +892,14 @@ class PIPDetailView(APIView):
 
     def get(self, request, pk):
         pip = self._get_pip(pk)
+        if not _can_access_record(pip, request.user):
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         return Response(PIPSerializer(pip).data)
 
     def put(self, request, pk):
         pip = self._get_pip(pk)
+        if not _can_access_record(pip, request.user):
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = PIPUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

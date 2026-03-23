@@ -4,6 +4,39 @@ All notable changes to EMS Pro are documented here.
 
 ---
 
+## [5.4.0] - 2026-03-23
+
+### Added
+
+- **Auto-Team Creation from Hierarchy** — New `apps.teams.services` module with `sync_employee_team()` and `sync_all_teams()`. When employees are bulk imported or individually created with a `reporting_to` manager, teams auto-create with the manager as team lead and employees as members
+- **Team Sync Endpoint** — `POST /api/v1/teams/sync-from-hierarchy/` auto-creates teams from the `reporting_to` hierarchy. Each manager with direct reports gets a Team; reports become members
+- **Team `member_ids` Field** — `TeamSerializer` now returns `member_ids` (list of employee UUIDs) for efficient team membership checks without fetching full member objects
+- **Teams Page Sync Button** — "Sync from Org Chart" button on Teams page; auto-syncs on first load when 0 teams exist
+- **Bulk Import Team Sync** — Pass 3 in `app/api/employees/import/route.ts` calls `/teams/sync-from-hierarchy/` after bulk employee import
+- **3-Tier Performance Row-Level Scoping** — New `_is_full_access()`, `_scope_queryset()`, and `_can_access_record()` helpers in `apps.performance.views`:
+  - **Admin / CEO / HR** → see ALL records (determined by `UserRole` slug lookup)
+  - **Team Lead** → own + direct reports + team members they lead
+  - **Employee** → own records only
+- **Detail View Access Control** — All performance detail views (PerformanceReview, MonthlyReview, Appraisal, PIP) now check `_can_access_record()` on GET and PUT, returning 403 for unauthorized access
+- **Monthly Review Sign Validation** — `MonthlyReviewSignView` now validates the signer matches their claimed role: employee signs own review, manager signs their direct report's, HR-only for admin/CEO/HR users
+- **Appraisal Eligibility Scoping** — `AppraisalEligibilityView` scopes employee list for team leads to only their team members + direct reports
+
+### Fixed
+
+- **Team Edit "Request failed"** — Fixed `TeamUpdateSerializer` rejecting `null` description: added `allow_null=True` + `validate_description()` to convert null → empty string. Also fixed frontend `TeamFormModal` to send `""` instead of `null`
+- **Team Create null description** — Same fix applied to `TeamCreateSerializer`
+- **Performance "Unassigned" Grouping** — Fixed all 105 employees showing as "Unassigned" on Performance page by adding `member_ids` to `TeamSerializer` and updating `AdminPerformanceView` to use `t.memberIds` for team membership checks
+- **TEAM_LEAD Performance 405 Error** — Changed from non-existent `GET /teams/{id}/members/` to `TeamAPI.get(id)` which returns team detail with members
+- **TEAM_LEAD Seeing All Records** — Previously `_scope_queryset` treated anyone with `performance.manage` as admin-level; now properly checks role slugs via `_is_full_access()` and scopes team leads to own + reports + team
+
+### Security
+
+- Performance detail views (GET/PUT) now enforce row-level access control — prevents accessing records outside the user's visibility scope by ID
+- `MonthlyReviewSignView` validates signer identity against the review's employee/manager/HR assignment
+- `AppraisalEligibilityView` no longer exposes all employees to team leads
+
+---
+
 ## [5.3.0] - 2026-03-23
 
 ### Added

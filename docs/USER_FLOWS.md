@@ -35,26 +35,44 @@
 
 1. Navigate to `/performance`.
 2. Open the **Monthly Reviews** tab.
-3. Click **Create Review** and select an employee, month, and year.
-4. Enter scores and comments across evaluation dimensions.
-5. Submit the review.
-6. The employee, manager, and HR each sign the review via the **Sign** action.
+3. CEO/HR see all employees' reviews. Team leads see own + direct reports + team members only.
+4. Click **Create Review** and select an employee, month, and year.
+5. Enter scores and comments across evaluation dimensions.
+6. Submit the review.
+7. The employee, manager, and HR each sign the review via the **Sign** action. Signer identity is validated: employee can only sign their own review, manager can only sign their direct report's review, HR signature requires admin/CEO/HR role.
 
 ### Source One Performance — Appraisals
 
 1. Navigate to `/performance`.
 2. Open the **Appraisals** tab.
-3. Click **Create Appraisal** and select an employee, cycle, and appraisal type.
-4. Enter overall rating and detailed comments.
-5. Submit the appraisal linked to the review cycle.
+3. CEO/HR see all appraisals. Team leads see own + direct reports + team members only.
+4. Click **Create Appraisal** and select an employee, cycle, and appraisal type.
+5. Enter overall rating and detailed comments.
+6. Submit the appraisal linked to the review cycle.
+
+### Source One Performance — Eligibility
+
+1. Navigate to `/performance`.
+2. Open the **Eligibility** check.
+3. CEO/HR see all active employees. Team leads see only their team members + direct reports.
 
 ### Source One Performance — PIPs
 
 1. Navigate to `/performance`.
 2. Open the **PIPs** tab.
-3. Click **Create PIP** and select an employee.
-4. Specify duration (60 or 90 days), improvement goals, and support plan.
-5. Track PIP progress and update status as the plan progresses.
+3. CEO/HR see all PIPs. Team leads see own + direct reports + team members only.
+4. Click **Create PIP** and select an employee.
+5. Specify duration (60 or 90 days), improvement goals, and support plan.
+6. Track PIP progress and update status as the plan progresses.
+
+### Team Management
+
+1. Navigate to `/teams`.
+2. View all teams (admin sees all; non-admin sees teams they lead or belong to).
+3. Click **Add Team** to create a new team with name, description, lead, and department.
+4. Click a team to view members, edit details, or add/remove members.
+5. Use **Sync from Org Chart** to auto-create teams from the `reporting_to` hierarchy (each manager with direct reports gets a team).
+6. On first load with 0 teams, sync runs automatically.
 
 ### Agent Tracking Management
 
@@ -101,9 +119,16 @@
 ### Source One Monthly Reviews (Team Lead)
 
 1. Navigate to `/performance`.
-2. Open **Monthly Reviews** tab.
+2. Open **Monthly Reviews** tab — only reviews for own records, direct reports, and team members are visible.
 3. Select a team member and create/update a monthly review.
-4. After submission, sign the review as manager via **Sign** action.
+4. After submission, sign the review as manager via **Sign** action. Only the assigned reporting manager can sign as manager.
+
+### Source One Performance — Employee View
+
+1. Navigate to `/performance`.
+2. Only own records are visible (reviews, appraisals, PIPs).
+3. Sign own monthly review as employee via **Sign** action.
+4. Attempting to access another employee's record via URL returns 403.
 
 ## Employee
 

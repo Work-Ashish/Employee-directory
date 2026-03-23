@@ -108,6 +108,18 @@ Both Django and Next.js use the same envelope:
 
 All Source One performance routes proxy to Django via `proxyToDjango()`. They require Django JWT auth and `X-Tenant-Slug` header.
 
+#### Row-Level Scoping (3-Tier)
+
+All list and detail endpoints enforce row-level access control based on the user's role (determined via `UserRole` M2M table, not a User field):
+
+| Tier | Roles | Visibility |
+| --- | --- | --- |
+| Full Access | Admin, CEO, HR Manager (`is_tenant_admin` OR role slug in `{admin, ceo, hr_manager}`) | All records, unfiltered |
+| Team Lead | Team Lead (has `performance.manage` but not full-access role) | Own records + direct reports (`reporting_to`) + team members they lead |
+| Employee | Employee, Viewer, others | Own records only |
+
+Detail view GET/PUT requests return **403** if the record is outside the user's visibility scope.
+
 #### Review Cycles
 
 - `GET /api/performance/cycles` — List review cycles (filterable by status, year)
@@ -115,29 +127,29 @@ All Source One performance routes proxy to Django via `proxyToDjango()`. They re
 
 #### Monthly Reviews
 
-- `GET /api/performance/monthly` — List monthly reviews (filterable by employee, month, year)
+- `GET /api/performance/monthly` — List monthly reviews (scoped by role tier; filterable by employee, month, year)
 - `POST /api/performance/monthly` — Create monthly review (employee_id, review_month, review_year, scores, comments)
-- `GET /api/performance/monthly/{id}` — Get monthly review detail
-- `PUT /api/performance/monthly/{id}` — Update monthly review
-- `POST /api/performance/monthly/{id}/sign` — Collect digital signature (role: employee, manager, or hr)
+- `GET /api/performance/monthly/{id}` — Get monthly review detail (403 if outside scope)
+- `PUT /api/performance/monthly/{id}` — Update monthly review (403 if outside scope)
+- `POST /api/performance/monthly/{id}/sign` — Collect digital signature (role: employee, manager, or hr). **Signer validation**: employee can only sign own review, manager can only sign their direct report's review, HR signature requires full-access role
 
 #### Appraisals
 
-- `GET /api/performance/appraisals` — List appraisals (filterable by type: annual, six_monthly)
+- `GET /api/performance/appraisals` — List appraisals (scoped by role tier; filterable by type: annual, six_monthly)
 - `POST /api/performance/appraisals` — Create appraisal (employee_id, type, cycle_id, overall_rating, comments)
-- `GET /api/performance/appraisals/{id}` — Get appraisal detail
-- `PUT /api/performance/appraisals/{id}` — Update appraisal
+- `GET /api/performance/appraisals/{id}` — Get appraisal detail (403 if outside scope)
+- `PUT /api/performance/appraisals/{id}` — Update appraisal (403 if outside scope)
 
 #### Eligibility
 
-- `GET /api/performance/eligibility` — List active employees eligible for performance reviews
+- `GET /api/performance/eligibility` — List active employees eligible for performance reviews. **Scoped**: team leads see only their team members + direct reports; full-access users see all
 
 #### Performance Improvement Plans (PIPs)
 
-- `GET /api/performance/pip` — List PIPs (filterable by status, employee)
+- `GET /api/performance/pip` — List PIPs (scoped by role tier; filterable by status, employee)
 - `POST /api/performance/pip` — Create PIP (employee_id, duration_days: 60 or 90, goals, support_plan)
-- `GET /api/performance/pip/{id}` — Get PIP detail
-- `PUT /api/performance/pip/{id}` — Update PIP (status, progress notes)
+- `GET /api/performance/pip/{id}` — Get PIP detail (403 if outside scope)
+- `PUT /api/performance/pip/{id}` — Update PIP (status, progress notes) (403 if outside scope)
 
 ### Attendance and Time Tracking
 
@@ -186,6 +198,34 @@ All Source One performance routes proxy to Django via `proxyToDjango()`. They re
 - `POST /api/cron/agent-aggregate`
 - `POST /api/cron/agent-reports`
 - `POST /api/worker/process-queue`
+
+### Teams (Django-backed)
+
+All team routes proxy to Django via `proxyToDjango()`. They require Django JWT auth and `X-Tenant-Slug` header.
+
+#### Team List / Create
+
+- `GET /api/teams` — List teams (paginated, filterable by department_id). Non-admin users see only teams they lead or belong to
+- `POST /api/teams` — Create a new team (name, description, lead_id, department_id). Requires `teams.manage`
+
+#### Team Detail
+
+- `GET /api/teams/{id}` — Get team detail with full member list
+- `PUT /api/teams/{id}` — Update team (name, description, lead_id, department_id). Requires `teams.manage`
+- `DELETE /api/teams/{id}` — Delete team. Requires `teams.manage`
+
+#### Team Members
+
+- `POST /api/teams/{id}/members` — Add member to team (employee_id, role). Requires `teams.manage`
+- `DELETE /api/teams/{id}/members?employee_id={eid}` — Remove member from team. Requires `teams.manage`
+
+#### Team Sync
+
+- `POST /api/teams/sync-from-hierarchy` — Auto-create teams from `reporting_to` hierarchy. Each manager with direct reports gets a team; reports become members. Requires `teams.manage`
+
+#### Org Chart
+
+- `GET /api/teams/org-chart` — Hierarchical employee → manager tree for org chart visualization
 
 ### Other Modules
 
@@ -253,6 +293,11 @@ Defined in `lib/schemas/agent.ts`:
 | `/api/v1/performance/eligibility/` | GET | Employee eligibility | `app/api/performance/eligibility/` |
 | `/api/v1/performance/pip/` | GET/POST | PIP management | `app/api/performance/pip/` |
 | `/api/v1/performance/pip/{id}/` | GET/PUT | PIP detail | `app/api/performance/pip/[id]/` |
+| `/api/v1/teams/` | GET/POST | Team list / Create team | `app/api/teams/` |
+| `/api/v1/teams/{id}/` | GET/PUT/DELETE | Team detail / Update / Delete | `app/api/teams/[id]/` |
+| `/api/v1/teams/{id}/members/` | POST/DELETE | Add/remove team member | `app/api/teams/[id]/members/` |
+| `/api/v1/teams/sync-from-hierarchy/` | POST | Auto-create teams from hierarchy | `app/api/teams/sync/` |
+| `/api/v1/teams/org-chart/` | GET | Org chart tree | `app/api/teams/org-chart/` |
 | `/api/v1/dashboard/` | GET | Dashboard stats | Dashboard components |
 
 All feature API clients in `features/*/api/client.ts` call Django via `api.get/post/put/delete` from `lib/api-client.ts`.

@@ -76,7 +76,7 @@ graph TB
 
 ## API Layer
 
-The repository currently contains 110+ route handlers.
+The repository currently contains 120+ route handlers.
 
 ### Main route groups
 
@@ -86,7 +86,8 @@ The repository currently contains 110+ route handlers.
 | `/api/attendance` | Attendance, shifts, holidays, regularization, policies |
 | `/api/time-tracker` | Check-in/out, heartbeat, break, history, status |
 | `/api/payroll` | Payroll CRUD, config, import, run, payslip |
-| `/api/performance` | Daily/monthly reviews, Source One module (cycles, monthly, appraisals, eligibility, PIPs, signatures) |
+| `/api/performance` | Daily/monthly reviews, Source One module (cycles, monthly, appraisals, eligibility, PIPs, signatures) with 3-tier row-level scoping |
+| `/api/teams` | Team CRUD, membership, org chart, auto-sync from hierarchy |
 | `/api/agent` | Device registration, heartbeat, config, commands, activity, idle events, report fetch |
 | `/api/admin/agent` | Agent dashboard, device inventory, remote commands |
 | `/api/cron` | AI performance evaluation, agent aggregation, agent reports, scheduled jobs |
@@ -131,6 +132,18 @@ Desktop agent routes use:
 | viewer | employees.view, attendance.view, leaves.view, reports.view, dashboard.view | 5 |
 
 Permission check chain: `withAuth()` → static matrix → Django codenames → functional roles → tenant admin bypass.
+
+#### Performance Row-Level Scoping (3-Tier)
+
+Beyond module-level RBAC, the performance module enforces row-level access control:
+
+| Tier | Roles | Access |
+| --- | --- | --- |
+| Full Access | Admin, CEO, HR Manager | All records |
+| Team Lead | Team Lead | Own + direct reports + team members |
+| Employee | Employee, Viewer | Own records only |
+
+Role determination uses the `UserRole` M2M table (not a User model field). `_is_full_access()` checks `is_tenant_admin` OR role slugs in `{admin, ceo, hr_manager}`. Detail views return 403 for out-of-scope records. Monthly review signing validates signer identity (employee signs own, manager signs direct report's, HR requires full-access role).
 
 Modules:
 
@@ -332,7 +345,8 @@ The new backend follows the HiringNow platform architecture:
 | `apps.dashboard` | Stats API (department split, status counts, salary, logins) | New |
 | `apps.features` | Feature flags per tenant. `seed_features` command: 14 module flags | Extended |
 | `apps.audit` | AuditLog model + REST API. Receives events from Next.js `auditLog()` | New |
-| `apps.performance` | Source One performance module: ReviewCycle, MonthlyReview, Appraisal, PIP. 14 endpoints with RBAC + digital signatures | New |
+| `apps.performance` | Source One performance module: ReviewCycle, MonthlyReview, Appraisal, PIP. 14 endpoints with RBAC + digital signatures + 3-tier row-level scoping | New |
+| `apps.teams` | Team CRUD, membership management, org chart, auto-sync from `reporting_to` hierarchy. `sync_all_teams()` service | New |
 
 ### Management Commands
 
@@ -368,6 +382,11 @@ The new backend follows the HiringNow platform architecture:
 | `/api/v1/performance/eligibility/` | GET | Active employee eligibility |
 | `/api/v1/performance/pip/` | GET/POST | PIP management |
 | `/api/v1/performance/pip/{id}/` | GET/PUT | PIP detail |
+| `/api/v1/teams/` | GET/POST | Team list / Create |
+| `/api/v1/teams/{id}/` | GET/PUT/DELETE | Team detail / Update / Delete |
+| `/api/v1/teams/{id}/members/` | POST/DELETE | Add/remove team member |
+| `/api/v1/teams/sync-from-hierarchy/` | POST | Auto-create teams from hierarchy |
+| `/api/v1/teams/org-chart/` | GET | Org chart tree |
 
 ### Data Migration
 
