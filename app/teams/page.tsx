@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
 import { TeamFormModal } from "@/components/teams/TeamFormModal"
 import { TeamDetailModal } from "@/components/teams/TeamDetailModal"
-import { PlusIcon, Pencil1Icon, TrashIcon, PersonIcon } from "@radix-ui/react-icons"
+import { PlusIcon, Pencil1Icon, TrashIcon, PersonIcon, UpdateIcon } from "@radix-ui/react-icons"
 import { TeamAPI } from "@/features/teams/api/client"
 import { confirmDanger, showSuccess } from "@/lib/swal"
 
@@ -73,6 +73,8 @@ export default function TeamsPage() {
     const [editingTeam, setEditingTeam] = React.useState<Team | null>(null)
     const [detailTeam, setDetailTeam] = React.useState<Team | null>(null)
     const [deleting, setDeleting] = React.useState<string | null>(null)
+    const [syncing, setSyncing] = React.useState(false)
+    const syncAttempted = React.useRef(false)
 
     const role = user?.role ?? ""
     const canCreate = hasPermission(role, Module.TEAMS, Action.CREATE)
@@ -86,15 +88,42 @@ export default function TeamsPage() {
         }
     }, [user, isLoading, router, role])
 
+    const handleSync = React.useCallback(async () => {
+        setSyncing(true)
+        try {
+            const result = await TeamAPI.syncFromHierarchy()
+            if (result.teamsCreated > 0 || result.membersAdded > 0) {
+                showSuccess("Teams Synced", `${result.teamsCreated} team(s) created, ${result.membersAdded} member(s) added.`)
+            }
+        } catch { /* empty */ }
+        finally { setSyncing(false) }
+    }, [])
+
     const fetchTeams = React.useCallback(async () => {
         try {
             const data = await TeamAPI.list()
             const arr = data.results || data
             const list = Array.isArray(arr) ? arr : []
-            setTeams(list.map(normalizeTeam))
+            const normalized = list.map(normalizeTeam)
+            setTeams(normalized)
+
+            // Auto-sync from hierarchy on first load if no teams exist
+            if (normalized.length === 0 && !syncAttempted.current && canCreate) {
+                syncAttempted.current = true
+                setSyncing(true)
+                try {
+                    await TeamAPI.syncFromHierarchy()
+                    // Re-fetch after sync
+                    const data2 = await TeamAPI.list()
+                    const arr2 = data2.results || data2
+                    const list2 = Array.isArray(arr2) ? arr2 : []
+                    setTeams(list2.map(normalizeTeam))
+                } catch { /* empty */ }
+                finally { setSyncing(false) }
+            }
         } catch { /* empty */ }
         finally { setLoading(false) }
-    }, [])
+    }, [canCreate])
 
     React.useEffect(() => { fetchTeams() }, [fetchTeams])
 
@@ -129,9 +158,19 @@ export default function TeamsPage() {
                 title="Teams"
                 description="Manage teams and their members"
                 actions={canCreate ? (
-                    <Button leftIcon={<PlusIcon />} onClick={() => { setEditingTeam(null); setFormOpen(true) }}>
-                        Create Team
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="secondary"
+                            leftIcon={<UpdateIcon />}
+                            loading={syncing}
+                            onClick={async () => { await handleSync(); fetchTeams() }}
+                        >
+                            Sync from Org Chart
+                        </Button>
+                        <Button leftIcon={<PlusIcon />} onClick={() => { setEditingTeam(null); setFormOpen(true) }}>
+                            Create Team
+                        </Button>
+                    </div>
                 ) : undefined}
             />
 

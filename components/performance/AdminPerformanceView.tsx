@@ -66,6 +66,45 @@ type PerformanceReview = {
     } | null
 }
 
+/** Normalize Django PerformanceReview response to the frontend shape */
+function normalizeReview(raw: any): PerformanceReview {
+    // Build employee nested object from UUID + employeeName
+    const empIsObject = raw.employee && typeof raw.employee === "object"
+    const empNameStr: string = raw.employeeName || ""
+    const [empFn = "", ...empLn] = empNameStr.split(/\s+/)
+    const employee = empIsObject ? raw.employee : {
+        id: raw.employee || raw.employeeId || raw.id,
+        firstName: empFn,
+        lastName: empLn.join(" "),
+        designation: raw.designation || "",
+        department: raw.department || undefined,
+    }
+
+    // Build reviewer nested object
+    const revIsObject = raw.reviewer && typeof raw.reviewer === "object"
+    const revNameStr: string = raw.reviewerName || ""
+    const [revFn = "", ...revLn] = revNameStr.split(/\s+/)
+    const reviewer = raw.reviewer
+        ? (revIsObject ? raw.reviewer : { id: raw.reviewer, firstName: revFn, lastName: revLn.join(" ") })
+        : null
+
+    return {
+        ...raw,
+        employee,
+        employeeId: employee.id,
+        reviewer,
+        rating: Number(raw.rating ?? raw.overallScore ?? 0),
+        reviewDate: raw.reviewDate || raw.createdAt || "",
+        reviewPeriod: raw.reviewPeriod || raw.period || null,
+        formType: raw.formType || null,
+        formData: raw.formData || null,
+        reviewType: raw.reviewType || undefined,
+        progress: Number(raw.progress ?? 0),
+        comments: raw.comments || raw.strengths || null,
+        status: raw.status || "",
+    } as PerformanceReview
+}
+
 function getStatusBadge(status: string) {
     switch (status) {
         case "EXCELLENT": return <Badge variant="success">{status}</Badge>
@@ -180,12 +219,14 @@ export function AdminPerformanceView() {
                         const allTeams = extractArray<any>(teamsData.results || teamsData)
 
                         // Find the team where this user is the lead
-                        const myTeam = allTeams.find((t: any) =>
-                            t.leadId === myEmployeeId || t.lead?.id === myEmployeeId
-                        )
+                        const myTeam = allTeams.find((t: any) => {
+                            const leadId = typeof t.lead === "object" ? t.lead?.id : (t.leadId || t.lead || "")
+                            return leadId === myEmployeeId
+                        })
                         if (myTeam) {
-                            const { data: membersData } = await api.get<any>(`/teams/${myTeam.id}/members/`)
-                            return extractArray<any>(membersData)
+                            // Fetch team detail which includes members
+                            const teamDetail = await TeamAPI.get(myTeam.id)
+                            return extractArray<any>(teamDetail.members || [])
                         }
                     } catch { /* ignore */ }
                     return []
@@ -200,7 +241,7 @@ export function AdminPerformanceView() {
 
             let fetchedReviews: PerformanceReview[] = []
             if (revResult) {
-                fetchedReviews = extractArray<PerformanceReview>(revResult.results || revResult)
+                fetchedReviews = extractArray<any>(revResult.results || revResult).map(normalizeReview)
                 setReviews(fetchedReviews)
             }
 
@@ -246,10 +287,19 @@ export function AdminPerformanceView() {
                     const teamsData = await TeamAPI.list()
                     const teamsArr = extractArray<any>(teamsData.results || teamsData)
                     setTeams(teamsArr.map((t: any) => {
-                        const ids = (t.members || []).map((m: any) => m.employee?.id || m.employeeId)
-                        if (t.lead?.id && !ids.includes(t.lead.id)) ids.push(t.lead.id)
-                        if (t.leadId && !ids.includes(t.leadId)) ids.push(t.leadId)
-                        return { id: t.id, name: t.name, leadId: t.leadId || t.lead?.id, memberIds: ids }
+                        // memberIds comes from Django's member_ids field (list of employee UUIDs)
+                        const ids: string[] = Array.isArray(t.memberIds) ? [...t.memberIds] : []
+                        // Fallback: extract from members array if present (detail endpoint)
+                        if (ids.length === 0 && Array.isArray(t.members)) {
+                            for (const m of t.members) {
+                                const eid = typeof m.employee === "object" ? m.employee?.id : m.employee || m.employeeId
+                                if (eid && !ids.includes(eid)) ids.push(eid)
+                            }
+                        }
+                        // Ensure lead is included
+                        const leadId = typeof t.lead === "object" ? t.lead?.id : (t.leadId || t.lead || "")
+                        if (leadId && !ids.includes(leadId)) ids.push(leadId)
+                        return { id: t.id, name: t.name, leadId, memberIds: ids }
                     }))
                 } catch { /* non-critical */ }
             }

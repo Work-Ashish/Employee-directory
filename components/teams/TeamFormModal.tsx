@@ -93,7 +93,7 @@ export function TeamFormModal({ isOpen, onClose, team, onSaved }: TeamFormModalP
 
         setSaving(true)
         try {
-            const body = { name: name.trim(), description: description.trim() || null, leadId }
+            const body = { name: name.trim(), description: description.trim() || "", leadId }
             if (isEdit) {
                 await TeamAPI.update(team.id, body)
             } else {

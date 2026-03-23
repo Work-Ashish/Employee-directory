@@ -398,6 +398,25 @@ export async function POST(req: Request) {
             }
         }
 
+        // ──────────────────────────────────────────────────────────
+        // PASS 3: Auto-create teams from reporting hierarchy
+        // ──────────────────────────────────────────────────────────
+        let teamsSynced = { teams_created: 0, members_added: 0, managers_processed: 0 }
+        try {
+            const syncRes = await fetch(`${base}/api/v1/teams/sync-from-hierarchy/`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({}),
+                signal: AbortSignal.timeout(30_000),
+            })
+            if (syncRes.ok) {
+                const syncJson = await syncRes.json()
+                teamsSynced = syncJson.data || syncJson
+            }
+        } catch {
+            // Non-critical — teams can be synced later
+        }
+
         return NextResponse.json({
             data: {
                 inserted: inserted.length,
@@ -405,6 +424,7 @@ export async function POST(req: Request) {
                 errors,
                 credentials,
                 managersLinked: pendingManagerLinks.filter(l => emailToId.has(l.managerEmail)).length,
+                teamsSynced,
             },
         })
     } catch {

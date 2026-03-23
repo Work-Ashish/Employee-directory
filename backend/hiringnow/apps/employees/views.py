@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 
 from apps.rbac.permissions import HasPermission
 from apps.employees.models import Employee, EmploymentType
+from apps.teams.services import sync_employee_team
 from apps.employees.serializers import (
     EmployeeSerializer,
     EmployeeCreateSerializer,
@@ -112,6 +113,10 @@ class EmployeeListCreateView(APIView):
                 employee.user = user
                 employee.save(update_fields=['user'])
 
+        # Auto-create/update team if employee has a manager
+        if employee.reporting_to:
+            sync_employee_team(employee)
+
         data = EmployeeSerializer(employee).data
         if temp_password:
             data['temp_password'] = temp_password
@@ -144,6 +149,11 @@ class EmployeeDetailView(APIView):
         serializer = EmployeeUpdateSerializer(employee, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated = serializer.save()
+
+        # Auto-create/update team if reporting_to changed
+        if 'reporting_to' in request.data and updated.reporting_to:
+            sync_employee_team(updated)
+
         return Response(EmployeeSerializer(updated).data)
 
     def delete(self, request, employee_id):

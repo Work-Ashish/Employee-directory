@@ -63,6 +63,11 @@ export const TeamAPI = {
     await api.delete(`/teams/${id}/`)
   },
 
+  syncFromHierarchy: async (): Promise<{ teamsCreated: number; membersAdded: number; managersProcessed: number }> => {
+    const { data } = await api.post<any>("/teams/sync-from-hierarchy/", {})
+    return data
+  },
+
   orgChart: async (): Promise<OrgChartNode[]> => {
     const { data } = await api.get<any>("/teams/org-chart/")
     // Django returns { orgChart: [{ id, name, designation, department, children }] }

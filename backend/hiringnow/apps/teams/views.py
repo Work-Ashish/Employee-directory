@@ -15,6 +15,7 @@ from apps.teams.serializers import (
     TeamUpdateSerializer,
     TeamMemberSerializer,
 )
+from apps.teams.services import sync_all_teams
 
 
 # -- Team List / Create -------------------------------------------------------
@@ -33,10 +34,13 @@ class TeamListCreateView(APIView):
     def get(self, request):
         queryset = Team.objects.select_related('department', 'lead').order_by('name')
 
-        # Non-admin users can only see teams they belong to
+        # Non-admin users see teams they lead OR belong to
         user = request.user
         if not getattr(user, 'is_tenant_admin', False):
-            queryset = queryset.filter(members__employee__user=user)
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(members__employee__user=user) | Q(lead__user=user)
+            ).distinct()
 
         # -- Filters
         department_id = request.query_params.get('department_id')
@@ -105,7 +109,10 @@ class TeamDetailView(APIView):
         serializer.is_valid(raise_exception=True)
 
         for field, value in serializer.validated_data.items():
+            # lead_id and department_id are already the Django FK column names,
+            # so setattr works directly for these.
             setattr(team, field, value)
+
         team.save()
 
         return Response(TeamSerializer(team).data)
@@ -165,6 +172,23 @@ class TeamMemberView(APIView):
         member = get_object_or_404(TeamMember, team=team, employee_id=employee_id)
         member.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# -- Sync Teams from Hierarchy -------------------------------------------------
+
+class SyncTeamsFromHierarchyView(APIView):
+    """
+    POST /teams/sync-from-hierarchy/
+    Auto-create teams from the employee reporting_to hierarchy.
+    Each manager with direct reports gets a Team; reports become members.
+    """
+
+    def get_permissions(self):
+        return [IsAuthenticated(), HasPermission('teams.manage')]
+
+    def post(self, request):
+        summary = sync_all_teams()
+        return Response(summary)
 
 
 # -- Org Chart -----------------------------------------------------------------

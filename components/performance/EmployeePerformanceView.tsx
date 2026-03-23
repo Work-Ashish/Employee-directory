@@ -41,6 +41,40 @@ type PerformanceReview = {
     } | null
 }
 
+/** Normalize Django PerformanceReview response to the frontend shape */
+function normalizeReview(raw: any): PerformanceReview {
+    const empIsObject = raw.employee && typeof raw.employee === "object"
+    const empNameStr: string = raw.employeeName || ""
+    const [empFn = "", ...empLn] = empNameStr.split(/\s+/)
+    const employee = empIsObject ? raw.employee : {
+        id: raw.employee || raw.employeeId || raw.id,
+        firstName: empFn,
+        lastName: empLn.join(" "),
+        designation: raw.designation || "",
+        department: raw.department || undefined,
+    }
+    const revIsObject = raw.reviewer && typeof raw.reviewer === "object"
+    const revNameStr: string = raw.reviewerName || ""
+    const [revFn = "", ...revLn] = revNameStr.split(/\s+/)
+    const reviewer = raw.reviewer
+        ? (revIsObject ? raw.reviewer : { id: raw.reviewer, firstName: revFn, lastName: revLn.join(" ") })
+        : null
+    return {
+        ...raw,
+        employee,
+        reviewer,
+        rating: Number(raw.rating ?? raw.overallScore ?? 0),
+        reviewDate: raw.reviewDate || raw.createdAt || "",
+        reviewPeriod: raw.reviewPeriod || raw.period || null,
+        formType: raw.formType || null,
+        formData: raw.formData || null,
+        reviewType: raw.reviewType || undefined,
+        progress: Number(raw.progress ?? 0),
+        comments: raw.comments || raw.strengths || null,
+        status: raw.status || "",
+    } as PerformanceReview
+}
+
 export function EmployeePerformanceView() {
     const [reviews, setReviews] = React.useState<PerformanceReview[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
@@ -55,7 +89,7 @@ export function EmployeePerformanceView() {
     const fetchReviews = React.useCallback(async () => {
         try {
             const data = await PerformanceAPI.listReviews()
-            setReviews(extractArray<PerformanceReview>(data.results || data))
+            setReviews(extractArray<any>(data.results || data).map(normalizeReview))
         } catch (_error) {
             toast.error("Failed to load performance reviews")
         } finally {

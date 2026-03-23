@@ -31,6 +31,7 @@ class TeamSerializer(serializers.ModelSerializer):
     lead_name = serializers.SerializerMethodField()
     department_name = serializers.SerializerMethodField()
     members_count = serializers.SerializerMethodField()
+    member_ids = serializers.SerializerMethodField()
 
     class Meta:
         model = Team
@@ -43,6 +44,7 @@ class TeamSerializer(serializers.ModelSerializer):
             'lead',
             'lead_name',
             'members_count',
+            'member_ids',
             'created_at',
             'updated_at',
         ]
@@ -61,14 +63,20 @@ class TeamSerializer(serializers.ModelSerializer):
     def get_members_count(self, obj):
         return obj.members.count()
 
+    def get_member_ids(self, obj):
+        return list(obj.members.values_list('employee_id', flat=True))
+
 
 class TeamCreateSerializer(serializers.Serializer):
     """Write serializer for creating a team."""
 
     name = serializers.CharField(max_length=200)
-    description = serializers.CharField(required=False, allow_blank=True, default='')
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
     department_id = serializers.UUIDField(required=False, allow_null=True)
     lead_id = serializers.UUIDField(required=False, allow_null=True)
+
+    def validate_description(self, value):
+        return value or ''
 
     def create(self, validated_data):
         return Team.objects.create(
@@ -83,6 +91,10 @@ class TeamUpdateSerializer(serializers.Serializer):
     """Write serializer for updating a team."""
 
     name = serializers.CharField(max_length=200, required=False)
-    description = serializers.CharField(required=False, allow_blank=True)
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     department_id = serializers.UUIDField(required=False, allow_null=True)
     lead_id = serializers.UUIDField(required=False, allow_null=True)
+
+    def validate_description(self, value):
+        """Convert null to empty string for CharField storage."""
+        return value or ''

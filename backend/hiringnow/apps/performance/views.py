@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -5,7 +6,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.employees.models import Employee
 from apps.rbac.permissions import HasPermission
+from apps.rbac.services import user_has_permission
+from apps.teams.models import TeamMember
 from apps.performance.models import (
     PerformanceReview,
     PerformanceTemplate,
@@ -46,6 +50,38 @@ from apps.performance.services import (
 )
 
 
+def _scope_queryset(queryset, user, permission_codename='performance.manage'):
+    """Apply 3-tier row-level scoping: admin → all, manager → own+team, employee → own."""
+    is_admin = getattr(user, 'is_tenant_admin', False)
+    has_manage = user_has_permission(user, permission_codename)
+    if is_admin or has_manage:
+        return queryset
+
+    emp = Employee.objects.filter(user=user, deleted_at__isnull=True).first()
+    if not emp:
+        return queryset.none()
+
+    visible = Q(employee=emp)
+    # Direct reports
+    direct_report_ids = list(
+        Employee.objects.filter(reporting_to=emp, deleted_at__isnull=True)
+        .values_list('id', flat=True)
+    )
+    if direct_report_ids:
+        visible |= Q(employee_id__in=direct_report_ids)
+    # Team members (teams the user leads)
+    led_team_ids = list(emp.led_teams.values_list('id', flat=True))
+    if led_team_ids:
+        team_member_ids = list(
+            TeamMember.objects.filter(team_id__in=led_team_ids)
+            .values_list('employee_id', flat=True)
+        )
+        if team_member_ids:
+            visible |= Q(employee_id__in=team_member_ids)
+
+    return queryset.filter(visible)
+
+
 # -- Performance Review List / Create -----------------------------------------
 
 class PerformanceReviewListCreateView(APIView):
@@ -64,10 +100,7 @@ class PerformanceReviewListCreateView(APIView):
             'employee', 'reviewer', 'template',
         ).order_by('-created_at')
 
-        # Non-admin users can only see their own reviews
-        user = request.user
-        if not getattr(user, 'is_tenant_admin', False):
-            queryset = queryset.filter(employee__user=user)
+        queryset = _scope_queryset(queryset, request.user)
 
         # -- Filters
         status_filter = request.query_params.get('status')
@@ -256,10 +289,7 @@ class PerformanceMetricsView(APIView):
     def get(self, request):
         queryset = PerformanceMetrics.objects.select_related('employee').order_by('-created_at')
 
-        # Non-admin users can only see their own metrics
-        user = request.user
-        if not getattr(user, 'is_tenant_admin', False):
-            queryset = queryset.filter(employee__user=user)
+        queryset = _scope_queryset(queryset, request.user)
 
         # -- Filters
         employee_id = request.query_params.get('employee_id')
@@ -362,10 +392,7 @@ class MonthlyReviewListCreateView(APIView):
             'employee', 'reviewer', 'reporting_manager', 'cycle',
         ).order_by('-review_year', '-review_month')
 
-        # Non-admin users can only see their own reviews
-        user = request.user
-        if not getattr(user, 'is_tenant_admin', False):
-            queryset = queryset.filter(employee__user=user)
+        queryset = _scope_queryset(queryset, request.user)
 
         # -- Filters
         employee_id = request.query_params.get('employee_id')
@@ -527,10 +554,7 @@ class AppraisalListCreateView(APIView):
             'employee', 'reporting_manager', 'hr_reviewer', 'cycle',
         ).order_by('-created_at')
 
-        # Non-admin users can only see their own appraisals
-        user = request.user
-        if not getattr(user, 'is_tenant_admin', False):
-            queryset = queryset.filter(employee__user=user)
+        queryset = _scope_queryset(queryset, request.user)
 
         # -- Filters
         review_type = request.query_params.get('review_type')
@@ -667,8 +691,6 @@ class AppraisalEligibilityView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        from apps.employees.models import Employee
-
         employees = Employee.objects.filter(
             status='active',
         ).order_by('first_name', 'last_name')
@@ -708,10 +730,7 @@ class PIPListCreateView(APIView):
             'employee', 'triggered_by_monthly', 'triggered_by_appraisal',
         ).order_by('-created_at')
 
-        # Non-admin users can only see their own PIPs
-        user = request.user
-        if not getattr(user, 'is_tenant_admin', False):
-            queryset = queryset.filter(employee__user=user)
+        queryset = _scope_queryset(queryset, request.user)
 
         # -- Filters
         employee_id = request.query_params.get('employee_id')
