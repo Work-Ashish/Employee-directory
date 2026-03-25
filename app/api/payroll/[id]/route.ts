@@ -3,15 +3,24 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handleGET(req: Request) {
+    const url = new URL(req.url)
+    const segments = url.pathname.split("/")
+    const id = segments[segments.indexOf("payroll") + 1]
     deprecatedRoute(`/api/payroll/${id} GET`, "Django /api/v1/payroll/:id/")
     return proxyToDjango(req, `/payroll/${id}/`)
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handlePUT(req: Request) {
+    const url = new URL(req.url)
+    const segments = url.pathname.split("/")
+    const id = segments[segments.indexOf("payroll") + 1]
     deprecatedRoute(`/api/payroll/${id} PUT`, "Django /api/v1/payroll/:id/")
     return proxyToDjango(req, `/payroll/${id}/`)
 }
+
+export const GET = withAuth({ module: Module.PAYROLL, action: Action.VIEW }, handleGET)
+export const PUT = withAuth({ module: Module.PAYROLL, action: Action.UPDATE }, handlePUT)

@@ -99,14 +99,17 @@ export const logger = new Logger()
  */
 const DJANGO_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
 
-export async function auditLog(event: {
-    action: string
-    resource: string
-    resourceId?: string
-    userId?: string
-    organizationId?: string
-    details?: Record<string, unknown>
-}): Promise<void> {
+export async function auditLog(
+    event: {
+        action: string
+        resource: string
+        resourceId?: string
+        userId?: string
+        organizationId?: string
+        details?: Record<string, unknown>
+    },
+    authToken?: string  // Pass from request context for server-side calls
+): Promise<void> {
     const context = logContext.getStore()
     const payload = {
         action: event.action,
@@ -122,11 +125,28 @@ export async function auditLog(event: {
     // Always log locally
     logger.info(`Audit: ${event.action} ${event.resource}`, payload)
 
-    // Fire-and-forget to Django
+    // Build authenticated headers for Django
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+
+    // Server-side: use passed token. Client-side: read from localStorage.
+    const token = authToken
+        ?? (typeof window !== "undefined" ? localStorage.getItem("access_token") : null)
+    if (token) {
+        headers["Authorization"] = `Bearer ${token}`
+    }
+
+    const tenantSlug = typeof window !== "undefined"
+        ? localStorage.getItem("tenant_slug")
+        : null
+    if (tenantSlug) {
+        headers["X-Tenant-Slug"] = tenantSlug
+    }
+
+    // Fire-and-forget to Django (uses /create/ endpoint, requires auth)
     try {
-        fetch(`${DJANGO_BASE}/api/v1/audit-logs/`, {
+        fetch(`${DJANGO_BASE}/api/v1/audit-logs/create/`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify(payload),
         }).catch(() => { /* non-critical */ })
     } catch { /* non-critical */ }

@@ -1,4 +1,6 @@
-from rest_framework import status
+import logging
+
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,6 +9,8 @@ from apps.rbac.permissions import HasPermission
 from common.pagination import StandardResultsPagination
 from apps.audit.models import AuditLog
 from apps.audit.serializers import AuditLogSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class AuditLogListView(APIView):
@@ -40,3 +44,14 @@ class AuditLogListView(APIView):
                 AuditLogSerializer(page, many=True).data
             )
         return Response(AuditLogSerializer(qs[:100], many=True).data)
+
+
+class AuditLogCreateView(generics.CreateAPIView):
+    """Authenticated audit log ingestion endpoint for Next.js audit dispatch."""
+    serializer_class = AuditLogSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(
+            ip_address=self.request.META.get('REMOTE_ADDR', ''),
+        )

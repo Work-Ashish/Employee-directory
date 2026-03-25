@@ -1,10 +1,23 @@
+import logging
+
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenRefreshView, TokenBlacklistView
 
 from common.throttles import LoginRateThrottle, RegisterRateThrottle
+
+logger = logging.getLogger(__name__)
+
+
+class TokenRefreshThrottle(AnonRateThrottle):
+    rate = '30/minute'
+
+
+class TokenBlacklistThrottle(AnonRateThrottle):
+    rate = '10/minute'
 from .auth_serializers import (
     RegisterSerializer,
     CustomTokenObtainPairSerializer,
@@ -74,6 +87,7 @@ class MeView(APIView):
 class TenantTokenRefreshView(TokenRefreshView):
     """Refresh that extracts tenant from the refresh token before processing."""
     permission_classes = [AllowAny]
+    throttle_classes = [TokenRefreshThrottle]
 
     def post(self, request, *args, **kwargs):
         from rest_framework_simplejwt.tokens import UntypedToken
@@ -89,14 +103,15 @@ class TenantTokenRefreshView(TokenRefreshView):
                     if tenant:
                         set_current_tenant(tenant)
                         request.tenant = tenant
-            except Exception:
-                pass  # let the parent view handle invalid tokens
+            except Exception as e:
+                logger.warning("Failed to extract tenant for refresh: %s", str(e))
         return super().post(request, *args, **kwargs)
 
 
 class TenantTokenBlacklistView(TokenBlacklistView):
     """Logout that extracts tenant from the refresh token before blacklisting."""
     permission_classes = [AllowAny]
+    throttle_classes = [TokenBlacklistThrottle]
 
     def post(self, request, *args, **kwargs):
         from rest_framework_simplejwt.tokens import UntypedToken
@@ -112,8 +127,8 @@ class TenantTokenBlacklistView(TokenBlacklistView):
                     if tenant:
                         set_current_tenant(tenant)
                         request.tenant = tenant
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to extract tenant for blacklist: %s", str(e))
         return super().post(request, *args, **kwargs)
 
 

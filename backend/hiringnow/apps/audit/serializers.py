@@ -11,3 +11,4 @@ class AuditLogSerializer(serializers.ModelSerializer):
             'id', 'user', 'username', 'action', 'resource', 'resource_id',
             'path', 'method', 'status_code', 'ip_address', 'changes', 'created_at',
         ]
+        read_only_fields = ['id', 'created_at', 'ip_address']

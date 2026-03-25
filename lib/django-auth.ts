@@ -1,6 +1,12 @@
 /**
  * Django JWT authentication helpers.
  * Replaces NextAuth.js with direct Django SimpleJWT integration.
+ *
+ * TODO(security): Migrate JWT storage from localStorage to httpOnly cookies.
+ * Current flow: login() stores tokens in localStorage, api-client.ts reads them.
+ * Target flow: Django sets httpOnly cookies, api-client.ts sends credentials: 'include'.
+ * Requires Django: SESSION_COOKIE_HTTPONLY=True, CSRF_COOKIE_HTTPONLY=False (for CSRF token).
+ * See: docs/superpowers/plans/2026-03-23-security-fixes.md Task 12 Phase 2.
  */
 
 import { toCamelCase } from "./transform";

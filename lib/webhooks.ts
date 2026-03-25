@@ -26,6 +26,42 @@ export function createHmacSignature(payload: string, secret: string): string {
 }
 
 /**
+ * Checks if a URL points to a private/reserved IP address.
+ * First-layer SSRF defense — blocks literal private IPs, localhost, and internal hostnames.
+ * NOTE: Does not prevent DNS rebinding attacks. A complete solution requires DNS resolution.
+ */
+function isPrivateUrl(urlString: string): boolean {
+    try {
+        const url = new URL(urlString)
+        const hostname = url.hostname
+
+        if (
+            hostname === "localhost" ||
+            hostname === "127.0.0.1" ||
+            hostname === "::1" ||
+            hostname === "0.0.0.0" ||
+            hostname.startsWith("10.") ||
+            hostname.startsWith("192.168.") ||
+            hostname === "169.254.169.254" ||
+            hostname.endsWith(".internal") ||
+            hostname.endsWith(".local")
+        ) {
+            return true
+        }
+
+        // Block 172.16.0.0/12 range
+        if (hostname.startsWith("172.")) {
+            const second = parseInt(hostname.split(".")[1], 10)
+            if (second >= 16 && second <= 31) return true
+        }
+
+        return false
+    } catch {
+        return true // Invalid URL = blocked
+    }
+}
+
+/**
  * Dispatches a webhook event by finding matching active webhooks from Django
  * and enqueuing delivery jobs.
  */
@@ -59,7 +95,7 @@ export async function dispatchWebhookEvent(
         }
 
         // Create delivery records via Django and enqueue jobs
-        for (const webhook of webhooks) {
+        for (const webhook of webhooks.filter(w => !isPrivateUrl(w.url))) {
             try {
                 const deliveryResponse = await fetch(`${DJANGO_BASE}/api/v1/webhooks/deliveries/`, {
                     method: "POST",

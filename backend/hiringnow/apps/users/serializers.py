@@ -17,7 +17,7 @@ class UserCreateSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8)
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
-    is_tenant_admin = serializers.BooleanField(default=False)
+    is_tenant_admin = serializers.BooleanField(default=False, read_only=True)
 
     def validate_email(self, value):
         # email must be unique within this tenant DB
@@ -34,7 +34,7 @@ class UserCreateSerializer(serializers.Serializer):
             tenant=tenant,
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
-            is_tenant_admin=validated_data.get('is_tenant_admin', False),
+            is_tenant_admin=False,
         )
 
 

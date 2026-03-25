@@ -3,15 +3,24 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handleGET(req: Request) {
+    const url = new URL(req.url)
+    const segments = url.pathname.split("/")
+    const id = segments[segments.indexOf("appraisals") + 1]
     deprecatedRoute(`/api/performance/appraisals/${id} GET`, "Django /api/v1/performance/appraisals/:id/")
     return proxyToDjango(req, `/performance/appraisals/${id}/`)
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handlePUT(req: Request) {
+    const url = new URL(req.url)
+    const segments = url.pathname.split("/")
+    const id = segments[segments.indexOf("appraisals") + 1]
     deprecatedRoute(`/api/performance/appraisals/${id} PUT`, "Django /api/v1/performance/appraisals/:id/")
     return proxyToDjango(req, `/performance/appraisals/${id}/`)
 }
+
+export const GET = withAuth({ module: Module.PERFORMANCE, action: Action.VIEW }, handleGET)
+export const PUT = withAuth({ module: Module.PERFORMANCE, action: Action.UPDATE }, handlePUT)

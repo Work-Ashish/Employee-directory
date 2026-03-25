@@ -7,13 +7,18 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET(req: Request) {
+async function handleGET(req: Request) {
     deprecatedRoute("/api/employees GET", "Django /api/v1/employees/")
     return proxyToDjango(req, "/employees/")
 }
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
     deprecatedRoute("/api/employees POST", "Django /api/v1/employees/")
     return proxyToDjango(req, "/employees/")
 }
+
+export const GET = withAuth({ module: Module.EMPLOYEES, action: Action.VIEW }, handleGET)
+export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }, handlePOST)

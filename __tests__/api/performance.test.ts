@@ -30,7 +30,7 @@ describe('Performance API Routes (Django Proxy)', () => {
         const req = new Request('http://localhost:3000/api/performance?period=2026-03')
         await GET(req)
 
-        expect(mockProxyToDjango).toHaveBeenCalledWith(req, '/performance/')
+        expect(mockProxyToDjango).toHaveBeenCalledWith(req, '/performance/reviews/')
     })
 
     test('POST proxies to Django /performance/', async () => {
@@ -41,7 +41,7 @@ describe('Performance API Routes (Django Proxy)', () => {
         })
         await POST(req)
 
-        expect(mockProxyToDjango).toHaveBeenCalledWith(req, '/performance/')
+        expect(mockProxyToDjango).toHaveBeenCalledWith(req, '/performance/reviews/')
     })
 
     test('relays Django 201 response for created reviews', async () => {

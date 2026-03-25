@@ -23,3 +23,14 @@ CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
 # The SECURE_CONTENT_TYPE_NOSNIFF setting is a boolean that is used to determine if the content type nosniff should be enabled.
 SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# HSTS — instruct browsers to only use HTTPS
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Force HTTPS redirect
+SECURE_SSL_REDIRECT = True
+
+# Trust X-Forwarded-Proto from reverse proxy (nginx/ALB/CloudFront)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
