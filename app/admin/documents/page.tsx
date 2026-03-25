@@ -23,25 +23,25 @@ import { Spinner } from "@/components/ui/Spinner"
 const CATEGORY_LABELS: Record<string, string> = {
     POLICY: "Policy",
     CONTRACT: "Contract",
-    PAYSLIP: "Payslip",
-    TAX: "Tax",
-    IDENTIFICATION: "ID Document",
+    CERTIFICATE: "Certificate",
+    ID_PROOF: "ID Proof",
+    OTHER: "Other",
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
     POLICY: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20",
     CONTRACT: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20",
-    PAYSLIP: "bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20",
-    TAX: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
-    IDENTIFICATION: "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
+    CERTIFICATE: "bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20",
+    ID_PROOF: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
+    OTHER: "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-500/10 dark:text-gray-400 dark:border-gray-500/20",
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
     POLICY: "📋",
     CONTRACT: "📝",
-    PAYSLIP: "💵",
-    TAX: "🧾",
-    IDENTIFICATION: "🪪",
+    CERTIFICATE: "🎓",
+    ID_PROOF: "🪪",
+    OTHER: "📄",
 }
 
 // ─── Types ──────────────────────────────────────────────────
@@ -93,7 +93,13 @@ export default function DocumentManagement() {
                 DocumentAPI.list(),
                 EmployeeAPI.fetchEmployees(1, 100),
             ])
-            setDocuments(docData.results || extractArray(docData))
+            const rawDocs = (docData.results || extractArray(docData)) as any[]
+            setDocuments(rawDocs.map((d: any) => ({
+                ...d,
+                url: d.url || d.fileUrl || "",
+                uploadDate: d.uploadDate || d.createdAt || "",
+                employeeId: d.isPublic ? null : (d.employeeId || d.uploadedBy || null),
+            })))
             setEmployees(empData.results || [])
         } catch {
             toast.error("Failed to load data")
@@ -192,16 +198,15 @@ export default function DocumentManagement() {
 
             let payload: any
 
+            const basePayload = {
+                title: form.title,
+                category: form.category,
+                fileUrl: fileUrl,
+                isPublic: uploadTarget === "all",
+            }
+
             if (uploadTarget === "all") {
-                // One public document (company-wide policy)
-                payload = {
-                    title: form.title,
-                    category: form.category,
-                    url: fileUrl,
-                    size: form.size || null,
-                    isPublic: true,
-                }
-                await DocumentAPI.create(payload)
+                await DocumentAPI.create(basePayload)
                 toast.success("Policy uploaded for all employees", { id: "doc-upload" })
             } else {
                 const ids = Array.from(selectedEmpIds)
@@ -210,15 +215,10 @@ export default function DocumentManagement() {
                     setSaving(false)
                     return
                 }
-                payload = {
-                    title: form.title,
-                    category: form.category,
-                    url: fileUrl,
-                    size: form.size || null,
-                    isPublic: false,
-                    employeeIds: ids,
-                }
-                await DocumentAPI.create(payload)
+                // Create one document per employee (Django has no bulk employee assignment)
+                await Promise.allSettled(
+                    ids.map(empId => DocumentAPI.create({ ...basePayload, isPublic: false, uploadedById: empId }))
+                )
                 toast.success(`Document sent to ${ids.length} employee${ids.length > 1 ? "s" : ""}`, { id: "doc-upload" })
             }
 
@@ -284,7 +284,7 @@ export default function DocumentManagement() {
                         <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-md border", CATEGORY_COLORS[doc.category])}>
                             {CATEGORY_LABELS[doc.category]}
                         </span>
-                        {doc.size && <span className="text-[10px] text-text-3">{doc.size}</span>}
+                        {Number(doc.size) > 0 ? <span className="text-[10px] text-text-3">{doc.size}</span> : null}
                         <span className="text-[10px] text-text-3">{new Date(doc.uploadDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
                     </div>
                 </div>
@@ -449,7 +449,7 @@ export default function DocumentManagement() {
                                     <span className="text-[18px]">{CATEGORY_ICONS[selectedDoc.category]}</span>
                                     <div className="min-w-0">
                                         <div className="text-base font-bold text-text truncate">{selectedDoc.title}</div>
-                                        <div className="text-xs text-text-3">{selectedDoc.size} · {new Date(selectedDoc.uploadDate).toLocaleDateString()}</div>
+                                        <div className="text-xs text-text-3">{selectedDoc.size && Number(selectedDoc.size) > 0 ? `${selectedDoc.size} · ` : ""}{new Date(selectedDoc.uploadDate).toLocaleDateString()}</div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
@@ -478,11 +478,19 @@ export default function DocumentManagement() {
                                     const type = getPreviewType(selectedDoc.url)
                                     if (type === "pdf") {
                                         return (
-                                            <iframe
-                                                src={selectedDoc.url}
-                                                className="w-full h-full border-0"
-                                                title={selectedDoc.title}
-                                            />
+                                            <div className="w-full h-full flex flex-col">
+                                                <iframe
+                                                    src={selectedDoc.url}
+                                                    className="w-full flex-1 border-0"
+                                                    title={selectedDoc.title}
+                                                    onError={() => {}}
+                                                />
+                                                <div className="p-3 bg-surface border-t border-border text-center">
+                                                    <a href={selectedDoc.url} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline">
+                                                        Open in new tab if preview doesn't load
+                                                    </a>
+                                                </div>
+                                            </div>
                                         )
                                     }
                                     if (type === "image") {

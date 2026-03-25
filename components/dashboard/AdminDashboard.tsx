@@ -78,10 +78,10 @@ export function AdminDashboard() {
         }
     }
 
-    const deptData = extractArray(data?.deptSplit)
-    const hiringData = extractArray(data?.hiringTrend)
-    const salaryData = extractArray(data?.salaryRanges)
-    const recentHires = extractArray(data?.recentHires)
+    const deptData = (data?.deptSplit as any)?.results || extractArray(data?.deptSplit)
+    const hiringData = (data?.hiringTrend as any)?.results || extractArray(data?.hiringTrend)
+    const salaryData = (data?.salaryRanges as any)?.results || extractArray(data?.salaryRanges)
+    const recentHires = (data?.recentHires as any)?.results || extractArray(data?.recentHires)
     const filteredDepts = selectedDept ? deptData.filter((d: any) => d.name === selectedDept) : deptData
     const filteredHires = selectedDept ? recentHires.filter((h: any) => h.dept === selectedDept) : recentHires
     const selectedMonthData: any = selectedMonth ? hiringData.find((d: any) => d.month === selectedMonth) : null

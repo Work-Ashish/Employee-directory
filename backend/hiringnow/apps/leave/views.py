@@ -29,7 +29,7 @@ class LeaveListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('leaves.view')]
 
     def get(self, request):
-        queryset = Leave.objects.select_related('employee').order_by('-start_date')
+        queryset = Leave.objects.select_related('employee', 'actioned_by').order_by('-start_date')
 
         # ── Row-level scoping ────────────────────────────────────────
         # Admin / leaves.manage → see all leaves
@@ -155,7 +155,7 @@ class LeaveDetailView(APIView):
 
     def _get_leave(self, pk):
         return get_object_or_404(
-            Leave.objects.select_related('employee'),
+            Leave.objects.select_related('employee', 'actioned_by'),
             pk=pk,
         )
 
@@ -176,7 +176,11 @@ class LeaveDetailView(APIView):
         serializer.is_valid(raise_exception=True)
 
         leave.status = serializer.validated_data['status']
-        leave.save(update_fields=['status', 'updated_at'])
+        # Record who approved/rejected
+        employee_profile = getattr(request.user, 'employee_profile', None)
+        if employee_profile:
+            leave.actioned_by = employee_profile
+        leave.save(update_fields=['status', 'actioned_by', 'updated_at'])
 
         return Response(LeaveSerializer(leave).data)
 

@@ -62,7 +62,18 @@ export function RoleManagement() {
     const fetchRoles = React.useCallback(async () => {
         try {
             const data = await RoleAPI.list()
-            setRoles(extractArray<FunctionalRole>(data))
+            const raw = (data as any)?.results || extractArray<any>(data)
+            setRoles(raw.map((r: any) => ({
+                id: r.id,
+                name: r.name || r.slug || "",
+                description: r.description || null,
+                level: r.level ?? 0,
+                parentRoleId: r.parentRoleId || null,
+                isActive: r.isActive ?? r.is_active ?? true,
+                parentRole: r.parentRole || null,
+                capabilities: r.capabilities || [],
+                _count: r._count || { employees: r.userCount || 0, childRoles: 0 },
+            })))
         } catch {
             toast.error("Failed to load roles")
         } finally {
@@ -73,7 +84,7 @@ export function RoleManagement() {
     const fetchEmployees = React.useCallback(async () => {
         try {
             const data = await EmployeeAPI.fetchEmployees(1, 500)
-            setEmployees(extractArray<EmployeeOption>(data))
+            setEmployees((data as any)?.results || extractArray<EmployeeOption>(data))
         } catch { /* non-critical */ }
     }, [])
 
@@ -600,10 +611,10 @@ function AssignDialog({
             const toRemove = [...assigned].filter((id) => !selected.has(id))
 
             if (toAdd.length > 0) {
-                await api.post("/roles/" + role.id + "/assign/", { employeeIds: toAdd })
+                await api.post("/rbac/roles/" + role.id + "/permissions/", { employeeIds: toAdd })
             }
             if (toRemove.length > 0) {
-                await apiClient("/roles/" + role.id + "/assign/", {
+                await apiClient("/rbac/roles/" + role.id + "/permissions/", {
                     method: "DELETE",
                     body: JSON.stringify({ employeeIds: toRemove }),
                 })

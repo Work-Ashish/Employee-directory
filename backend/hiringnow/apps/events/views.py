@@ -27,7 +27,7 @@ class EventListCreateView(APIView):
         return [IsAuthenticated(), HasPermission('events.view')]
 
     def get(self, request):
-        queryset = CalendarEvent.objects.select_related('created_by').prefetch_related('attendees').order_by('-start_time')
+        queryset = CalendarEvent.objects.select_related('created_by').prefetch_related('attendees').order_by('-start_date')
 
         # Non-admin users see events they created or are attending
         user = request.user

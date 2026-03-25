@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Asset } from "@/features/assets/api/client"
-type AssetType = "HARDWARE" | "SOFTWARE" | "ACCESSORY"
+type AssetType = "LAPTOP" | "PHONE" | "MONITOR" | "KEYBOARD" | "HEADSET" | "OTHER"
 type AssetStatus = "AVAILABLE" | "ASSIGNED" | "MAINTENANCE" | "RETIRED"
 import { DataTable } from "@/components/ui/DataTable"
 import { ColumnDef } from "@tanstack/react-table"
@@ -30,9 +30,12 @@ const STATUS_LABELS: Record<AssetStatus, string> = {
 }
 
 const TYPE_LABELS: Record<AssetType, string> = {
-    HARDWARE: "Hardware",
-    SOFTWARE: "Software",
-    ACCESSORY: "Accessory",
+    LAPTOP: "Laptop",
+    PHONE: "Phone",
+    MONITOR: "Monitor",
+    KEYBOARD: "Keyboard",
+    HEADSET: "Headset",
+    OTHER: "Other",
 }
 
 const STATUS_BADGE_VARIANT: Record<AssetStatus, "success" | "info" | "warning" | "neutral"> = {
@@ -52,7 +55,7 @@ const StatusBadge = ({ status }: { status: AssetStatus }) => {
 
 const EMPTY_FORM = {
     name: "",
-    type: "HARDWARE" as AssetType,
+    type: "LAPTOP" as AssetType,
     serialNumber: "",
     status: "AVAILABLE" as AssetStatus,
     purchaseDate: "",
@@ -153,16 +156,20 @@ export default function AssetManagement() {
 
         setSaving(true)
         try {
-            const payload = {
+            const payload: Record<string, unknown> = {
                 name: formData.name,
                 type: formData.type,
                 serialNumber: formData.serialNumber,
                 status: formData.status,
                 purchaseDate: formData.purchaseDate,
-                value: formData.value,
-                assignedToId: formData.assignedToId || null,
-                assignedDate: formData.assignedToId ? new Date().toISOString() : null,
-                image: formData.image || null,
+                value: parseFloat(formData.value) || 0,
+            }
+            if (formData.assignedToId) {
+                payload.assignedToId = formData.assignedToId
+                payload.assignedDate = new Date().toISOString().split("T")[0]
+            }
+            if (formData.image) {
+                payload.image = formData.image
             }
 
             if (editingAsset) {
@@ -194,7 +201,7 @@ export default function AssetManagement() {
         }
     }
 
-    const totalValue = assets.reduce((sum, a) => sum + a.value, 0)
+    const totalValue = assets.reduce((sum, a) => sum + Number(a.value || 0), 0)
     const assignedCount = assets.filter(a => a.status === "ASSIGNED").length
     const maintenanceCount = assets.filter(a => a.status === "MAINTENANCE").length
 
@@ -236,17 +243,14 @@ export default function AssetManagement() {
             accessorKey: "assignedTo",
             header: "Assigned To",
             cell: ({ row }) => {
-                const employee = row.original.assignedTo
-                const name = typeof employee === "string"
-                    ? employee
-                    : employee ? `${employee.firstName} ${employee.lastName}` : "—"
-                return <div className="text-text-2">{name}</div>
+                const name = row.original.assignedToName || (typeof row.original.assignedTo === 'string' ? null : row.original.assignedTo ? `${row.original.assignedTo.firstName} ${row.original.assignedTo.lastName}` : null)
+                return <div className="text-text-2">{name || "—"}</div>
             },
         },
         {
             accessorKey: "value",
             header: "Value",
-            cell: ({ row }) => <div className="text-text-2">${row.getValue<number>("value").toLocaleString()}</div>,
+            cell: ({ row }) => <div className="text-text-2">${Number(row.getValue("value") || 0).toLocaleString()}</div>,
         },
         {
             id: "actions",
@@ -297,7 +301,7 @@ export default function AssetManagement() {
                     data={assets}
                     searchKey="name"
                     filterFields={[
-                        { id: "type", label: "Type", options: ["HARDWARE", "SOFTWARE", "ACCESSORY"] },
+                        { id: "type", label: "Type", options: ["LAPTOP", "PHONE", "MONITOR", "KEYBOARD", "HEADSET", "OTHER"] },
                         { id: "status", label: "Status", options: ["AVAILABLE", "ASSIGNED", "MAINTENANCE", "RETIRED"] },
                     ]}
                 />

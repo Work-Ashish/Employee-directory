@@ -25,7 +25,7 @@ const trainingSchema = z.object({
     name: z.string().min(1, "Name is required"),
     type: z.enum(["TECHNICAL", "COMPLIANCE", "SECURITY", "SOFT_SKILLS", "LEADERSHIP"]),
     description: z.string().optional(),
-    status: z.enum(["UPCOMING", "IN_PROGRESS", "COMPLETED"]).default("UPCOMING"),
+    status: z.enum(["CRITICAL", "HIGH", "LOW"]).default("HIGH"),
     dueDate: z.string().optional(),
     videoUrl: z.string().optional(),
     assignToAll: z.boolean().default(false),
@@ -43,6 +43,7 @@ type Training = {
     progress: number
     dueDate: string | null
     participants: number
+    enrolledCount: number
     videoUrl: string | null
     enrollments: any[]
 }
@@ -72,6 +73,7 @@ export function AdminTrainingView() {
     const [isModalOpen, setIsModalOpen] = React.useState(false)
     const [editingId, setEditingId] = React.useState<string | null>(null)
     const [employees, setEmployees] = React.useState<any[]>([])
+    const [employeeSearch, setEmployeeSearch] = React.useState("")
 
     const form = useForm<TrainingFormData>({
         resolver: zodResolver(trainingSchema) as any,
@@ -79,7 +81,7 @@ export function AdminTrainingView() {
             name: "",
             type: "TECHNICAL",
             description: "",
-            status: "UPCOMING",
+            status: "HIGH",
             dueDate: format(new Date(), "yyyy-MM-dd"),
             videoUrl: "",
             assignToAll: false,
@@ -98,7 +100,31 @@ export function AdminTrainingView() {
         try {
             setIsLoading(true)
             const data = await TrainingAPI.list()
-            setTrainings(extractArray<Training>(data))
+            // Map Django Training fields to component's expected shape
+            const REVERSE_STATUS: Record<string, string> = {
+                ONGOING: "CRITICAL",
+                UPCOMING: "HIGH",
+                COMPLETED: "LOW",
+                CANCELLED: "LOW",
+                CRITICAL: "CRITICAL",
+                HIGH: "HIGH",
+                LOW: "LOW",
+            }
+            const items = (data as any)?.results || extractArray<any>(data)
+            const mapped = items.map((t: any) => ({
+                id: t.id,
+                name: t.title || t.name || "",
+                type: t.type || "TECHNICAL",
+                description: t.description || "",
+                status: REVERSE_STATUS[t.status] || t.status || "HIGH",
+                progress: 0,
+                dueDate: t.startDate || t.dueDate || null,
+                participants: t.enrolledCount || t.maxParticipants || 0,
+                enrolledCount: t.enrolledCount || 0,
+                videoUrl: t.videoUrl || null,
+                enrollments: t.enrollments || [],
+            }))
+            setTrainings(mapped)
         } catch {
             toast.error("Failed to load trainings")
         } finally {
@@ -146,10 +172,39 @@ export function AdminTrainingView() {
 
     const onSubmit: any = async (data: any) => {
         try {
+            // Map frontend form fields to Django Training model fields
+            const STATUS_MAP: Record<string, string> = {
+                CRITICAL: "ONGOING",
+                HIGH: "UPCOMING",
+                LOW: "COMPLETED",
+            }
+            const payload: Record<string, unknown> = {
+                title: data.name,
+                description: data.description || "",
+                start_date: data.dueDate || new Date().toISOString().slice(0, 10),
+                end_date: data.dueDate || new Date().toISOString().slice(0, 10),
+                status: STATUS_MAP[data.status] || data.status,
+                instructor: "",
+            }
+            if (data.videoUrl) payload.video_url = data.videoUrl
+
             if (editingId) {
-                await TrainingAPI.update(editingId, data)
+                await TrainingAPI.update(editingId, payload)
             } else {
-                await TrainingAPI.create(data)
+                const created = await TrainingAPI.create(payload)
+
+                // Enroll employees after course creation
+                if (created?.id) {
+                    const employeeIds: string[] = data.assignToAll
+                        ? employees.map((e: any) => e.id)
+                        : (data.assignedEmployeeIds || [])
+
+                    await Promise.allSettled(
+                        employeeIds.map(empId =>
+                            TrainingAPI.enroll(created.id, { employee_id: empId })
+                        )
+                    )
+                }
             }
             toast.success(editingId ? "Course updated" : "Course created")
             setIsModalOpen(false)
@@ -181,10 +236,10 @@ export function AdminTrainingView() {
     const openEdit = (t: Training) => {
         setEditingId(t.id)
         form.reset({
-            name: t.name,
-            type: t.type as any,
+            name: t.name || "",
+            type: (t.type || "TECHNICAL") as any,
             description: t.description || "",
-            status: t.status as any,
+            status: (t.status || "HIGH") as any,
             dueDate: t.dueDate ? format(new Date(t.dueDate), "yyyy-MM-dd") : "",
             videoUrl: t.videoUrl || "",
             assignToAll: false,
@@ -195,26 +250,27 @@ export function AdminTrainingView() {
 
     const getTypeColor = (type: string) => {
         switch (type) {
-            case 'SECURITY': return "from-[#ef4444] to-[#b91c1c] text-[#ef4444] bg-[rgba(239,68,68,0.1)] icon-🔒"
-            case 'COMPLIANCE': return "from-[#10b981] to-[#047857] text-[#10b981] bg-[rgba(16,185,129,0.1)] icon-🤝"
-            case 'TECHNICAL': return "from-[#3b82f6] to-[#1d4ed8] text-[#3b82f6] bg-[rgba(59,130,246,0.1)] icon-⚛️"
-            case 'SOFT_SKILLS': return "from-[#8b5cf6] to-[#6d28d9] text-[#8b5cf6] bg-[rgba(139,92,246,0.1)] icon-✨"
-            case 'LEADERSHIP': return "from-[#f59e0b] to-[#b45309] text-[#f59e0b] bg-[rgba(245,158,11,0.1)] icon-👑"
-            default: return "from-gray-400 to-gray-600 text-gray-500 bg-gray-100 icon-📚"
+            case 'SECURITY': return { grad: "from-[#ef4444] to-[#b91c1c]", text: "text-[#ef4444]", bg: "bg-red-50", icon: "🔒" }
+            case 'COMPLIANCE': return { grad: "from-[#10b981] to-[#047857]", text: "text-[#10b981]", bg: "bg-emerald-50", icon: "🤝" }
+            case 'TECHNICAL': return { grad: "from-[#3b82f6] to-[#1d4ed8]", text: "text-[#3b82f6]", bg: "bg-blue-50", icon: "⚛️" }
+            case 'SOFT_SKILLS': return { grad: "from-[#8b5cf6] to-[#6d28d9]", text: "text-[#8b5cf6]", bg: "bg-violet-50", icon: "✨" }
+            case 'LEADERSHIP': return { grad: "from-[#f59e0b] to-[#b45309]", text: "text-[#f59e0b]", bg: "bg-amber-50", icon: "👑" }
+            default: return { grad: "from-gray-400 to-gray-600", text: "text-gray-500", bg: "bg-gray-100", icon: "📚" }
         }
     }
 
     const getStatusBadgeVariant = (status: string): "success" | "warning" | "info" => {
         switch (status) {
-            case 'COMPLETED': return "success"
-            case 'IN_PROGRESS': return "warning"
+            case 'CRITICAL': return "warning"
+            case 'HIGH': return "info"
+            case 'LOW': return "success"
             default: return "info"
         }
     }
 
     // Dynamic Analytics Calculations
     const totalEnrollments = React.useMemo(() =>
-        trainings.reduce((sum, t) => sum + (t.enrollments?.length || 0), 0)
+        trainings.reduce((sum, t) => sum + (t.enrolledCount || t.enrollments?.length || 0), 0)
         , [trainings])
 
     const avgScore = React.useMemo(() => {
@@ -277,7 +333,7 @@ export function AdminTrainingView() {
 
             <div className="grid grid-cols-[2fr_1fr] gap-5">
                 <div className="flex flex-col gap-5">
-                    <div className="glass p-6 bg-gradient-to-br from-[#007aff] to-[#5856d6] text-white relative overflow-hidden">
+                    <div className="p-6 bg-gradient-to-br from-[#007aff] to-[#5856d6] text-white relative overflow-hidden rounded-xl shadow-sm">
                         <div className="relative z-10 flex flex-col items-start gap-4">
                             <div>
                                 <h2 className="text-[20px] font-bold mb-1">Training Hub</h2>
@@ -292,18 +348,18 @@ export function AdminTrainingView() {
                         <div className="text-[15px] font-bold text-text mb-[14px]">Active Courses</div>
                         <div className="flex flex-col gap-3">
                             {!isLoading ? trainings.map((t, i) => {
-                                const [grad, text, bg, icon] = getTypeColor(t.type).split(' ')
+                                const { grad, text, bg, icon } = getTypeColor(t.type)
                                 return (
                                     <div key={t.id} className="glass p-[18px] flex items-center gap-4 group transition-all duration-200 hover:-translate-y-[2px] hover:shadow-md animate-[fadeRow_0.4s_both]" style={{ animationDelay: `${i * 0.1}s` }}>
                                         <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0", bg)}>
-                                            {icon.split('-')[1]}
+                                            {icon}
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex justify-between items-start mb-1">
                                                 <h3 className="text-md font-bold text-text">{t.name}</h3>
                                                 <div className="flex items-center gap-2">
                                                     <Badge variant={getStatusBadgeVariant(t.status)} size="sm">
-                                                        {t.status.replace('_', ' ')}
+                                                        {t.status === 'CRITICAL' ? 'Critical' : t.status === 'HIGH' ? 'High Priority' : t.status === 'LOW' ? 'Low Priority' : t.status.replace('_', ' ')}
                                                     </Badge>
                                                     <Button variant="ghost" size="icon" onClick={() => openEdit(t)}>
                                                         <Pencil2Icon className="w-3.5 h-3.5 text-text-3" />
@@ -322,7 +378,7 @@ export function AdminTrainingView() {
                                                     </>
                                                 )}
                                                 <span className="w-[3px] h-[3px] bg-text-3 rounded-full" />
-                                                <span>👥 {t.enrollments?.length || 0} enrolled</span>
+                                                <span>👥 {t.enrolledCount || t.enrollments?.length || 0} enrolled</span>
                                                 {t.videoUrl && <span className="text-xs text-danger font-bold">● Live Video</span>}
                                             </div>
                                             <div className="w-full h-[6px] bg-bg-2 rounded-[3px] overflow-hidden">
@@ -412,9 +468,9 @@ export function AdminTrainingView() {
                             label="Status *"
                             {...form.register('status')}
                         >
-                            <option value="UPCOMING">Upcoming</option>
-                            <option value="IN_PROGRESS">In Progress</option>
-                            <option value="COMPLETED">Completed</option>
+                            <option value="CRITICAL">Critical</option>
+                            <option value="HIGH">High Priority</option>
+                            <option value="LOW">Low Priority</option>
                         </Select>
                         <div className="flex flex-col gap-1.5">
                             <label className="text-sm font-medium text-text-2 flex justify-between">
@@ -446,8 +502,22 @@ export function AdminTrainingView() {
 
                         {!form.watch('assignToAll') && (
                             <div className="space-y-2">
+                                <input
+                                    type="text"
+                                    placeholder="Search employees..."
+                                    value={employeeSearch}
+                                    onChange={(e) => setEmployeeSearch(e.target.value)}
+                                    className="input-base w-full text-sm"
+                                />
                                 <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto pr-1 custom-scrollbar">
-                                    {employees.map(emp => (
+                                    {employees.filter(emp => {
+                                        if (!employeeSearch.trim()) return true
+                                        const q = employeeSearch.toLowerCase()
+                                        return (
+                                            `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(q) ||
+                                            (emp.designation || '').toLowerCase().includes(q)
+                                        )
+                                    }).map(emp => (
                                         <label key={emp.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-bg-2 cursor-pointer border border-transparent hover:border-border transition-all">
                                             <input
                                                 type="checkbox"

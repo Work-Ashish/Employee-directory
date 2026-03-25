@@ -8,6 +8,7 @@ class LeaveSerializer(serializers.ModelSerializer):
     """Read serializer — includes all fields plus computed employee name."""
 
     employee_name = serializers.SerializerMethodField()
+    actioned_by_name = serializers.SerializerMethodField()
     type_display = serializers.CharField(source='get_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
 
@@ -24,6 +25,8 @@ class LeaveSerializer(serializers.ModelSerializer):
             'status_display',
             'employee',
             'employee_name',
+            'actioned_by',
+            'actioned_by_name',
             'created_at',
             'updated_at',
         ]
@@ -31,6 +34,11 @@ class LeaveSerializer(serializers.ModelSerializer):
 
     def get_employee_name(self, obj):
         return f"{obj.employee.first_name} {obj.employee.last_name}"
+
+    def get_actioned_by_name(self, obj):
+        if obj.actioned_by:
+            return f"{obj.actioned_by.first_name} {obj.actioned_by.last_name}"
+        return None
 
 
 class LeaveCreateSerializer(serializers.Serializer):

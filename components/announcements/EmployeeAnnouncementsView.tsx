@@ -35,7 +35,13 @@ export function EmployeeAnnouncementsView() {
         try {
             setIsLoading(true)
             const data = await AnnouncementAPI.list()
-            setAnnouncements(data.results || (data as unknown as Announcement[]))
+            const items = (data as any)?.results || (Array.isArray(data) ? data : [])
+            setAnnouncements(items.map((a: any) => ({
+                ...a,
+                author: a.createdByName || a.author || "Admin",
+                category: a.category || "GENERAL",
+                isPinned: a.isPinned ?? false,
+            })))
         } catch {
             console.error("Failed to load announcements")
         } finally {
@@ -61,13 +67,14 @@ export function EmployeeAnnouncementsView() {
     const getPriorityVariant = (prio: string): "info" | "warning" | "danger" | "neutral" => {
         switch (prio) {
             case 'LOW': return "info"
-            case 'MEDIUM': return "warning"
-            case 'HIGH': return "danger"
+            case 'NORMAL': return "neutral"
+            case 'HIGH': return "warning"
+            case 'URGENT': return "danger"
             default: return "neutral"
         }
     }
 
-    const pinnedAnnouncements = announcements.filter(a => a.isPinned)
+    const pinnedAnnouncements = announcements.filter(a => a.priority === "URGENT")
 
     return (
         <div className="space-y-6 animate-page-in">
@@ -95,7 +102,7 @@ export function EmployeeAnnouncementsView() {
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <h3 className="text-lg font-bold text-text group-hover:text-accent transition-colors">{ann.title}</h3>
-                                                    {ann.isPinned && <DrawingPinFilledIcon className="w-3.5 h-3.5 text-warning" />}
+                                                    {ann.priority === "URGENT" && <DrawingPinFilledIcon className="w-3.5 h-3.5 text-warning" />}
                                                 </div>
                                                 <div className="text-sm text-text-3 flex items-center gap-[6px] mt-[1px]">
                                                     <span>{ann.author}</span>

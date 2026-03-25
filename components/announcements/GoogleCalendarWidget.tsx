@@ -13,6 +13,8 @@ import { Select } from "@/components/ui/Select"
 import { toast } from "sonner"
 import { hasPermission, Module, Action } from "@/lib/permissions"
 import { useAuth } from "@/context/AuthContext"
+import { EmployeeAPI } from "@/features/employees/api/client"
+import { MagnifyingGlassIcon } from "@radix-ui/react-icons"
 
 type CalendarEvent = {
     id: string
@@ -35,7 +37,10 @@ export function GoogleCalendarWidget() {
     const [start, setStart] = React.useState("")
     const [end, setEnd] = React.useState("")
     const [allDay, setAllDay] = React.useState(false)
-    const [type, setType] = React.useState("EVENT")
+    const [type, setType] = React.useState("MEETING")
+    const [employees, setEmployees] = React.useState<{ id: string; firstName: string; lastName: string }[]>([])
+    const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set())
+    const [empSearch, setEmpSearch] = React.useState("")
 
     const canCreate = hasPermission(user?.role ?? "", Module.ANNOUNCEMENTS, Action.CREATE)
 
@@ -43,10 +48,16 @@ export function GoogleCalendarWidget() {
         try {
             setIsLoading(true)
             const data = await EventAPI.list()
-            const all = extractArray<CalendarEvent>(data)
-            // Show only upcoming events
+            const all = ((data as any)?.results || extractArray<any>(data)).map((e: any) => ({
+                id: e.id,
+                title: e.title || "",
+                start: e.startDate || e.start || "",
+                end: e.endDate || e.end || "",
+                allDay: e.isAllDay ?? e.allDay ?? false,
+                type: e.type || "MEETING",
+            }))
             const now = new Date()
-            const upcoming = all.filter(e => new Date(e.end || e.start) >= now)
+            const upcoming = all.filter((e: CalendarEvent) => new Date(e.end || e.start) >= now)
             setEvents(upcoming.slice(0, 5))
         } catch {
             console.error("Failed to fetch events")
@@ -55,16 +66,26 @@ export function GoogleCalendarWidget() {
         }
     }, [])
 
+    const fetchEmployees = React.useCallback(async () => {
+        try {
+            const data = await EmployeeAPI.fetchEmployees(1, 200)
+            setEmployees((data as any)?.results || [])
+        } catch { /* non-critical */ }
+    }, [])
+
     React.useEffect(() => {
         fetchEvents()
-    }, [fetchEvents])
+        fetchEmployees()
+    }, [fetchEvents, fetchEmployees])
 
     const resetForm = () => {
         setTitle("")
         setStart("")
         setEnd("")
         setAllDay(false)
-        setType("EVENT")
+        setType("MEETING")
+        setSelectedEmpIds(new Set())
+        setEmpSearch("")
     }
 
     const handleCreate = async () => {
@@ -74,13 +95,17 @@ export function GoogleCalendarWidget() {
         }
         setSubmitting(true)
         try {
-            await EventAPI.create({
+            const payload: Record<string, unknown> = {
                 title,
-                start: new Date(start).toISOString(),
-                end: new Date(end).toISOString(),
-                allDay,
+                startDate: new Date(start).toISOString(),
+                endDate: new Date(end).toISOString(),
+                isAllDay: allDay,
                 type,
-            })
+            }
+            if (selectedEmpIds.size > 0) {
+                payload.attendeeIds = Array.from(selectedEmpIds)
+            }
+            await EventAPI.create(payload)
             toast.success("Event created")
             setShowCreate(false)
             resetForm()
@@ -247,6 +272,54 @@ export function GoogleCalendarWidget() {
                             </label>
                         </div>
                     </div>
+                    {/* Optional: Assign to specific employees */}
+                    <div>
+                        <label className="block text-sm font-medium text-text mb-1.5">
+                            Assign to Employees <span className="text-text-3 font-normal">(optional — leave empty for all)</span>
+                        </label>
+                        <div className="border border-border rounded-lg overflow-hidden">
+                            <div className="p-2 border-b border-border bg-surface">
+                                <div className="relative">
+                                    <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-4" />
+                                    <input
+                                        type="text"
+                                        value={empSearch}
+                                        onChange={e => setEmpSearch(e.target.value)}
+                                        placeholder="Search employees..."
+                                        className="w-full pl-8 pr-3 py-1.5 text-sm bg-bg-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-accent/30 text-text placeholder:text-text-4"
+                                    />
+                                </div>
+                            </div>
+                            <div className="max-h-[140px] overflow-y-auto">
+                                {employees
+                                    .filter(e => !empSearch.trim() || `${e.firstName} ${e.lastName}`.toLowerCase().includes(empSearch.toLowerCase()))
+                                    .map(emp => (
+                                        <label key={emp.id} className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-surface cursor-pointer text-sm">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedEmpIds.has(emp.id)}
+                                                onChange={() => {
+                                                    setSelectedEmpIds(prev => {
+                                                        const next = new Set(prev)
+                                                        next.has(emp.id) ? next.delete(emp.id) : next.add(emp.id)
+                                                        return next
+                                                    })
+                                                }}
+                                                className="w-3.5 h-3.5 rounded"
+                                            />
+                                            <span className="text-text">{emp.firstName} {emp.lastName}</span>
+                                        </label>
+                                    ))
+                                }
+                            </div>
+                            {selectedEmpIds.size > 0 && (
+                                <div className="px-3 py-1.5 bg-accent/5 border-t border-border text-xs font-semibold text-accent">
+                                    {selectedEmpIds.size} employee{selectedEmpIds.size > 1 ? "s" : ""} selected
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     <div className="flex justify-end gap-2 pt-4 border-t border-border">
                         <Button variant="secondary" onClick={() => setShowCreate(false)}>Cancel</Button>
                         <Button onClick={handleCreate} loading={submitting}>Create Event</Button>

@@ -241,7 +241,7 @@ export function AdminLeaveView() {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="border-b border-border bg-bg-2">
-                                    {["Employee", "Type", "Duration", "Days", "Reason", "Status", "Actions"].map(h => (
+                                    {["Employee", "Type", "Duration", "Days", "Reason", "Status", "Actioned By", "Actions"].map(h => (
                                         <th key={h} className="px-4 py-3 text-xs font-bold text-text-3 text-left uppercase tracking-wide">{h}</th>
                                     ))}
                                 </tr>
@@ -288,6 +288,9 @@ export function AdminLeaveView() {
                                                 {STATUS_LABELS[req.status]}
                                             </Badge>
                                         </td>
+                                        <td className="px-4 py-3 text-sm text-text-2">
+                                            {(req as any).actionedByName || "—"}
+                                        </td>
                                         <td className="px-4 py-3">
                                             {req.status === "PENDING" ? (
                                                 <div className="flex items-center gap-1.5">
@@ -307,7 +310,7 @@ export function AdminLeaveView() {
                                                     </Button>
                                                 </div>
                                             ) : (
-                                                <span className="text-xs text-text-3">Reviewed</span>
+                                                <span className="text-xs text-text-3">{req.status === "APPROVED" ? "Approved" : "Rejected"}</span>
                                             )}
                                         </td>
                                     </tr>

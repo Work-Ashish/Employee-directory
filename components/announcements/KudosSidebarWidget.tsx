@@ -42,12 +42,27 @@ export function KudosSidebarWidget() {
     const fetchData = React.useCallback(async () => {
         try {
             setLoading(true)
-            const [kudosData, empData] = await Promise.all([
+            // Fetch independently so one failure doesn't block the other
+            const [kudosResult, empResult] = await Promise.allSettled([
                 AnnouncementAPI.listKudos(),
                 EmployeeAPI.fetchEmployees(1, 200),
             ])
-            setKudos(extractArray<KudosData>(kudosData))
-            setEmployees(extractArray<Employee>(empData))
+
+            if (kudosResult.status === "fulfilled") {
+                const rawKudos = (kudosResult.value as any)?.results || extractArray<any>(kudosResult.value)
+                setKudos(rawKudos.map((k: any) => ({
+                    id: k.id,
+                    from: k.fromEmployeeName || k.from || "Unknown",
+                    to: k.toEmployeeName || k.to || "Unknown",
+                    message: k.message || "",
+                    time: k.createdAt || k.time || "",
+                    color: k.color || "",
+                })))
+            }
+
+            if (empResult.status === "fulfilled") {
+                setEmployees((empResult.value as any)?.results || extractArray<Employee>(empResult.value))
+            }
         } catch {
             console.error("Failed to fetch kudos")
         } finally {
@@ -64,7 +79,7 @@ export function KudosSidebarWidget() {
         }
         setSending(true)
         try {
-            await AnnouncementAPI.createKudos({ toId, message })
+            await AnnouncementAPI.createKudos({ toEmployeeId: toId, message })
             toast.success("Kudos sent!")
             setToId("")
             setMessage("")

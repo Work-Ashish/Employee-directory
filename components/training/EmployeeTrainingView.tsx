@@ -33,7 +33,28 @@ export function EmployeeTrainingView({ employeeId }: { employeeId: string }) {
         try {
             setIsLoading(true)
             const data = await TrainingAPI.list()
-            setTrainings((data.results || data) as unknown as Training[])
+            const raw = (data.results || data) as any[]
+            // Map Django Training fields to component's expected shape
+            const REVERSE_STATUS: Record<string, string> = {
+                ONGOING: "CRITICAL",
+                UPCOMING: "HIGH",
+                COMPLETED: "LOW",
+                CANCELLED: "LOW",
+                CRITICAL: "CRITICAL",
+                HIGH: "HIGH",
+                LOW: "LOW",
+            }
+            const mapped: Training[] = (Array.isArray(raw) ? raw : []).map((t: any) => ({
+                id: t.id,
+                name: t.title || t.name || "",
+                type: t.type || "TECHNICAL",
+                description: t.description || "",
+                status: REVERSE_STATUS[t.status] || t.status || "HIGH",
+                progress: t.status === "COMPLETED" || t.status === "LOW" ? 100 : 0,
+                dueDate: t.startDate || t.dueDate || null,
+                videoUrl: t.videoUrl || null,
+            }))
+            setTrainings(mapped)
         } catch {
             toast.error("Failed to load courses")
         } finally {
@@ -64,17 +85,22 @@ export function EmployeeTrainingView({ employeeId }: { employeeId: string }) {
 
     const getTypeColor = (type: string) => {
         switch (type) {
-            case 'SECURITY': return "from-[#ef4444] to-[#b91c1c] icon-🔒 bg-[rgba(239,68,68,0.1)]"
-            case 'COMPLIANCE': return "from-[#10b981] to-[#047857] icon-🤝 bg-[rgba(16,185,129,0.1)]"
-            case 'TECHNICAL': return "from-[#3b82f6] to-[#1d4ed8] icon-⚛️ bg-[rgba(59,130,246,0.1)]"
-            case 'SOFT_SKILLS': return "from-[#8b5cf6] to-[#6d28d9] icon-✨ bg-[rgba(139,92,246,0.1)]"
-            case 'LEADERSHIP': return "from-[#f59e0b] to-[#b45309] icon-👑 bg-[rgba(245,158,11,0.1)]"
-            default: return "from-gray-400 to-gray-600 icon-📚 bg-gray-100"
+            case 'SECURITY': return { grad: "from-[#ef4444] to-[#b91c1c]", icon: "🔒", bg: "bg-red-50" }
+            case 'COMPLIANCE': return { grad: "from-[#10b981] to-[#047857]", icon: "🤝", bg: "bg-emerald-50" }
+            case 'TECHNICAL': return { grad: "from-[#3b82f6] to-[#1d4ed8]", icon: "⚛️", bg: "bg-blue-50" }
+            case 'SOFT_SKILLS': return { grad: "from-[#8b5cf6] to-[#6d28d9]", icon: "✨", bg: "bg-violet-50" }
+            case 'LEADERSHIP': return { grad: "from-[#f59e0b] to-[#b45309]", icon: "👑", bg: "bg-amber-50" }
+            default: return { grad: "from-gray-400 to-gray-600", icon: "📚", bg: "bg-gray-100" }
         }
     }
 
-    const getStatusBadgeVariant = (status: string): "success" | "info" => {
-        return status === 'COMPLETED' ? "success" : "info"
+    const getStatusBadgeVariant = (status: string): "success" | "warning" | "info" => {
+        switch (status) {
+            case 'CRITICAL': return "warning"
+            case 'HIGH': return "info"
+            case 'LOW': return "success"
+            default: return "info"
+        }
     }
 
     return (
@@ -101,17 +127,17 @@ export function EmployeeTrainingView({ employeeId }: { employeeId: string }) {
                         <div className="text-[15px] font-bold text-text mb-[14px]">My Active Courses</div>
                         <div className="flex flex-col gap-3">
                             {!isLoading ? trainings.map((t, i) => {
-                                const [grad, icon, bg] = getTypeColor(t.type).split(' ')
+                                const { grad, icon, bg } = getTypeColor(t.type)
                                 return (
                                     <div key={t.id} className="glass p-[18px] flex items-center gap-4 group transition-all duration-200 hover:-translate-y-[2px] hover:shadow-md">
                                         <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0", bg)}>
-                                            {icon.split('-')[1]}
+                                            {icon}
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex justify-between items-start mb-1">
                                                 <h3 className="text-md font-bold text-text">{t.name}</h3>
                                                 <Badge variant={getStatusBadgeVariant(t.status)} size="sm">
-                                                    {t.status.replace('_', ' ')}
+                                                    {t.status === 'CRITICAL' ? 'Critical' : t.status === 'HIGH' ? 'High Priority' : t.status === 'LOW' ? 'Low Priority' : t.status.replace('_', ' ')}
                                                 </Badge>
                                             </div>
                                             <div className="text-sm text-text-3 mb-2 flex items-center gap-[10px]">

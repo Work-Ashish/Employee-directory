@@ -28,8 +28,7 @@ export default function MyAssets() {
         async function load() {
             try {
                 const data = await AssetAPI.list()
-                const allAssets: Asset[] = data.results || extractArray(data)
-                setAssets(allAssets.filter(a => a.status === "ASSIGNED"))
+                setAssets(data.results || extractArray(data))
             } catch {
                 toast.error("Failed to load your assets")
             } finally {
@@ -60,7 +59,7 @@ export default function MyAssets() {
 
                             <div className="flex items-start justify-between relative z-10">
                                 <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center text-white",
-                                    asset.type === "HARDWARE" ? "bg-blue-500" : asset.type === "SOFTWARE" ? "bg-purple-500" : "bg-amber-500"
+                                    asset.type === "LAPTOP" || asset.type === "MONITOR" ? "bg-blue-500" : asset.type === "PHONE" ? "bg-purple-500" : "bg-amber-500"
                                 )}>
                                     <LaptopIcon className="w-5 h-5" />
                                 </div>

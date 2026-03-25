@@ -36,6 +36,9 @@ class Asset(BaseModel):
         default=Status.AVAILABLE,
     )
     purchase_date = models.DateField(null=True, blank=True)
+    value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    image = models.URLField(max_length=500, blank=True, default='')
+    assigned_date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
 
     class Meta:

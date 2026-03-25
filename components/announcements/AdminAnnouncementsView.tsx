@@ -25,9 +25,7 @@ import { Textarea } from "@/components/ui/Textarea"
 const announcementSchema = z.object({
     title: z.string().min(1, "Title is required"),
     content: z.string().min(1, "Content is required"),
-    category: z.enum(["EVENT", "POLICY", "MEETING", "SYSTEM", "GENERAL"]),
-    priority: z.enum(["LOW", "MEDIUM", "HIGH"]).default("MEDIUM"),
-    isPinned: z.boolean().default(false),
+    priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("NORMAL"),
 })
 
 type AnnouncementFormData = z.infer<typeof announcementSchema>
@@ -56,9 +54,7 @@ export function AdminAnnouncementsView() {
         defaultValues: {
             title: "",
             content: "",
-            category: "GENERAL",
-            priority: "MEDIUM",
-            isPinned: false,
+            priority: "NORMAL",
         }
     })
 
@@ -66,7 +62,18 @@ export function AdminAnnouncementsView() {
         try {
             setIsLoading(true)
             const data = await AnnouncementAPI.list()
-            setAnnouncements(extractArray<Announcement>(data))
+            const items = (data as any)?.results || extractArray<any>(data)
+            setAnnouncements(items.map((a: any) => ({
+                id: a.id,
+                title: a.title || "",
+                content: a.content || "",
+                author: a.createdByName || a.created_by_name || "Admin",
+                category: a.category || "GENERAL",
+                priority: a.priority || "NORMAL",
+                isPinned: a.isPinned ?? false,
+                createdAt: a.createdAt || a.created_at || "",
+                updatedAt: a.updatedAt || a.updated_at || "",
+            })))
         } catch {
             toast.error("Failed to load announcements")
         } finally {
@@ -109,8 +116,9 @@ export function AdminAnnouncementsView() {
 
     const togglePin = async (ann: Announcement) => {
         try {
-            await AnnouncementAPI.update(ann.id, { ...ann, isPinned: !ann.isPinned })
-            toast.success(ann.isPinned ? "Unpinned" : "Pinned")
+            const newPriority = ann.priority === "URGENT" ? "NORMAL" : "URGENT"
+            await AnnouncementAPI.update(ann.id, { priority: newPriority })
+            toast.success(ann.priority === "URGENT" ? "Unpinned" : "Pinned")
             fetchAnnouncements()
         } catch {
             toast.error("Failed to update pinning")
@@ -122,9 +130,7 @@ export function AdminAnnouncementsView() {
         form.reset({
             title: ann.title,
             content: ann.content,
-            category: ann.category as any,
-            priority: ann.priority as any,
-            isPinned: ann.isPinned,
+            priority: (ann.priority || "NORMAL") as any,
         })
         setIsModalOpen(true)
     }
@@ -149,8 +155,8 @@ export function AdminAnnouncementsView() {
         }
     }
 
-    const pinnedAnnouncements = announcements.filter(a => a.isPinned)
-    const otherAnnouncements = announcements.filter(a => !a.isPinned)
+    const pinnedAnnouncements = announcements.filter(a => a.priority === "URGENT")
+    const otherAnnouncements = announcements.filter(a => a.priority !== "URGENT")
 
     return (
         <div className="space-y-6 animate-page-in">
@@ -207,7 +213,7 @@ export function AdminAnnouncementsView() {
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <h3 className="text-base font-bold text-text group-hover:text-accent transition-colors">{ann.title}</h3>
-                                                    {ann.isPinned && <DrawingPinFilledIcon className="w-3.5 h-3.5 text-warning" />}
+                                                    {ann.priority === "URGENT" && <DrawingPinFilledIcon className="w-3.5 h-3.5 text-warning" />}
                                                 </div>
                                                 <div className="text-sm text-text-3 flex items-center gap-1.5 mt-[1px]">
                                                     <span>{ann.author}</span>
@@ -220,8 +226,8 @@ export function AdminAnnouncementsView() {
                                             <Badge variant={getPriorityBadgeVariant(ann.priority)} size="sm">
                                                 {ann.priority}
                                             </Badge>
-                                            <Button variant="ghost" size="icon" onClick={() => togglePin(ann)} title={ann.isPinned ? "Unpin" : "Pin"}>
-                                                {ann.isPinned ? <DrawingPinFilledIcon className="w-3.5 h-3.5 text-warning" /> : <DrawingPinIcon className="w-3.5 h-3.5 text-text-3" />}
+                                            <Button variant="ghost" size="icon" onClick={() => togglePin(ann)} title={ann.priority === "URGENT" ? "Unpin" : "Pin"}>
+                                                {ann.priority === "URGENT" ? <DrawingPinFilledIcon className="w-3.5 h-3.5 text-warning" /> : <DrawingPinIcon className="w-3.5 h-3.5 text-text-3" />}
                                             </Button>
                                             <Button variant="ghost" size="icon" onClick={() => openEdit(ann)}>
                                                 <Pencil2Icon className="w-3.5 h-3.5 text-text-3" />
@@ -252,17 +258,6 @@ export function AdminAnnouncementsView() {
                         )) : (
                             <div className="text-sm text-white/50 italic py-4 text-center">No pinned announcements</div>
                         )}
-                        <Button
-                            variant="secondary"
-                            className="w-full mt-3 bg-white text-black hover:bg-white/90"
-                            onClick={() => {
-                                setEditingId(null)
-                                form.reset()
-                                setIsModalOpen(true)
-                            }}
-                        >
-                            + New Announcement
-                        </Button>
                     </div>
 
                     <GoogleCalendarWidget />
@@ -284,31 +279,15 @@ export function AdminAnnouncementsView() {
                         error={form.formState.errors.title?.message as string}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <Select
-                            label="Category *"
-                            {...form.register('category')}
-                        >
-                            <option value="GENERAL">General</option>
-                            <option value="EVENT">Event</option>
-                            <option value="POLICY">Policy</option>
-                            <option value="MEETING">Meeting</option>
-                            <option value="SYSTEM">System</option>
-                        </Select>
-                        <Select
-                            label="Priority *"
-                            {...form.register('priority')}
-                        >
-                            <option value="LOW">Low</option>
-                            <option value="MEDIUM">Medium</option>
-                            <option value="HIGH">High</option>
-                        </Select>
-                    </div>
-
-                    <div className="flex items-center gap-2 py-1">
-                        <input type="checkbox" {...form.register('isPinned')} id="isPinned" className="w-3.5 h-3.5" />
-                        <label htmlFor="isPinned" className="text-base font-medium text-text cursor-pointer">Pin to sidebar</label>
-                    </div>
+                    <Select
+                        label="Priority *"
+                        {...form.register('priority')}
+                    >
+                        <option value="LOW">Low</option>
+                        <option value="NORMAL">Normal</option>
+                        <option value="HIGH">High</option>
+                        <option value="URGENT">Urgent</option>
+                    </Select>
 
                     <Textarea
                         label="Content *"

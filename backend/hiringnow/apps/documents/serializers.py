@@ -37,7 +37,7 @@ class DocumentCreateSerializer(serializers.Serializer):
     """Write serializer for uploading a document."""
 
     title = serializers.CharField(max_length=300)
-    file_url = serializers.URLField(max_length=500)
+    file_url = serializers.CharField(max_length=500)
     file_type = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
     size = serializers.IntegerField(min_value=0, required=False, default=0)
     category = serializers.ChoiceField(choices=Document.Category.choices, required=False, default=Document.Category.OTHER)

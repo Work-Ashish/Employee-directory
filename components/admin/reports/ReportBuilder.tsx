@@ -185,7 +185,7 @@ export function ReportBuilder() {
     // Fetch departments + saved reports on mount
     useEffect(() => {
         DepartmentAPI.list().then(d => {
-            const arr = extractArray(d)
+            const arr = (d as any)?.results || extractArray(d)
             setDepartments((arr as { id: string; name: string }[]).map(dept => ({ id: dept.id, name: dept.name })))
         }).catch(() => {})
 
@@ -210,12 +210,14 @@ export function ReportBuilder() {
         setLoading(true)
         try {
             const result = await ReportAPI.generate({
-                entityType,
-                columns: selectedColumns,
-                filters,
-                sortBy: sortBy || undefined,
-                sortOrder,
-                limit: 10,
+                type: entityType,
+                config: {
+                    columns: selectedColumns,
+                    filters,
+                    sortBy: sortBy || undefined,
+                    sortOrder,
+                    limit: 10,
+                },
             }) as any
             const inner = result.data || result
             setPreviewData((inner.data || (Array.isArray(inner) ? inner : [])) as Record<string, unknown>[])

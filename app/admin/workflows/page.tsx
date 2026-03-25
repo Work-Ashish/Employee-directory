@@ -39,7 +39,7 @@ export default function WorkflowsAdmin() {
     const loadTemplates = async () => {
         try {
             const { data } = await api.get<any>('/workflows/templates/')
-            setTemplates(extractArray<Template>(data))
+            setTemplates((data as any)?.results || extractArray<Template>(data))
         } catch (err) {
             toast.error('Failed to load workflow templates')
         }

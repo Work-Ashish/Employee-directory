@@ -27,7 +27,7 @@ export function EmployeePFView() {
         const fetchRecords = async () => {
             try {
                 const { data } = await api.get<PFRecord[]>('/pf/')
-                setRecords(extractArray<PFRecord>(data))
+                setRecords((data as any)?.results || extractArray<PFRecord>(data))
             } catch (error) {
                 toast.error("Failed to load PF records")
             } finally {

@@ -37,9 +37,9 @@ type Ticket = {
 
 const categoryOptions = [
     { value: "", label: "Select category..." },
-    { value: "IT_SUPPORT", label: "IT Support" },
+    { value: "IT", label: "IT Support" },
     { value: "HR", label: "HR & Compliance" },
-    { value: "PAYROLL", label: "Payroll & Finance" },
+    { value: "FINANCE", label: "Payroll & Finance" },
     { value: "FACILITIES", label: "Facilities" },
     { value: "OTHER", label: "Other" },
 ]
@@ -59,9 +59,9 @@ const statusFilterOptions = [
 ]
 
 const CATEGORY_ICONS: Record<string, string> = {
-    IT_SUPPORT: "💻",
+    IT: "💻",
     HR: "👥",
-    PAYROLL: "💰",
+    FINANCE: "💰",
     FACILITIES: "🏢",
     OTHER: "📋",
 }
@@ -108,7 +108,21 @@ export default function HelpDesk() {
             if (statusFilter) params.set("status", statusFilter)
             const paramStr = params.toString()
             const data = await TicketAPI.list(paramStr || undefined)
-            setTickets(extractArray<Ticket>(data))
+            const raw = (data as any)?.results || extractArray<any>(data)
+            setTickets(raw.map((t: any) => {
+                const createdByName: string = t.createdByName || ""
+                const [fn = "", ...ln] = createdByName.split(/\s+/)
+                return {
+                    ...t,
+                    ticketCode: t.ticketCode || `TKT-${(t.id || "").slice(0, 6).toUpperCase()}`,
+                    employee: t.employee || (createdByName ? {
+                        id: t.createdBy || "",
+                        firstName: fn,
+                        lastName: ln.join(" "),
+                        employeeCode: "",
+                    } : undefined),
+                }
+            }))
         } catch {
             toast.error("Failed to load tickets")
         } finally {

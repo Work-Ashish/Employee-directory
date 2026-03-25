@@ -37,7 +37,7 @@ export function AdminResignationView() {
         try {
             setIsLoading(true)
             const data = await ResignationAPI.list()
-            setResignations(extractArray<Resignation>(data))
+            setResignations((data as any)?.results || extractArray<Resignation>(data))
         } catch {
             toast.error("Failed to load resignations")
         } finally {

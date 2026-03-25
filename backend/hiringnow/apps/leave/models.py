@@ -33,6 +33,13 @@ class Leave(BaseModel):
         on_delete=models.CASCADE,
         related_name='leaves',
     )
+    actioned_by = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='actioned_leaves',
+    )
 
     class Meta:
         db_table = 'leaves'

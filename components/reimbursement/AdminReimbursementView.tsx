@@ -92,7 +92,7 @@ export function AdminReimbursementView() {
             if (filterStatus) params.set("status", filterStatus)
             const filterStr = params.toString()
             const data = await ReimbursementAPI.list(filterStr || undefined)
-            setRecords(extractArray<Reimbursement>(data))
+            setRecords((data as any)?.results || extractArray<Reimbursement>(data))
         } catch {
             toast.error("Failed to load reimbursement requests")
         } finally {

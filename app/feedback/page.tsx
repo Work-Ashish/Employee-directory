@@ -36,8 +36,9 @@ interface Feedback {
     createdAt: string
     fromEmployeeId: string | null
     toEmployeeId: string
-    fromEmployee: { id: string; firstName: string; lastName: string; avatarUrl?: string | null } | null
-    toEmployee: { id: string; firstName: string; lastName: string; avatarUrl?: string | null }
+    fromEmployeeName: string | null
+    toEmployeeName: string | null
+    type: string
 }
 
 function StarRating({ value, onChange, readonly = false }: { value: number; onChange?: (v: number) => void; readonly?: boolean }) {
@@ -104,7 +105,26 @@ export default function FeedbackPage() {
                 FeedbackAPI.list(),
                 EmployeeAPI.fetchEmployees(1, 500),
             ])
-            setFeedbackList(extractArray<Feedback>(fbData))
+            const rawFb = (fbData as any)?.results || extractArray<any>(fbData)
+            const mappedFb: Feedback[] = rawFb.map((f: any) => {
+                // Django returns from_employee/to_employee as UUIDs, camelCased by api-client
+                const fromId = f.fromEmployee || f.fromEmployeeId || null
+                const toId = f.toEmployee || f.toEmployeeId || null
+                return {
+                    id: f.id,
+                    content: f.content || "",
+                    rating: f.rating || 0,
+                    isAnonymous: f.isAnonymous || false,
+                    period: f.period || "",
+                    createdAt: f.createdAt || f.created_at || "",
+                    fromEmployeeId: typeof fromId === 'string' ? fromId : null,
+                    toEmployeeId: typeof toId === 'string' ? toId : "",
+                    fromEmployeeName: f.fromEmployeeName || f.from_employee_name || (f.isAnonymous ? "Anonymous" : null),
+                    toEmployeeName: f.toEmployeeName || f.to_employee_name || null,
+                    type: f.type || "PEER",
+                }
+            })
+            setFeedbackList(mappedFb)
             setIsAdmin(hasAdminScope(user?.role ?? "", Module.FEEDBACK))
             setEmployees(empData.results || extractArray<Employee>(empData))
         } catch {
@@ -118,6 +138,9 @@ export default function FeedbackPage() {
 
     const myEmployeeId = React.useMemo(() => {
         if (!user) return null
+        // Prefer direct employeeId from auth context
+        if ((user as any).employeeId) return (user as any).employeeId
+        // Fallback: match by name
         const me = employees.find(e =>
             `${e.firstName} ${e.lastName}`.toLowerCase() === user.name?.toLowerCase()
         )
@@ -126,23 +149,31 @@ export default function FeedbackPage() {
 
     const filteredFeedback = React.useMemo(() => {
         if (isAdmin && tab === "all") return feedbackList
-        if (tab === "received") return feedbackList.filter(f => f.toEmployeeId === myEmployeeId)
-        if (tab === "sent") return feedbackList.filter(f => f.fromEmployeeId === myEmployeeId)
+        if (tab === "received") {
+            // Feedback where I am the recipient AND I am NOT the sender
+            return feedbackList.filter(f => f.toEmployeeId === myEmployeeId && f.fromEmployeeId !== myEmployeeId)
+        }
+        if (tab === "sent") {
+            // Feedback where I am the sender
+            return feedbackList.filter(f => f.fromEmployeeId === myEmployeeId)
+        }
         return feedbackList
     }, [feedbackList, tab, myEmployeeId, isAdmin])
 
-    const receivedCount = React.useMemo(() => feedbackList.filter(f => f.toEmployeeId === myEmployeeId).length, [feedbackList, myEmployeeId])
+    const receivedCount = React.useMemo(() => feedbackList.filter(f => f.toEmployeeId === myEmployeeId && f.fromEmployeeId !== myEmployeeId).length, [feedbackList, myEmployeeId])
     const sentCount = React.useMemo(() => feedbackList.filter(f => f.fromEmployeeId === myEmployeeId).length, [feedbackList, myEmployeeId])
 
     const filteredEmployees = React.useMemo(() => {
-        if (!empSearch.trim()) return employees
+        // Exclude self from employee picker
+        const others = employees.filter(e => e.id !== myEmployeeId)
+        if (!empSearch.trim()) return others
         const q = empSearch.toLowerCase()
-        return employees.filter(e =>
+        return others.filter(e =>
             `${e.firstName} ${e.lastName}`.toLowerCase().includes(q) ||
             (e.designation || "").toLowerCase().includes(q) ||
             (e.department?.name || "").toLowerCase().includes(q)
         )
-    }, [employees, empSearch])
+    }, [employees, empSearch, myEmployeeId])
 
     const resetForm = () => {
         setToEmployeeId("")
@@ -157,11 +188,15 @@ export default function FeedbackPage() {
         if (!toEmployeeId) { toast.error("Select an employee"); return }
         if (rating === 0) { toast.error("Select a rating"); return }
         if (content.length < 10) { toast.error("Feedback must be at least 10 characters"); return }
-        if (!period) { toast.error("Period is required"); return }
-
         setSubmitting(true)
         try {
-            await FeedbackAPI.create({ toEmployeeId, content, rating, isAnonymous, period })
+            await FeedbackAPI.create({
+                toEmployeeId,
+                content,
+                rating,
+                isAnonymous,
+                type: isAnonymous ? "ANONYMOUS" : "PEER",
+            })
             toast.success("Feedback submitted successfully")
             setShowCreate(false)
             resetForm()
@@ -246,12 +281,9 @@ export default function FeedbackPage() {
                                     <Avatar
                                         name={
                                             tab === "sent"
-                                                ? `${fb.toEmployee.firstName} ${fb.toEmployee.lastName}`
-                                                : fb.fromEmployee
-                                                    ? `${fb.fromEmployee.firstName} ${fb.fromEmployee.lastName}`
-                                                    : "Anonymous"
+                                                ? (fb.toEmployeeName || "Unknown")
+                                                : (fb.fromEmployeeName || "Anonymous")
                                         }
-                                        src={tab === "sent" ? fb.toEmployee.avatarUrl || undefined : fb.fromEmployee?.avatarUrl || undefined}
                                         size="sm"
                                     />
                                     <div className="flex-1 min-w-0">
@@ -259,21 +291,19 @@ export default function FeedbackPage() {
                                             <div className="flex items-center gap-2">
                                                 {tab === "sent" ? (
                                                     <span className="text-sm font-semibold text-text">
-                                                        To: {fb.toEmployee.firstName} {fb.toEmployee.lastName}
+                                                        To: {fb.toEmployeeName || "Unknown"}
                                                     </span>
                                                 ) : (
                                                     <span className="text-sm font-semibold text-text">
-                                                        {fb.fromEmployee
-                                                            ? `${fb.fromEmployee.firstName} ${fb.fromEmployee.lastName}`
-                                                            : "Anonymous"}
+                                                        {fb.fromEmployeeName || "Anonymous"}
                                                     </span>
                                                 )}
                                                 {isAdmin && tab === "all" && (
                                                     <span className="text-xs text-text-4">
-                                                        {fb.fromEmployee ? `${fb.fromEmployee.firstName}` : "Anon"} → {fb.toEmployee.firstName}
+                                                        {fb.fromEmployeeName || "Anon"} → {fb.toEmployeeName || "Unknown"}
                                                     </span>
                                                 )}
-                                                <Badge variant="neutral" size="sm">{fb.period}</Badge>
+                                                {fb.period ? <Badge variant="neutral" size="sm">{fb.period}</Badge> : <Badge variant="neutral" size="sm">{fb.type}</Badge>}
                                                 {fb.isAnonymous && <Badge variant="warning" size="sm">Anonymous</Badge>}
                                             </div>
                                             <StarRating value={fb.rating} readonly />
@@ -367,18 +397,6 @@ export default function FeedbackPage() {
                             <div className="text-xs text-text-4 mt-1">{content.length}/500</div>
                         </div>
 
-                        {/* Period */}
-                        <div>
-                            <label className="block text-sm font-medium text-text mb-1.5">Period</label>
-                            <input
-                                type="text"
-                                value={period}
-                                onChange={e => setPeriod(e.target.value)}
-                                placeholder="e.g. 2026-Q1"
-                                className="w-full px-3 py-2 text-sm bg-bg-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent text-text placeholder:text-text-4"
-                            />
-                        </div>
-
                         {/* Anonymous Toggle */}
                         <label className="flex items-center gap-3 cursor-pointer">
                             <input
@@ -419,7 +437,7 @@ export default function FeedbackPage() {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <Badge variant="neutral">{viewFeedback.period}</Badge>
+                                    {viewFeedback.period ? <Badge variant="neutral">{viewFeedback.period}</Badge> : <Badge variant="neutral">{viewFeedback.type}</Badge>}
                                     {viewFeedback.isAnonymous && <Badge variant="warning">Anonymous</Badge>}
                                 </div>
                                 <StarRating value={viewFeedback.rating} readonly />
@@ -430,14 +448,11 @@ export default function FeedbackPage() {
                                     <div className="text-xs text-text-3 mb-1">From</div>
                                     <div className="flex items-center gap-2">
                                         <Avatar
-                                            name={viewFeedback.fromEmployee ? `${viewFeedback.fromEmployee.firstName} ${viewFeedback.fromEmployee.lastName}` : "Anonymous"}
-                                            src={viewFeedback.fromEmployee?.avatarUrl || undefined}
+                                            name={viewFeedback.fromEmployeeName || "Anonymous"}
                                             size="xs"
                                         />
                                         <span className="text-sm font-medium text-text">
-                                            {viewFeedback.fromEmployee
-                                                ? `${viewFeedback.fromEmployee.firstName} ${viewFeedback.fromEmployee.lastName}`
-                                                : "Anonymous"}
+                                            {viewFeedback.fromEmployeeName || "Anonymous"}
                                         </span>
                                     </div>
                                 </div>
@@ -445,12 +460,11 @@ export default function FeedbackPage() {
                                     <div className="text-xs text-text-3 mb-1">To</div>
                                     <div className="flex items-center gap-2">
                                         <Avatar
-                                            name={`${viewFeedback.toEmployee.firstName} ${viewFeedback.toEmployee.lastName}`}
-                                            src={viewFeedback.toEmployee?.avatarUrl || undefined}
+                                            name={viewFeedback.toEmployeeName || "Unknown"}
                                             size="xs"
                                         />
                                         <span className="text-sm font-medium text-text">
-                                            {viewFeedback.toEmployee.firstName} {viewFeedback.toEmployee.lastName}
+                                            {viewFeedback.toEmployeeName || "Unknown"}
                                         </span>
                                     </div>
                                 </div>

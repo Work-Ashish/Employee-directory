@@ -87,7 +87,7 @@ export function AdminPFView() {
                 api.get<PFRecord[]>('/pf/'),
                 EmployeeAPI.fetchEmployees(1, 100)
             ])
-            setRecords(extractArray<PFRecord>(pfRes.data))
+            setRecords((pfRes.data as any)?.results || extractArray<PFRecord>(pfRes.data))
             setEmployees(extractArray<Employee>(empRes.results))
         } catch (error) {
             toast.error("Failed to load data")

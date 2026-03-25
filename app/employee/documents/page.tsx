@@ -11,12 +11,12 @@ import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
 import { Spinner } from "@/components/ui/Spinner"
 
-const CATEGORY_LABELS: Record<DocCategory, string> = {
+const CATEGORY_LABELS: Record<string, string> = {
     POLICY: "Policy",
     CONTRACT: "Contract",
-    PAYSLIP: "Payslip",
-    TAX: "Tax",
-    IDENTIFICATION: "ID Document",
+    CERTIFICATE: "Certificate",
+    ID_PROOF: "ID Proof",
+    OTHER: "Other",
 }
 
 export default function MyDocuments() {
@@ -27,7 +27,12 @@ export default function MyDocuments() {
         async function load() {
             try {
                 const data = await DocumentAPI.list()
-                setDocuments(extractArray<Document>(data))
+                const rawDocs = (data as any)?.results || extractArray<any>(data)
+                setDocuments(rawDocs.map((d: any) => ({
+                    ...d,
+                    url: d.url || d.fileUrl || "",
+                    uploadDate: d.uploadDate || d.createdAt || "",
+                })))
             } catch {
                 toast.error("Failed to load documents")
             } finally {

@@ -102,7 +102,7 @@ export function EmployeeReimbursementView() {
         try {
             setIsLoading(true)
             const data = await ReimbursementAPI.list()
-            setRecords(extractArray<Reimbursement>(data))
+            setRecords((data as any)?.results || extractArray<Reimbursement>(data))
         } catch {
             toast.error("Failed to load records")
         } finally {

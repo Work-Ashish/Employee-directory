@@ -206,7 +206,7 @@ export function EmployeeLeaveView() {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="border-b border-border bg-bg-2">
-                                    {["Leave Type", "Dates", "Duration", "Reason", "Status"].map(h => (
+                                    {["Leave Type", "Dates", "Duration", "Reason", "Status", "Reviewed By"].map(h => (
                                         <th key={h} className="px-4 py-3 text-xs font-bold text-text-3 text-left uppercase tracking-wide">{h}</th>
                                     ))}
                                 </tr>
@@ -214,7 +214,7 @@ export function EmployeeLeaveView() {
                             <tbody>
                                 {leaves.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5}>
+                                        <td colSpan={6}>
                                             <EmptyState
                                                 title="No leave requests yet"
                                                 description="You haven't submitted any leave requests. Click 'Apply Leave' to get started."
@@ -247,6 +247,9 @@ export function EmployeeLeaveView() {
                                             <Badge variant={STATUS_BADGE_VARIANT[req.status]} dot>
                                                 {STATUS_LABELS[req.status]}
                                             </Badge>
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-text-2">
+                                            {(req as any).actionedByName || "—"}
                                         </td>
                                     </tr>
                                 ))}

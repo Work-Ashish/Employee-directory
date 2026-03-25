@@ -23,6 +23,9 @@ class AssetSerializer(serializers.ModelSerializer):
             'status',
             'status_display',
             'purchase_date',
+            'value',
+            'image',
+            'assigned_date',
             'notes',
             'created_at',
             'updated_at',
@@ -46,6 +49,9 @@ class AssetCreateSerializer(serializers.Serializer):
         choices=Asset.Status.choices, required=False, default=Asset.Status.AVAILABLE,
     )
     purchase_date = serializers.DateField(required=False, allow_null=True)
+    value = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, default=0, allow_null=True)
+    image = serializers.CharField(max_length=500, required=False, allow_blank=True, default='', allow_null=True)
+    assigned_date = serializers.DateField(required=False, allow_null=True)
     notes = serializers.CharField(required=False, allow_blank=True, default='')
 
     def create(self, validated_data):
@@ -56,6 +62,9 @@ class AssetCreateSerializer(serializers.Serializer):
             assigned_to_id=validated_data.get('assigned_to_id'),
             status=validated_data.get('status', Asset.Status.AVAILABLE),
             purchase_date=validated_data.get('purchase_date'),
+            value=validated_data.get('value') or 0,
+            image=validated_data.get('image') or '',
+            assigned_date=validated_data.get('assigned_date'),
             notes=validated_data.get('notes', ''),
         )
 
@@ -69,4 +78,7 @@ class AssetUpdateSerializer(serializers.Serializer):
     assigned_to_id = serializers.UUIDField(required=False, allow_null=True)
     status = serializers.ChoiceField(choices=Asset.Status.choices, required=False)
     purchase_date = serializers.DateField(required=False, allow_null=True)
+    value = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    image = serializers.CharField(max_length=500, required=False, allow_blank=True, allow_null=True)
+    assigned_date = serializers.DateField(required=False, allow_null=True)
     notes = serializers.CharField(required=False, allow_blank=True)
