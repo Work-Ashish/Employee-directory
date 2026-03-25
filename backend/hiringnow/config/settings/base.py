@@ -58,6 +58,8 @@ INSTALLED_APPS = [
     'apps.sessions.apps.SessionsConfig',
     'apps.timetracker.apps.TimetrackerConfig',
     'apps.audit.apps.AuditConfig',
+    'apps.workflows.apps.WorkflowsConfig',
+    'apps.agent.apps.AgentConfig',
 ]
 
 # The MIDDLEWARE setting is a list of all the middleware that is used in the project.

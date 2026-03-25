@@ -160,6 +160,89 @@
 3. Set a new password.
 4. Return to the dashboard.
 
+## Time Agent
+
+### Desktop Agent Setup (Employee)
+
+1. Download and install the EMS Time Agent.
+2. Launch the agent; a login window appears.
+3. Enter Organization ID (tenant slug), email, and password.
+4. The agent authenticates via Django JWT and begins tracking.
+5. The agent icon appears in the system tray with status "Tracking".
+
+### Daily Usage (Employee)
+
+1. The agent starts automatically on login (if previously authenticated).
+2. Active window, keystrokes, and mouse clicks are tracked every 5 seconds.
+3. Screenshots are captured every 8-12 minutes (randomized). A notification appears.
+4. After 10 minutes of inactivity, an idle popup asks: "Were you working?" or "Taking a break?".
+5. The employee can describe what they were doing if they select "Was Working".
+6. Data syncs to the server every 60 seconds. Heartbeat pings every 30 seconds.
+7. Right-click the tray icon to pause/resume tracking, force sync, or log out.
+
+### View Daily Activity Report (Employee)
+
+1. Open the activity tracker widget on the employee dashboard.
+2. Click **View Full Report** or navigate to the report endpoint.
+3. Reports for past dates are available immediately; today's report is available after 8:00 PM.
+4. Review: active time, idle time, productivity score, top apps, top websites, clock-in/out times.
+
+### Admin Agent Dashboard
+
+1. Navigate to `/admin/agent-tracking`.
+2. View dashboard summary: device counts (active, pending, suspended), today's aggregate stats (active/idle seconds, keystrokes, mouse clicks, screenshot count).
+3. Review top 10 apps and top 10 websites by usage time.
+4. Identify stale devices (no heartbeat for 10+ minutes).
+5. Search and filter the device inventory by status, name, or employee.
+
+### Admin Device Management
+
+1. From the agent dashboard, click the **Devices** tab.
+2. View paginated device list with employee name, platform, agent version, last heartbeat, and status.
+3. **Approve** a pending device to set it to Active (required for data ingestion).
+4. **Suspend** a device to temporarily block data ingestion.
+5. **Issue commands**: Force Sync, Resume, Suspend, Kill Switch, Uninstall, Wipe Data, Force Update, Update Config.
+6. Commands are queued and delivered when the agent next polls (within 30 seconds).
+
+## Workflow Engine
+
+### Create Workflow Template (Admin/HR)
+
+1. Navigate to `/admin/workflows`.
+2. Click **Create Template**.
+3. Enter template name, description, and entity type (Leave, Reimbursement, Resignation, Asset Request, Onboarding, Offboarding).
+4. Add approval steps in order. For each step, specify:
+   - Step name (e.g., "Manager Approval", "HR Review")
+   - Approver type: Reporting Manager, HR, Department Head, Specific Employee, or Auto Approve
+   - SLA in hours (default 24)
+   - Whether the step is optional
+5. Save as **Draft** or publish immediately.
+6. Set status to **Published** to activate the template for auto-triggering.
+
+### Auto-Triggered Workflow (Leave/Resignation)
+
+1. An employee submits a leave request or resignation.
+2. The system checks for a PUBLISHED workflow template matching that entity type.
+3. If found, a WorkflowInstance is automatically created with status `IN_PROGRESS` at step 1.
+4. If no matching template exists, the request proceeds without a workflow.
+
+### Approve/Reject Workflow Step (Approver)
+
+1. The approver (determined by the step's approver type) sees the pending workflow in their list.
+2. Click the workflow to view the entity details and current step.
+3. Choose an action:
+   - **Approve**: Advances to the next step. If this is the last step, the workflow status becomes `APPROVED`.
+   - **Reject**: Finalizes the workflow as `REJECTED`.
+   - **Return for Revision**: Resets the workflow to step 1 as `IN_PROGRESS`.
+4. Optionally add comments.
+5. The workflow instance status updates and the next approver (if any) is notified.
+
+### View Workflow History
+
+1. Admin/HR navigate to the workflows page and see all instances.
+2. Employees see only their own workflow instances.
+3. Click an instance to view the full action history: who approved/rejected at each step, with timestamps and comments.
+
 ## Authentication
 
 ### Login Flow (Django JWT)

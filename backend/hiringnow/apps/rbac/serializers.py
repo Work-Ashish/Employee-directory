@@ -13,10 +13,19 @@ class RegistryPermissionSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 class RoleSerializer(serializers.ModelSerializer):
+    user_count = serializers.SerializerMethodField()
+    permission_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Role
-        fields = ["id", "name", "slug", "description", "is_system", "created_at", "updated_at"]
+        fields = ["id", "name", "slug", "description", "is_system", "user_count", "permission_count", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_user_count(self, obj):
+        return UserRole.objects.filter(role=obj).count()
+
+    def get_permission_count(self, obj):
+        return RolePermission.objects.filter(role=obj).count()
 
 class RolePermissionReadSerializer(serializers.Serializer):
     codename = serializers.CharField()

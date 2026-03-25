@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EMS Time Agent - Login</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="login-wrapper">
+    <!-- Titlebar -->
+    <div class="titlebar">
+      <h1>EMS Time Agent</h1>
+      <button class="titlebar-btn" id="closeBtn" title="Close">&times;</button>
+    </div>
+
+    <!-- Header -->
+    <div class="login-header">
+      <div class="logo">&#128337;</div>
+      <h2>Sign In</h2>
+      <p>Connect to your organization's time tracker</p>
+    </div>
+
+    <!-- Form -->
+    <form class="login-form" id="loginForm">
+      <div id="message" class="message"></div>
+
+      <div class="form-group">
+        <label class="form-label" for="tenantSlug">Organization</label>
+        <input
+          type="text"
+          id="tenantSlug"
+          class="form-input"
+          placeholder="your-company"
+          autocomplete="off"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          class="form-input"
+          placeholder="you@company.com"
+          autocomplete="email"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          class="form-input"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          required
+        >
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="loginBtn">
+        Login &amp; Start Tracking
+      </button>
+    </form>
+
+    <div class="login-footer">
+      <span class="text-sm text-muted">EMS Pro Time Tracking Agent v1.0</span>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const messageEl = document.getElementById('message');
+    const loginBtn = document.getElementById('loginBtn');
+    const closeBtn = document.getElementById('closeBtn');
+
+    closeBtn.addEventListener('click', () => {
+      window.close();
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMessage();
+
+      const tenantSlug = document.getElementById('tenantSlug').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!tenantSlug || !email || !password) {
+        showMessage('Please fill in all fields.', 'error');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const result = await window.timeAgent.login(tenantSlug, email, password);
+        if (result.success) {
+          showMessage('Login successful! Starting tracker...', 'success');
+          // Window will be closed by main process
+        } else {
+          showMessage(result.error || 'Login failed. Check your credentials.', 'error');
+        }
+      } catch (err) {
+        showMessage('Connection error. Is the server running?', 'error');
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    function showMessage(text, type) {
+      messageEl.textContent = text;
+      messageEl.className = 'message ' + type;
+    }
+
+    function clearMessage() {
+      messageEl.textContent = '';
+      messageEl.className = 'message';
+    }
+
+    function setLoading(loading) {
+      loginBtn.disabled = loading;
+      loginBtn.innerHTML = loading
+        ? '<span class="spinner"></span> Connecting...'
+        : 'Login &amp; Start Tracking';
+    }
+  </script>
+</body>
+</html>

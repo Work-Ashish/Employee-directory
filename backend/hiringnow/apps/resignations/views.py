@@ -89,6 +89,13 @@ class ResignationListCreateView(APIView):
             )
 
         resignation = serializer.save()
+
+        # Initiate workflow if a RESIGNATION template is published
+        from apps.workflows.services import initiate_workflow
+        employee_profile = getattr(request.user, 'employee_profile', None)
+        if employee_profile:
+            initiate_workflow('RESIGNATION', str(resignation.id), employee_profile)
+
         return Response(
             ResignationSerializer(resignation).data,
             status=status.HTTP_201_CREATED,

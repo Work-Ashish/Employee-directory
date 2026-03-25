@@ -9,6 +9,7 @@ class ResignationSerializer(serializers.ModelSerializer):
     employee_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     approved_by_name = serializers.SerializerMethodField()
+    workflow_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Resignation
@@ -22,6 +23,7 @@ class ResignationSerializer(serializers.ModelSerializer):
             'status_display',
             'approved_by',
             'approved_by_name',
+            'workflow_status',
             'submitted_at',
             'created_at',
             'updated_at',
@@ -34,6 +36,18 @@ class ResignationSerializer(serializers.ModelSerializer):
     def get_approved_by_name(self, obj):
         if obj.approved_by:
             return f"{obj.approved_by.first_name} {obj.approved_by.last_name}"
+        return None
+
+    def get_workflow_status(self, obj):
+        from apps.workflows.services import get_workflow_status
+        instance = get_workflow_status('RESIGNATION', str(obj.id))
+        if instance:
+            return {
+                'instance_id': str(instance.id),
+                'status': instance.status,
+                'current_step': instance.current_step,
+                'total_steps': instance.template.steps.count(),
+            }
         return None
 
 

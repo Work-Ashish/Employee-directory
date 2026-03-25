@@ -66,6 +66,7 @@ const navGroups: NavGroup[] = [
     items: [
       { name: "Attendance", href: "/attendance", icon: ClockIcon, module: Module.ATTENDANCE },
       { name: "Leave", href: "/leave", icon: CalendarIcon, module: Module.LEAVES },
+      { name: "Time Agent", href: "/employee/time-agent", icon: LaptopIcon, module: Module.ATTENDANCE },
     ],
   },
   {

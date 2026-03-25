@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Idle Detection</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="idle-popup">
+    <div class="idle-icon">&#9202;</div>
+    <div class="idle-title">You seem to be away</div>
+    <div class="idle-subtitle" id="idleMessage">
+      You've been inactive for a while.
+    </div>
+
+    <!-- Description input (shown after clicking "Yes") -->
+    <div id="descriptionSection" class="idle-description">
+      <div class="form-group">
+        <label class="form-label" for="workDescription">What were you working on?</label>
+        <input
+          type="text"
+          id="workDescription"
+          class="form-input"
+          placeholder="e.g., Phone call, reading docs..."
+          autocomplete="off"
+        >
+      </div>
+      <button id="submitDescription" class="btn btn-primary btn-sm">
+        Submit
+      </button>
+    </div>
+
+    <div class="idle-actions" id="actionsSection">
+      <button id="yesBtn" class="btn btn-primary">
+        Yes, I was working
+      </button>
+      <button id="noBtn" class="btn btn-ghost">
+        No, I took a break
+      </button>
+    </div>
+
+    <div class="text-center text-sm text-muted mt-12" id="timerText">
+      Auto-closes in 5:00
+    </div>
+  </div>
+
+  <script>
+    const idleMessage = document.getElementById('idleMessage');
+    const actionsSection = document.getElementById('actionsSection');
+    const descriptionSection = document.getElementById('descriptionSection');
+    const workDescription = document.getElementById('workDescription');
+    const submitDescription = document.getElementById('submitDescription');
+    const yesBtn = document.getElementById('yesBtn');
+    const noBtn = document.getElementById('noBtn');
+    const timerText = document.getElementById('timerText');
+
+    let countdownSeconds = 300; // 5 minutes
+    let countdownInterval = null;
+
+    // Receive idle duration from main process
+    window.timeAgent.onIdleDetected((data) => {
+      idleMessage.textContent = `You've been inactive for ${data.minutes} minute${data.minutes !== 1 ? 's' : ''}.`;
+    });
+
+    // Start countdown timer
+    countdownInterval = setInterval(() => {
+      countdownSeconds--;
+      if (countdownSeconds <= 0) {
+        clearInterval(countdownInterval);
+        // Main process handles the timeout
+        return;
+      }
+      const min = Math.floor(countdownSeconds / 60);
+      const sec = countdownSeconds % 60;
+      timerText.textContent = `Auto-closes in ${min}:${sec.toString().padStart(2, '0')}`;
+    }, 1000);
+
+    // "Yes, I was working" — show description input
+    yesBtn.addEventListener('click', () => {
+      actionsSection.classList.add('hidden');
+      descriptionSection.classList.add('visible');
+      workDescription.focus();
+    });
+
+    // Submit work description
+    submitDescription.addEventListener('click', () => {
+      const desc = workDescription.value.trim() || 'Working (unspecified)';
+      window.timeAgent.idleResponse('WORKING', desc);
+      clearInterval(countdownInterval);
+      window.close();
+    });
+
+    // Allow Enter key to submit description
+    workDescription.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        submitDescription.click();
+      }
+    });
+
+    // "No, I took a break"
+    noBtn.addEventListener('click', () => {
+      window.timeAgent.idleResponse('BREAK', '');
+      clearInterval(countdownInterval);
+      window.close();
+    });
+  </script>
+</body>
+</html>

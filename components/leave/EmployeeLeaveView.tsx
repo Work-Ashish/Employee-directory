@@ -20,6 +20,13 @@ import { LeaveAPI } from "@/features/leave/api/client"
 type LeaveType = "CASUAL" | "SICK" | "EARNED" | "MATERNITY" | "PATERNITY" | "UNPAID"
 type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED"
 
+interface WorkflowStatusInfo {
+    instanceId: string
+    status: string
+    currentStep: number
+    totalSteps: number
+}
+
 interface LeaveRequest {
     id: string
     type: LeaveType
@@ -27,6 +34,7 @@ interface LeaveRequest {
     endDate: string
     reason: string | null
     status: LeaveStatus
+    workflowStatus: WorkflowStatusInfo | null
     createdAt: string
 }
 
@@ -244,9 +252,16 @@ export function EmployeeLeaveView() {
                                         </td>
                                         <td className="px-4 py-3 text-base text-text-3 max-w-[200px] truncate">{req.reason || "—"}</td>
                                         <td className="px-4 py-3">
-                                            <Badge variant={STATUS_BADGE_VARIANT[req.status]} dot>
-                                                {STATUS_LABELS[req.status]}
-                                            </Badge>
+                                            <div className="flex flex-col gap-1">
+                                                <Badge variant={STATUS_BADGE_VARIANT[req.status]} dot>
+                                                    {STATUS_LABELS[req.status]}
+                                                </Badge>
+                                                {req.workflowStatus && req.workflowStatus.status !== 'APPROVED' && req.workflowStatus.status !== 'REJECTED' && (
+                                                    <span className="text-xs text-info">
+                                                        Step {req.workflowStatus.currentStep} of {req.workflowStatus.totalSteps} — Awaiting Approval
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-4 py-3 text-sm text-text-2">
                                             {(req as any).actionedByName || "—"}

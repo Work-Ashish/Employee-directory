@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EMS Time Agent</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Titlebar -->
+  <div class="titlebar">
+    <h1>EMS Time Agent</h1>
+    <button class="titlebar-btn" id="closeBtn" title="Minimize to tray">&minus;</button>
+  </div>
+
+  <div class="container">
+    <!-- Status Card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="icon">&#9679;</span>
+        <span class="label">Tracking Status</span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span id="statusBadge" class="status-badge active">
+          <span class="status-dot"></span>
+          <span id="statusText">Active</span>
+        </span>
+        <span id="userEmail" class="text-sm text-muted"></span>
+      </div>
+    </div>
+
+    <!-- Activity Card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="icon">&#128187;</span>
+        <span class="label">Current Activity</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Application</span>
+        <span class="info-value" id="currentApp">--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Window</span>
+        <span class="info-value" id="currentTitle">--</span>
+      </div>
+    </div>
+
+    <!-- Session Card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="icon">&#128340;</span>
+        <span class="label">Session Info</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Session Start</span>
+        <span class="info-value" id="sessionStart">--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Last Sync</span>
+        <span class="info-value" id="lastSync">--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Pending Data</span>
+        <span class="info-value" id="pendingCount">0 records</span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex flex-col gap-8">
+      <button id="toggleBtn" class="btn btn-warning btn-sm">
+        Pause Tracking
+      </button>
+      <div class="flex gap-8">
+        <button id="syncBtn" class="btn btn-ghost btn-sm" style="flex:1">
+          Sync Now
+        </button>
+        <button id="logoutBtn" class="btn btn-danger btn-sm" style="flex:1">
+          Logout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const userEmail = document.getElementById('userEmail');
+    const currentApp = document.getElementById('currentApp');
+    const currentTitle = document.getElementById('currentTitle');
+    const sessionStart = document.getElementById('sessionStart');
+    const lastSync = document.getElementById('lastSync');
+    const pendingCount = document.getElementById('pendingCount');
+    const toggleBtn = document.getElementById('toggleBtn');
+    const syncBtn = document.getElementById('syncBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const closeBtn = document.getElementById('closeBtn');
+
+    let isPaused = false;
+    const startTime = new Date();
+
+    // Initialize
+    init();
+
+    async function init() {
+      const userInfo = await window.timeAgent.getUserInfo();
+      userEmail.textContent = userInfo.email || '';
+      sessionStart.textContent = formatTime(startTime);
+
+      // Get initial status
+      const status = await window.timeAgent.getStatus();
+      updateUI(status);
+    }
+
+    // Listen for status updates from main process
+    window.timeAgent.onStatusUpdate((data) => {
+      updateUI(data);
+    });
+
+    window.timeAgent.onTrackingStateChange((data) => {
+      isPaused = data.paused;
+      updateToggleBtn();
+      updateStatusBadge();
+    });
+
+    function updateUI(data) {
+      if (data.currentApp) currentApp.textContent = data.currentApp;
+      if (data.currentTitle) currentTitle.textContent = data.currentTitle || '--';
+      if (data.lastSync) lastSync.textContent = formatTime(new Date(data.lastSync));
+      if (data.pendingCount !== undefined) {
+        pendingCount.textContent = data.pendingCount + ' records';
+      }
+      if (data.paused !== undefined) {
+        isPaused = data.paused;
+        updateToggleBtn();
+      }
+      if (data.email) userEmail.textContent = data.email;
+      updateStatusBadge();
+    }
+
+    function updateStatusBadge() {
+      statusBadge.className = 'status-badge ' + (isPaused ? 'paused' : 'active');
+      statusText.textContent = isPaused ? 'Paused' : 'Active';
+    }
+
+    function updateToggleBtn() {
+      if (isPaused) {
+        toggleBtn.textContent = 'Resume Tracking';
+        toggleBtn.className = 'btn btn-primary btn-sm';
+      } else {
+        toggleBtn.textContent = 'Pause Tracking';
+        toggleBtn.className = 'btn btn-warning btn-sm';
+      }
+    }
+
+    // Button handlers
+    toggleBtn.addEventListener('click', async () => {
+      if (isPaused) {
+        await window.timeAgent.resumeTracking();
+      } else {
+        await window.timeAgent.pauseTracking();
+      }
+    });
+
+    syncBtn.addEventListener('click', async () => {
+      syncBtn.disabled = true;
+      syncBtn.innerHTML = '<span class="spinner"></span>';
+      try {
+        await window.timeAgent.forceSync();
+        lastSync.textContent = formatTime(new Date());
+      } catch {}
+      syncBtn.disabled = false;
+      syncBtn.textContent = 'Sync Now';
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      if (confirm('Logout and stop tracking?')) {
+        await window.timeAgent.logout();
+      }
+    });
+
+    closeBtn.addEventListener('click', () => {
+      window.close();
+    });
+
+    function formatTime(date) {
+      if (!date || isNaN(date.getTime())) return '--';
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+  </script>
+</body>
+</html>

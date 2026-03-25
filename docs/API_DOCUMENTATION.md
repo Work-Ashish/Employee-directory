@@ -173,31 +173,134 @@ Detail view GET/PUT requests return **403** if the record is outside the user's 
 - `GET /api/payroll/{id}/payslip`
 - `GET/POST /api/pf`
 
-### Agent Tracking
+### Agent Tracking (Django-backed)
 
-#### Employee / device endpoints
+All agent tracking endpoints are implemented in Django (`apps/agent/`). Next.js proxy routes forward to Django, and the desktop Electron agent calls Django directly.
 
-- `POST /api/agent/register`
-- `POST /api/agent/heartbeat`
-- `GET /api/agent/config`
-- `POST /api/agent/activity`
-- `POST /api/agent/idle-event`
-- `GET /api/agent/commands`
-- `PUT /api/agent/commands/{id}`
-- `GET /api/agent/report/{date}`
+#### Device Registration
 
-#### Admin endpoints
+- `POST /api/v1/agent/register/` -- First-time device registration (idempotent by `machine_id`)
+  - Request: `{ machine_id, device_name, platform, agent_version, employee_id? }`
+  - Response: `AgentDevice` serialized object with `id`, `status`, `employee`, etc.
+  - If `machine_id` already exists, returns the existing device
+  - If `employee_id` omitted, resolved from JWT `employee_profile`
 
-- `GET /api/admin/agent/dashboard`
-- `GET /api/admin/agent/devices`
-- `PATCH /api/admin/agent/devices`
-- `POST /api/admin/agent/command`
+#### Heartbeat
 
-#### Cron / worker endpoints
+- `POST /api/v1/agent/heartbeat/` -- Agent pings every 30 seconds
+  - Request: `{ device_id?, machine_id?, agent_version? }`
+  - Response: `{ status: "ok", server_time: "..." }`
+  - Looks up device by `device_id` or `machine_id`
+  - Updates `last_heartbeat` and optionally `agent_version`
 
-- `POST /api/cron/agent-aggregate`
-- `POST /api/cron/agent-reports`
-- `POST /api/worker/process-queue`
+#### Bulk Data Ingest
+
+- `POST /api/v1/agent/ingest/` -- Bulk activity data upload from desktop agent
+  - Request: `{ device_id, sessions: [{ started_at, ended_at, active_seconds, idle_seconds, keystrokes, mouse_clicks, app_usages: [...], website_visits: [...], idle_events: [...], screenshots: [...] }] }`
+  - Response: `{ status: "ok", sessions_created: 1 }`
+  - Rejects if device status is not `ACTIVE`
+  - Auto-categorizes apps and domains via `categorization.py`
+  - Categories: `PRODUCTIVE`, `NEUTRAL`, `UNPRODUCTIVE`, `UNCATEGORIZED`
+
+#### Screenshot Upload
+
+- `POST /api/v1/agent/screenshot/upload/` -- Upload screenshot as base64
+  - Request: `{ filename, data (base64), captured_at }`
+  - Response: `{ url, image_url, filename, captured_at }`
+  - Saves to `MEDIA_ROOT/agent_screenshots/` with sanitized filename
+
+#### Command Polling
+
+- `GET /api/v1/agent/commands/?device_id=<uuid>` -- Agent polls for pending commands
+  - Also accepts `machine_id` query param
+  - Response: Array of `AgentCommand` objects (type, payload)
+  - Automatically marks returned commands as `DELIVERED`
+  - Command types: `SUSPEND`, `RESUME`, `KILL_SWITCH`, `UNINSTALL`, `WIPE_DATA`, `FORCE_SYNC`, `FORCE_UPDATE`, `UPDATE_CONFIG`
+
+#### Daily Report
+
+- `GET /api/v1/agent/daily-report/?date=YYYY-MM-DD` -- Employee's daily activity summary
+  - Returns: productivity score, active/idle/productive seconds, top apps, top websites, clock-in/out times
+  - Today's report only available after 8:00 PM
+  - Future dates rejected
+  - Computes and caches `DailyActivitySummary` on first access
+
+#### Admin Dashboard
+
+- `GET /api/v1/admin/agent/dashboard/` -- Aggregated stats for admin dashboard
+  - Requires `assets.view` permission
+  - Returns: device counts by status, today's session aggregates (active/idle/keystrokes/clicks/screenshots), top 10 apps, top 10 websites, stale devices (no heartbeat for 10+ min)
+
+#### Admin Device Management
+
+- `GET /api/v1/admin/agent/devices/` -- Paginated device list with search/filter
+  - Query params: `status`, `search`, `page`, `limit`
+  - Requires `assets.view` permission
+- `POST /api/v1/admin/agent/devices/` -- Update device status
+  - Request: `{ device_id, status }`
+  - Requires `assets.view` permission
+
+#### Admin Command Issuance
+
+- `POST /api/v1/admin/agent/command/` -- Issue a command to a device
+  - Request: `{ device_id, type, payload? }`
+  - Requires `assets.manage` permission
+  - Side-effects: `SUSPEND`/`KILL_SWITCH` set device to `SUSPENDED`, `UNINSTALL` to `UNINSTALLED`, `RESUME` to `ACTIVE`
+
+#### Cron / Worker Endpoints
+
+- `POST /api/cron/agent-aggregate` -- Aggregate daily activity data
+- `POST /api/cron/agent-reports` -- Generate daily reports
+- `POST /api/worker/process-queue` -- Process background job queue
+
+### Workflow Engine (Django-backed)
+
+All workflow endpoints are implemented in Django (`apps/workflows/`). The engine supports multi-step approval workflows that can be wired to any entity type.
+
+#### Workflow Templates
+
+- `GET /api/v1/workflows/templates/` -- List workflow templates (paginated)
+  - Query params: `entity_type`, `status`, `page`, `limit`
+  - Requires `settings.view` permission
+  - Response: `{ results: [...], total, page, limit, total_pages }`
+
+- `POST /api/v1/workflows/templates/` -- Create workflow template
+  - Requires `settings.manage` permission
+  - Request: `{ name, description, entity_type, status, steps: [{ order, name, approver_type, approver?, sla_hours, is_optional }] }`
+  - Entity types: `LEAVE`, `REIMBURSEMENT`, `RESIGNATION`, `ASSET_REQUEST`, `ONBOARDING`, `OFFBOARDING`
+  - Template statuses: `DRAFT`, `PUBLISHED`, `ARCHIVED`
+
+#### Workflow Template Detail
+
+- `GET /api/v1/workflows/templates/{id}/` -- Get template with steps
+- `PUT /api/v1/workflows/templates/{id}/` -- Update template fields
+- `DELETE /api/v1/workflows/templates/{id}/` -- Delete template
+
+#### Workflow Instances
+
+- `GET /api/v1/workflows/instances/` -- List workflow instances
+  - Admin/HR see all; employees see only their own
+  - Query params: `status`, `template_id`, `page`, `limit`
+  - Instance statuses: `PENDING`, `IN_PROGRESS`, `APPROVED`, `REJECTED`, `CANCELLED`
+
+- `POST /api/v1/workflows/instances/` -- Create workflow instance
+  - Request: `{ template_id, entity_id }`
+  - Auto-sets `initiated_by` from JWT
+
+- `GET /api/v1/workflows/instances/{id}/` -- Instance detail with actions and steps
+
+#### Workflow Actions
+
+- `POST /api/v1/workflows/instances/{id}/action/` -- Approve, reject, or return a step
+  - Request: `{ decision, comments? }`
+  - Decisions: `APPROVED`, `REJECTED`, `RETURNED`
+  - On approve: advances to next step or finalizes as `APPROVED`
+  - On reject: finalizes as `REJECTED`
+  - On return: resets to step 1 as `IN_PROGRESS`
+
+#### Auto-Trigger Integration
+
+The workflow engine integrates with Leave and Resignation modules via `initiate_workflow()` in `apps/workflows/services.py`. When a leave request or resignation is created, if a `PUBLISHED` workflow template exists for that entity type, a workflow instance is automatically created.
 
 ### Teams (Django-backed)
 
@@ -299,6 +402,20 @@ Defined in `lib/schemas/agent.ts`:
 | `/api/v1/teams/sync-from-hierarchy/` | POST | Auto-create teams from hierarchy | `app/api/teams/sync/` |
 | `/api/v1/teams/org-chart/` | GET | Org chart tree | `app/api/teams/org-chart/` |
 | `/api/v1/dashboard/` | GET | Dashboard stats | Dashboard components |
+| `/api/v1/agent/register/` | POST | Device registration | Desktop agent / `sync-engine.js` |
+| `/api/v1/agent/heartbeat/` | POST | Heartbeat ping | Desktop agent / `sync-engine.js` |
+| `/api/v1/agent/ingest/` | POST | Bulk activity ingest | Desktop agent / `sync-engine.js` |
+| `/api/v1/agent/screenshot/upload/` | POST | Screenshot upload | Desktop agent / `sync-engine.js` |
+| `/api/v1/agent/commands/` | GET | Poll pending commands | Desktop agent / `sync-engine.js` |
+| `/api/v1/agent/daily-report/` | GET | Employee daily report | `app/api/agent/report/[date]/` |
+| `/api/v1/admin/agent/dashboard/` | GET | Admin agent stats | `app/api/admin/agent/dashboard/` |
+| `/api/v1/admin/agent/devices/` | GET/POST | Device list / status update | `app/api/admin/agent/devices/` |
+| `/api/v1/admin/agent/command/` | POST | Issue device command | `app/api/admin/agent/command/` |
+| `/api/v1/workflows/templates/` | GET/POST | Workflow template CRUD | `app/api/workflows/templates/` |
+| `/api/v1/workflows/templates/{id}/` | GET/PUT/DELETE | Template detail | `app/api/workflows/templates/` |
+| `/api/v1/workflows/instances/` | GET/POST | Workflow instance CRUD | `app/api/workflows/action/` |
+| `/api/v1/workflows/instances/{id}/` | GET | Instance detail | `app/api/workflows/action/` |
+| `/api/v1/workflows/instances/{id}/action/` | POST | Approve/reject/return | `app/api/workflows/action/` |
 
 All feature API clients in `features/*/api/client.ts` call Django via `api.get/post/put/delete` from `lib/api-client.ts`.
 

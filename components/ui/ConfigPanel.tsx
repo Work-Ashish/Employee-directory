@@ -205,7 +205,7 @@ export function ConfigPanel({ isOpen, onClose, screenName, onFieldsChange }: Con
             const { data } = await api.get<any>(`/workflows/fields/?screenName=${encodeURIComponent(screenName)}&active=true`)
             const list = data?.fields ?? data ?? []
             setFields(list)
-        } catch { toast.error("Failed to load fields") }
+        } catch { /* Fields endpoint not available yet — show empty state */ }
         finally { setLoading(false) }
     }, [screenName])
 

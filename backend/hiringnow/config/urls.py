@@ -40,4 +40,6 @@ urlpatterns = [
     path('api/v1/', include('apps.sessions.urls')),
     path('api/v1/', include('apps.timetracker.urls')),
     path('api/v1/', include('apps.audit.urls')),
+    path('api/v1/', include('apps.workflows.urls')),
+    path('api/v1/', include('apps.agent.urls')),
 ]

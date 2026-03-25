@@ -133,6 +133,13 @@ class LeaveListCreateView(APIView):
                 )
 
         leave = serializer.save()
+
+        # Initiate workflow if a LEAVE template is published
+        from apps.workflows.services import initiate_workflow
+        employee_profile = getattr(request.user, 'employee_profile', None)
+        if employee_profile:
+            initiate_workflow('LEAVE', str(leave.id), employee_profile)
+
         return Response(
             LeaveSerializer(leave).data,
             status=status.HTTP_201_CREATED,

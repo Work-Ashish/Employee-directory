@@ -2,7 +2,7 @@
 
 ## Overview
 
-EMS Pro is a multi-tenant HRMS with a **Next.js 16 / React 19 / TailwindCSS 3.4** frontend and a **Django 5.1 + Django REST Framework** backend (`backend/`) using DB-per-tenant PostgreSQL isolation, SimpleJWT authentication, and dynamic RBAC. The system has 7 roles, 18 modules (63 permission codenames), 110+ API routes, 68 database models, AI-assisted workflows, and a desktop agent telemetry/reporting pipeline. 13 of 18 modules are fully migrated to Django; 5 remain partial (Payroll, Feedback, Reports, Settings, Dashboard).
+EMS Pro is a multi-tenant HRMS with a **Next.js 16 / React 19 / TailwindCSS 3.4** frontend and a **Django 5.1 + Django REST Framework** backend (`backend/`) using DB-per-tenant PostgreSQL isolation, SimpleJWT authentication, and dynamic RBAC. The system has 7 roles, 18 modules (63 permission codenames), 130+ API routes, 83 database models (69 Prisma + 14 Django-only), AI-assisted workflows, a multi-step approval workflow engine, and a desktop agent telemetry/reporting pipeline. 13 of 18 modules are fully migrated to Django; 5 remain partial (Payroll, Feedback, Reports, Settings, Dashboard).
 
 ---
 
@@ -60,6 +60,7 @@ graph TB
     Browser --> NextAPIRoutes
     NextAPIRoutes --> Prisma
     Prisma --> LegacyDB
+    DesktopAgent --> TenantMW
     DesktopAgent --> NextAPIRoutes
 ```
 
@@ -76,7 +77,7 @@ graph TB
 
 ## API Layer
 
-The repository currently contains 120+ route handlers.
+The repository currently contains 130+ route handlers.
 
 ### Main route groups
 
@@ -183,7 +184,7 @@ Actions:
 
 ## Database
 
-The current Prisma schema has **63 models** and **38 enums**.
+The current Prisma schema has **69 models** and **46 enums**. Django adds 14 additional models not in Prisma (8 agent, 4 performance, 2 team), for a total of **83 models**.
 
 ### Core HR models
 
@@ -239,7 +240,18 @@ The current Prisma schema has **63 models** and **38 enums**.
 - `Notifications`
 - `AdminAlerts`
 
-### Agent tracking
+### Agent tracking (Django)
+
+- `AgentDevice` -- Desktop agent device registry (machine_id, status, platform, heartbeat)
+- `ActivitySession` -- Continuous activity period on a device (active/idle seconds, keystrokes, clicks)
+- `AppUsage` -- Per-app time tracking within a session (categorized: PRODUCTIVE/NEUTRAL/UNPRODUCTIVE)
+- `WebsiteVisit` -- Per-domain time tracking within a session (categorized)
+- `IdleEvent` -- Idle period detected (10+ min threshold, employee response)
+- `AgentCommand` -- Command queue for devices (SUSPEND, RESUME, KILL_SWITCH, etc.)
+- `Screenshot` -- Screenshot captured during a session (image URL, timestamp)
+- `DailyActivitySummary` -- Pre-computed daily report (productivity score, top apps/sites, clock times)
+
+### Agent tracking (Prisma legacy)
 
 - `AgentDevice`
 - `AgentCommand`
@@ -347,6 +359,8 @@ The new backend follows the HiringNow platform architecture:
 | `apps.audit` | AuditLog model + REST API. Receives events from Next.js `auditLog()` | New |
 | `apps.performance` | Source One performance module: ReviewCycle, MonthlyReview, Appraisal, PIP. 14 endpoints with RBAC + digital signatures + 3-tier row-level scoping | New |
 | `apps.teams` | Team CRUD, membership management, org chart, auto-sync from `reporting_to` hierarchy. `sync_all_teams()` service | New |
+| `apps.agent` | Desktop agent tracking: 8 models (AgentDevice, ActivitySession, AppUsage, WebsiteVisit, IdleEvent, AgentCommand, Screenshot, DailyActivitySummary). 9 endpoints. Categorization engine (120+ apps, 60+ domains). Productivity scoring + daily summary caching + auto clock-in/out | New |
+| `apps.workflows` | Multi-step approval workflows: 4 models (WorkflowTemplate, WorkflowStep, WorkflowInstance, WorkflowAction). 6 entity types. Auto-trigger via `initiate_workflow()`. 5 endpoints | New |
 
 ### Management Commands
 
@@ -387,6 +401,20 @@ The new backend follows the HiringNow platform architecture:
 | `/api/v1/teams/{id}/members/` | POST/DELETE | Add/remove team member |
 | `/api/v1/teams/sync-from-hierarchy/` | POST | Auto-create teams from hierarchy |
 | `/api/v1/teams/org-chart/` | GET | Org chart tree |
+| `/api/v1/agent/register/` | POST | Device registration (idempotent) |
+| `/api/v1/agent/heartbeat/` | POST | Heartbeat ping |
+| `/api/v1/agent/ingest/` | POST | Bulk activity data ingest |
+| `/api/v1/agent/screenshot/upload/` | POST | Screenshot upload (base64) |
+| `/api/v1/agent/commands/` | GET | Poll pending commands |
+| `/api/v1/agent/daily-report/` | GET | Employee daily activity report |
+| `/api/v1/admin/agent/dashboard/` | GET | Admin agent tracking dashboard |
+| `/api/v1/admin/agent/devices/` | GET/POST | Device list / status update |
+| `/api/v1/admin/agent/command/` | POST | Issue command to device |
+| `/api/v1/workflows/templates/` | GET/POST | Workflow template CRUD |
+| `/api/v1/workflows/templates/{id}/` | GET/PUT/DELETE | Template detail/update/delete |
+| `/api/v1/workflows/instances/` | GET/POST | Workflow instance CRUD |
+| `/api/v1/workflows/instances/{id}/` | GET | Instance detail |
+| `/api/v1/workflows/instances/{id}/action/` | POST | Approve/reject/return step |
 
 ### Data Migration
 
@@ -397,6 +425,79 @@ A migration script at `backend/scripts/migrate_ems_data.py` handles:
 - Department, Employee, and sub-profile migration
 - bcrypt hash format adaptation
 - Dry-run mode for validation
+
+---
+
+## Agent Tracking System
+
+### Desktop Agent (Electron)
+
+The desktop agent (`time-agent/`) is an Electron 28 application that runs in the system tray and collects employee activity data. It communicates directly with the Django backend.
+
+```text
+Employee Machine                           Django Backend
++-----------------------+                  +---------------------------+
+| Electron Time Agent   |                  | apps/agent/               |
+|                       |  POST /register  |                           |
+| app-tracker.js ------>|----------------->| AgentRegisterView         |
+| idle-detector.js      |  POST /heartbeat |                           |
+| screenshot-capture.js |----------------->| AgentHeartbeatView        |
+| sync-engine.js ------>|  POST /ingest    |                           |
+|                       |----------------->| AgentIngestView           |
+|                       |  POST /screenshot|  categorization.py        |
+|                       |----------------->|  productivity.py          |
+|                       |  GET /commands   |  services.py              |
+|                       |<-----------------| AgentPollCommandsView     |
++-----------------------+                  +---------------------------+
+```
+
+Key components:
+
+- **app-tracker.js**: Polls the active window every 5 seconds via PowerShell (Windows) or osascript (macOS). Tracks per-app time and window titles. Estimates keystrokes/clicks from idle time patterns
+- **idle-detector.js**: Uses `powerMonitor.getSystemIdleTime()` every 10 seconds. Shows popup after 10 minutes idle. Employee can respond: "Was Working" / "Took a Break" / auto "No Response" after 5 minutes
+- **screenshot-capture.js**: Uses `desktopCapturer.getSources()` to capture screen. Randomized interval (8-12 minutes). Saves JPEG to temp directory. Gracefully handles missing desktopCapturer
+- **sync-engine.js**: Orchestrates device registration, heartbeat (30s), and data sync (60s). Uploads screenshots as base64 first, then sends bulk ingest payload. Caches device ID after registration. Queues data on network failure for retry
+
+### Django Agent App
+
+The backend (`apps/agent/`) processes and stores agent data:
+
+- **8 models**: AgentDevice, ActivitySession, AppUsage, WebsiteVisit, IdleEvent, AgentCommand, Screenshot, DailyActivitySummary
+- **Categorization engine** (`categorization.py`): 120+ app patterns and 60+ domain patterns. Categories: PRODUCTIVE, NEUTRAL, UNPRODUCTIVE, UNCATEGORIZED. Case-insensitive substring matching
+- **Productivity scoring** (`productivity.py`): Weighted formula -- 40% productive time ratio, 25% activity intensity (keystrokes+clicks per hour), 20% focus time (productive stretches > 25 min), 15% low idle ratio. Score range: 0.0 - 1.0
+- **Daily summary** (`services.py`): `compute_daily_summary()` calculates and caches a `DailyActivitySummary` per employee per date. `sync_agent_attendance()` derives clock-in/out from first/last activity sessions
+
+---
+
+## Workflow Engine
+
+### Architecture
+
+The workflow engine (`apps/workflows/`) provides multi-step approval workflows that can be attached to any entity type.
+
+```text
+Template (PUBLISHED)          Instance Lifecycle
++-------------------+        +-------+     +-------------+     +----------+
+| WorkflowTemplate  |------->| PENDING| --> | IN_PROGRESS | --> | APPROVED |
+|   steps: [        |        +-------+     +------+------+     +----------+
+|     Step 1: Mgr   |                             |
+|     Step 2: HR    |                     +-------v--------+
+|   ]               |                     | Action: REJECT |
++-------------------+                     +-------+--------+
+                                                  |
+                                          +-------v--------+
+                                          |   REJECTED     |
+                                          +----------------+
+```
+
+- **WorkflowTemplate**: Defines a reusable approval flow. Has an `entity_type` (LEAVE, REIMBURSEMENT, RESIGNATION, ASSET_REQUEST, ONBOARDING, OFFBOARDING) and a `status` (DRAFT, PUBLISHED, ARCHIVED)
+- **WorkflowStep**: Ordered step within a template. Each step has an `approver_type` (REPORTING_MANAGER, HR, DEPARTMENT_HEAD, SPECIFIC_EMPLOYEE, AUTO_APPROVE) and an SLA in hours
+- **WorkflowInstance**: A running workflow for a specific entity (e.g., a leave request). Tracks `current_step` and `status`
+- **WorkflowAction**: A decision (APPROVED, REJECTED, RETURNED) by an actor on a step
+
+### Auto-Trigger Integration
+
+`initiate_workflow()` in `apps/workflows/services.py` is called when a leave request or resignation is created. If a PUBLISHED template exists for that entity type, a WorkflowInstance is automatically created with status `IN_PROGRESS`. If no template exists, the module proceeds without a workflow.
 
 ---
 
@@ -439,7 +540,8 @@ A migration script at `backend/scripts/migrate_ems_data.py` handles:
 
 - Migrate remaining Next.js API routes to Django (attendance, payroll, leave, etc.)
 - Remove Prisma and Supabase dependencies
-- Migrate agent tracking APIs to Django
+- ~~Migrate agent tracking APIs to Django~~ (Complete -- `apps/agent/`)
+- ~~Add workflow engine to Django~~ (Complete -- `apps/workflows/`)
 - Add FastAPI AI microservice for Gemini integration
 
 ### Phase 6 (Planned): Production Hardening

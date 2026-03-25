@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { api } from '@/lib/api-client'
 import { PlusIcon, TrashIcon, GearIcon } from '@radix-ui/react-icons'
-import { ROLES } from '@/lib/permissions'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -13,35 +12,72 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Card, CardContent } from '@/components/ui/Card'
 import { ConfigPanel } from '@/components/ui/ConfigPanel'
 
+interface StepDraft {
+    name: string
+    approverType: string
+    slaHours: number
+    isOptional: boolean
+}
+
+const ENTITY_TYPES = [
+    { value: "LEAVE", label: "Leave Request" },
+    { value: "REIMBURSEMENT", label: "Reimbursement" },
+    { value: "RESIGNATION", label: "Resignation" },
+    { value: "ASSET_REQUEST", label: "Asset Request" },
+    { value: "ONBOARDING", label: "Onboarding" },
+    { value: "OFFBOARDING", label: "Offboarding" },
+]
+
+const APPROVER_TYPES = [
+    { value: "REPORTING_MANAGER", label: "Reporting Manager" },
+    { value: "HR", label: "HR" },
+    { value: "DEPARTMENT_HEAD", label: "Department Head" },
+    { value: "SPECIFIC_EMPLOYEE", label: "Specific Employee" },
+    { value: "AUTO_APPROVE", label: "Auto Approve" },
+]
+
 export default function BuilderPage() {
     const router = useRouter()
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
     const [entityType, setEntityType] = useState('LEAVE')
-    const [steps, setSteps] = useState([{ approverType: 'MANAGER', role: '', userId: '', slaHours: 24 }])
+    const [steps, setSteps] = useState<StepDraft[]>([
+        { name: 'Manager Approval', approverType: 'REPORTING_MANAGER', slaHours: 24, isOptional: false },
+    ])
+    const [saving, setSaving] = useState(false)
     const [configPanelOpen, setConfigPanelOpen] = useState(false)
 
     const addStep = () => {
-        setSteps([...steps, { approverType: 'MANAGER', role: '', userId: '', slaHours: 24 }])
+        setSteps([...steps, { name: '', approverType: 'REPORTING_MANAGER', slaHours: 24, isOptional: false }])
     }
 
     const removeStep = (index: number) => {
         setSteps(steps.filter((_, i) => i !== index))
     }
 
+    const updateStep = (index: number, field: keyof StepDraft, value: string | number | boolean) => {
+        const newSteps = [...steps]
+        ;(newSteps[index] as any)[field] = value
+        setSteps(newSteps)
+    }
+
     const handleSave = async () => {
-        if (!name || steps.length === 0) return toast.error('Name and at least 1 step required')
+        if (!name.trim()) return toast.error('Workflow name is required')
+        if (steps.length === 0) return toast.error('At least one step is required')
+        if (steps.some(s => !s.name.trim())) return toast.error('All steps must have a name')
+
+        setSaving(true)
         try {
             const payload = {
                 name,
                 description,
                 entityType,
                 steps: steps.map((s, idx) => ({
-                    stepOrder: idx + 1,
+                    name: s.name,
                     approverType: s.approverType,
-                    role: s.role || undefined,
-                    userId: s.userId || undefined,
-                    slaHours: s.slaHours ? Number(s.slaHours) : undefined
+                    order: idx + 1,
+                    slaHours: s.slaHours ? Number(s.slaHours) : 24,
+                    isOptional: s.isOptional,
                 }))
             }
 
@@ -49,7 +85,9 @@ export default function BuilderPage() {
             toast.success('Workflow created successfully')
             router.push('/admin/workflows')
         } catch (err) {
-            toast.error('Network error')
+            toast.error('Failed to create workflow')
+        } finally {
+            setSaving(false)
         }
     }
 
@@ -63,8 +101,8 @@ export default function BuilderPage() {
                         <Button variant="secondary" leftIcon={<GearIcon className="w-4 h-4" />} onClick={() => setConfigPanelOpen(true)}>
                             Configure Fields
                         </Button>
-                        <Button onClick={handleSave}>
-                            Save Workflow
+                        <Button onClick={handleSave} disabled={saving}>
+                            {saving ? 'Saving...' : 'Save Workflow'}
                         </Button>
                     </div>
                 }
@@ -85,13 +123,7 @@ export default function BuilderPage() {
                                 label="Trigger Entity"
                                 value={entityType}
                                 onChange={e => setEntityType(e.target.value)}
-                                options={[
-                                    { value: "LEAVE", label: "Leave Request" },
-                                    { value: "ASSET", label: "Asset Request" },
-                                    { value: "EXPENSE", label: "Expense Claim" },
-                                    { value: "RESIGNATION", label: "Resignation Request" },
-                                    { value: "TICKET", label: "Support Ticket" },
-                                ]}
+                                options={ENTITY_TYPES}
                             />
                             <Textarea
                                 wrapperClassName="col-span-2"
@@ -109,69 +141,44 @@ export default function BuilderPage() {
                 <h2 className="text-xl font-bold text-text tracking-tight hover:text-accent transition-colors">Approval Sequence</h2>
                 {steps.map((step, index) => (
                     <div key={index} className="flex flex-col gap-2 relative">
-                        <div className="flex items-center space-x-4 bg-surface p-5 rounded-xl shadow-sm border border-border hover:border-blue-500/20 transition-all">
-                            <div className="w-8 h-8 flex items-center justify-center bg-blue-500/10 text-blue-500 rounded-full font-bold text-sm shrink-0 border border-blue-500/20">{index + 1}</div>
-                            <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <Select
-                                    label="Approver Role Type"
-                                    value={step.approverType}
-                                    onChange={e => {
-                                        const newSteps = [...steps];
-                                        newSteps[index].approverType = e.target.value;
-                                        setSteps(newSteps)
-                                    }}
-                                    options={[
-                                        { value: "MANAGER", label: "Direct Manager" },
-                                        { value: "ROLE", label: "Specific Role" },
-                                        { value: "SPECIFIC_USER", label: "Specific Employee" },
-                                    ]}
-                                />
-                                {step.approverType === 'ROLE' && (
-                                    <Select
-                                        label="Target System Role"
-                                        value={step.role}
-                                        onChange={e => {
-                                            const newSteps = [...steps];
-                                            newSteps[index].role = e.target.value;
-                                            setSteps(newSteps)
-                                        }}
-                                    >
-                                        <option value="">Select Role</option>
-                                        {ROLES.map(role => (
-                                            <option key={role} value={role}>{role.replace("_", " ")}</option>
-                                        ))}
-                                    </Select>
-                                )}
-                                {step.approverType === 'SPECIFIC_USER' && (
+                        <div className="flex items-start space-x-4 bg-surface p-5 rounded-xl shadow-sm border border-border hover:border-blue-500/20 transition-all">
+                            <div className="w-8 h-8 flex items-center justify-center bg-blue-500/10 text-blue-500 rounded-full font-bold text-sm shrink-0 border border-blue-500/20 mt-6">{index + 1}</div>
+                            <div className="flex-1 space-y-3">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <Input
-                                        label="Configured User ID"
-                                        value={step.userId}
-                                        placeholder="Enter Employee ID"
-                                        onChange={e => {
-                                            const newSteps = [...steps]
-                                            newSteps[index].userId = e.target.value
-                                            setSteps(newSteps)
-                                        }}
+                                        label="Step Name"
+                                        value={step.name}
+                                        onChange={e => updateStep(index, 'name', e.target.value)}
+                                        placeholder="e.g. Manager Approval"
                                     />
-                                )}
-                                <div className={step.approverType === 'MANAGER' ? 'md:col-span-2' : ''}>
+                                    <Select
+                                        label="Approver Type"
+                                        value={step.approverType}
+                                        onChange={e => updateStep(index, 'approverType', e.target.value)}
+                                        options={APPROVER_TYPES}
+                                    />
                                     <Input
-                                        label="SLA Timeout (Hours)"
+                                        label="SLA (Hours)"
                                         type="number"
                                         value={step.slaHours}
-                                        onChange={e => {
-                                            const newSteps = [...steps]
-                                            newSteps[index].slaHours = Number(e.target.value)
-                                            setSteps(newSteps)
-                                        }}
+                                        onChange={e => updateStep(index, 'slaHours', Number(e.target.value))}
                                     />
                                 </div>
+                                <label className="flex items-center gap-2 text-sm text-text-2 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={step.isOptional}
+                                        onChange={e => updateStep(index, 'isOptional', e.target.checked)}
+                                        className="rounded border-border text-accent focus:ring-accent"
+                                    />
+                                    Optional step (can be skipped)
+                                </label>
                             </div>
                             <Button
                                 variant="danger"
                                 size="icon"
                                 onClick={() => removeStep(index)}
-                                className="ml-2 shrink-0"
+                                className="shrink-0 mt-6"
                             >
                                 <TrashIcon className="w-4 h-4" />
                             </Button>
@@ -191,7 +198,7 @@ export default function BuilderPage() {
                         onClick={addStep}
                         className="border-dashed text-blue-500 hover:border-blue-500 hover:bg-blue-500/5"
                     >
-                        Add Secondary Approver
+                        Add Approval Step
                     </Button>
                 </div>
             </div>

@@ -31,6 +31,13 @@ interface LeaveEmployee {
     employeeCode: string
 }
 
+interface WorkflowStatusInfo {
+    instanceId: string
+    status: string
+    currentStep: number
+    totalSteps: number
+}
+
 interface LeaveRequest {
     id: string
     type: LeaveType
@@ -40,6 +47,7 @@ interface LeaveRequest {
     status: LeaveStatus
     employeeId: string
     employee: LeaveEmployee
+    workflowStatus: WorkflowStatusInfo | null
     createdAt: string
 }
 
@@ -284,9 +292,16 @@ export function AdminLeaveView() {
                                         </td>
                                         <td className="px-4 py-3 text-base text-text-3 max-w-[200px] truncate">{req.reason || "—"}</td>
                                         <td className="px-4 py-3">
-                                            <Badge variant={STATUS_BADGE_VARIANT[req.status]} dot>
-                                                {STATUS_LABELS[req.status]}
-                                            </Badge>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant={STATUS_BADGE_VARIANT[req.status]} dot>
+                                                    {STATUS_LABELS[req.status]}
+                                                </Badge>
+                                                {req.workflowStatus && (
+                                                    <span className="inline-flex items-center text-xs font-mono px-1.5 py-0.5 rounded bg-info/10 text-info border border-info/20">
+                                                        Step {req.workflowStatus.currentStep}/{req.workflowStatus.totalSteps}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-4 py-3 text-sm text-text-2">
                                             {(req as any).actionedByName || "—"}
