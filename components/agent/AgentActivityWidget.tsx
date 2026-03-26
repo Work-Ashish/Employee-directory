@@ -27,9 +27,14 @@ export function AgentActivityWidget() {
     const [loading, setLoading] = React.useState(true)
 
     React.useEffect(() => {
-        const today = new Date().toISOString().split("T")[0]
-        api.get<WidgetData>('/agent/report/' + today + '/')
-            .then(({ data }) => {
+        const today = new Date()
+        const yesterday = new Date(today)
+        yesterday.setDate(yesterday.getDate() - 1)
+        const todayStr = today.toISOString().split("T")[0]
+        const yesterdayStr = yesterday.toISOString().split("T")[0]
+
+        const fetchReport = (dateStr: string) =>
+            api.get<WidgetData>(`/agent/daily-report/?date=${dateStr}`).then(({ data }) => {
                 if (data) {
                     setData({
                         productivityScore: data.productivityScore ?? 0,
@@ -37,11 +42,14 @@ export function AgentActivityWidget() {
                         totalIdleSeconds: data.totalIdleSeconds ?? 0,
                         topApps: (data.topApps || []).slice(0, 3),
                         topWebsites: (data.topWebsites || []).slice(0, 3),
-                        date: today,
+                        date: dateStr,
                     })
                 }
             })
-            .catch((err) => { console.error("AgentActivityWidget fetch failed:", err) })
+
+        // Try today first; if blocked (before 8 PM), fall back to yesterday
+        fetchReport(todayStr)
+            .catch(() => fetchReport(yesterdayStr).catch(() => {}))
             .finally(() => setLoading(false))
     }, [])
 

@@ -417,7 +417,7 @@ Defined in `lib/schemas/agent.ts`:
 | `/api/v1/workflows/instances/{id}/` | GET | Instance detail | `app/api/workflows/action/` |
 | `/api/v1/workflows/instances/{id}/action/` | POST | Approve/reject/return | `app/api/workflows/action/` |
 
-All feature API clients in `features/*/api/client.ts` call Django via `api.get/post/put/delete` from `lib/api-client.ts`.
+All feature API clients in `features/*/api/client.ts` (22 domain modules) call Django via `api.get/post/put/delete` from `lib/api-client.ts`.
 
 ---
 

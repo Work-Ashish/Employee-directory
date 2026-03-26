@@ -2,7 +2,7 @@
 
 ## Overview
 
-EMS Pro is a production-grade, multi-tenant Employee Management System. The **frontend** is built with **Next.js 16**, **React 19**, and **TailwindCSS 3.4**. The **backend** runs on **Django 5.1 + Django REST Framework** with DB-per-tenant PostgreSQL isolation. The system includes 7 roles, 18 permissioned modules (63 codenames), 100+ API routes, structured performance reviews, and a desktop agent-based workforce activity tracking surface.
+EMS Pro is a production-grade, multi-tenant Employee Management System. The **frontend** is built with **Next.js 16**, **React 19**, and **TailwindCSS 3.4**. The **backend** runs on **Django 5.1 + Django REST Framework** with DB-per-tenant PostgreSQL isolation. The system includes 7 roles, 18 permissioned modules (63 codenames), 142 API route handlers, 30 Django apps, structured performance reviews, a workflow engine, and a desktop agent-based workforce activity tracking surface.
 
 ## Build Status
 
@@ -106,10 +106,9 @@ RBAC is defined in `lib/permissions.ts` (static matrix) and Django `seed_rbac.py
 
 | Status | Modules |
 | --- | --- |
-| **Done (12)** | Employees, Attendance, Leaves, Training, Announcements, Assets, Documents, Tickets, Recruitment, Resignation, Organization, Teams |
-| **Partial (6)** | Payroll, Performance, Feedback, Reports, Settings, Dashboard |
+| **Done (18)** | Employees, Attendance, Leaves, Training, Announcements, Assets, Documents, Tickets, Recruitment, Resignation, Organization, Teams, Performance, Dashboard, Payroll, Feedback, Reports, Settings |
 
-Frontend clients for all 18 modules already call Django `/api/v1/` endpoints. The 6 partial modules need Django apps (models, views, serializers) to be built.
+Frontend clients for all 18 modules call Django `/api/v1/` endpoints. All 18 modules are 100% migrated and implemented as full Django apps (models, views, serializers).
 
 ---
 
@@ -175,9 +174,12 @@ cd backend/hiringnow && pytest
 
 ## Documentation
 
+- [Codebase Index](docs/CODEBASE_INDEX.md)
 - [System Architecture](docs/SYSTEM_ARCHITECTURE.md)
 - [API Documentation](docs/API_DOCUMENTATION.md)
 - [User Flows](docs/USER_FLOWS.md)
+- [AI Agents](docs/AI_AGENTS.md)
+- [Performance Agent Architecture](docs/PERFORMANCE_AGENT_ARCHITECTURE.md)
 - [Contributing](docs/CONTRIBUTING.md)
 - [Changelog](docs/CHANGELOG.md)
 - [Project Backlog](docs/PROJECT_BACKLOG.md)

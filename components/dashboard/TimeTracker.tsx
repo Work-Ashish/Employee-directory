@@ -115,16 +115,11 @@ export function TimeTracker() {
             return
         }
 
-        heartbeatRef.current = setInterval(async () => {
-            const clicks = mouseClicksRef.current
-            const keys = keystrokesRef.current
+        heartbeatRef.current = setInterval(() => {
+            const idle = Date.now() - lastActivityRef.current > IDLE_TIMEOUT
+            setActivityStatus(idle ? "IDLE" : "ACTIVE")
             mouseClicksRef.current = 0
             keystrokesRef.current = 0
-
-            try {
-                const { data } = await api.post<{ status: "ACTIVE" | "IDLE" | "BREAK" }>("/time-tracker/heartbeat/", { mouseClicks: clicks, keystrokes: keys })
-                setActivityStatus(data.status)
-            } catch (err) { console.error("TimeTracker heartbeat failed:", err) }
         }, HEARTBEAT_INTERVAL)
 
         return () => { if (heartbeatRef.current) clearInterval(heartbeatRef.current) }

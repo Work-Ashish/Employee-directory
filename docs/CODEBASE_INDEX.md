@@ -1,14 +1,16 @@
 # Codebase Index
 
+**Last indexed**: March 26, 2026
+
 ## Overview
 
 This repository is an employee management platform split across three main runtime surfaces:
 
-- `app/`: Next.js 16 App Router frontend plus a large set of legacy and proxy API handlers
+- `app/`: Next.js 16 App Router frontend plus legacy and proxy API handlers
 - `backend/hiringnow/`: Django 5.1 backend with domain apps and tenant-aware configuration
-- `time-agent/`: desktop activity-tracking agent
+- `time-agent/`: desktop activity-tracking agent (Electron 28)
 
-At the time of indexing, the repository contains about 865 tracked files from `rg --files`, 141 `app/api/**/route.ts` handlers, 30 Django apps under `backend/hiringnow/apps`, 93 files under `components/`, and 25 files under `features/`.
+At the time of indexing, the repository contains 142 `app/api/**/route.ts` handlers, 30 Django apps under `backend/hiringnow/apps`, 93 files under `components/` (12 top-level + 16 domain subdirectories), 25 files under `features/` across 22 domain modules, and 41 files under `lib/`.
 
 ## Entry Points
 
@@ -21,125 +23,212 @@ At the time of indexing, the repository contains about 865 tracked files from `r
 - `backend/manage.py`: Django management entrypoint
 - `backend/hiringnow/config/urls.py`: Django URL router
 - `time-agent/main.js`: desktop agent main process entrypoint
+- `service-manifest.json`: service registration manifest for multi-service platform mode
 
 ## Frontend: `app/`
 
-The `app/` tree mixes route pages with Next.js API handlers.
+The `app/` tree uses the Next.js App Router and mixes route pages with API handlers. There are 26 top-level page directories and 142 API route handlers.
 
-### UI Route Areas
+### UI Route Areas (26 directories)
 
 - `app/(dashboard)/`: grouped dashboard/report routes
 - `app/admin/`: admin-only surfaces such as activity, assets, identity, integrations, reports, roles, workflows
 - `app/employee/`: employee self-service pages for assets, documents, and time agent
-- Module pages at the top level: `attendance`, `calendar`, `documents`, `employees`, `feedback`, `leave`, `org-chart`, `payroll`, `performance`, `profile`, `recruitment`, `reimbursement`, `resignation`, `settings`, `teams`, `training`
-- Auth/public routes: `login`, `signup`, `change-password`
+- Module pages at the top level: `announcements`, `attendance`, `calendar`, `change-password`, `documents`, `employees`, `feedback`, `help-desk`, `leave`, `org-chart`, `payroll`, `performance`, `pf`, `profile`, `recruitment`, `reimbursement`, `resignation`, `settings`, `teams`, `training`
+- Auth/public routes: `login`, `signup`
 
-### API Route Areas
+### API Route Areas (142 handlers)
 
-- `app/api/admin/`: admin analytics, sessions, agent dashboards, metrics, orphan checks
-- `app/api/agent/`: desktop agent registration, heartbeat, config, activity, reports, commands
-- `app/api/auth/`: authentication endpoints
-- `app/api/cron/`: scheduled jobs such as report generation and aggregation
-- `app/api/*`: domain endpoints for employees, attendance, leaves, payroll, performance, reports, settings, teams, notifications, SCIM, storage, workflows, and more
+- `app/api/admin/`: admin analytics, sessions, agent dashboards, metrics, orphan checks, time-tracker dashboard
+- `app/api/agent/`: desktop agent registration, heartbeat, config, activity, reports, commands, idle events
+- `app/api/auth/`: authentication endpoints (NextAuth v5)
+- `app/api/cron/`: scheduled jobs such as report generation, aggregation, performance evaluation
+- `app/api/*`: domain endpoints for employees, attendance, leaves, payroll, performance, reports, settings, teams, notifications, SCIM, storage, workflows, departments, documents, assets, tickets, recruitment, resignations, calendar, events, kudos, chat, health, and more
 
-In practice, this layer appears to be a mix of:
+In practice, this layer is a mix of:
 
-- frontend-owned endpoints
-- compatibility endpoints from an older Next.js-backed backend
-- proxy/shim routes during the Django migration
+- Frontend-owned endpoints
+- Legacy API routes from the older Next.js-backed backend
+- Proxy/shim routes during the ongoing Django migration
 
 ## UI Components: `components/`
 
-`components/` holds the shared React UI layer. The structure is mostly domain-oriented:
+`components/` holds the shared React UI layer: 93 files total across 12 top-level components and 16 domain subdirectories.
 
-- `components/ui/`: design system primitives such as `Button`, `Card`, `Dialog`, `DataTable`, `Avatar`, `SearchAutocomplete`
+### Top-Level Components (12)
+
+- `AIChatbot.tsx`: AI-powered HR chatbot (Gemini 2.0 Flash)
+- `AOSProvider.tsx`: animate-on-scroll provider
+- `AppShell.tsx`: main layout shell with sidebar and topbar
+- `CommandPalette.tsx`: Cmd+K command palette
+- `ErrorBoundary.tsx`: global error boundary wrapper
+- `MobileSidebar.tsx`: responsive mobile sidebar
+- `ModeToggle.tsx`: dark/light theme toggle
+- `NotificationCenter.tsx`: in-app notification center
+- `RecruitmentKanban.tsx`: recruitment pipeline Kanban board
+- `Sidebar.tsx`: main navigation sidebar with RBAC and feature flag gating
+- `ThemeProvider.tsx`: next-themes provider
+- `Topbar.tsx`: top navigation bar
+
+### Domain Subdirectories (16)
+
+- `components/ui/`: design system primitives (Button, Card, Dialog, DataTable, Avatar, SearchAutocomplete, etc.)
 - `components/dashboard/`: role-based dashboard widgets and dashboards
 - `components/admin/`: role management, reports, session management
 - `components/agent/`: workforce-monitoring widgets
-- Domain folders: `attendance`, `leave`, `payroll`, `performance`, `pf`, `reimbursement`, `resignation`, `settings`, `teams`, `training`, `announcements`
-- App shell pieces at the root: `AppShell`, `Sidebar`, `Topbar`, `CommandPalette`, `NotificationCenter`, `AIChatbot`, `ThemeProvider`
+- Domain folders: `attendance`, `leave`, `payroll`, `performance`, `pf`, `reimbursement`, `resignation`, `settings`, `signup`, `teams`, `training`, `announcements`
 
 ## Feature API Clients: `features/`
 
-`features/` is a lightweight feature-sliced layer, mostly made of frontend API clients and a few local feature components.
+`features/` is a feature-sliced layer with 25 files across 22 domain modules. Most contain frontend API clients that bridge React views to Django backend endpoints.
+
+### Domain Modules (22)
+
+`announcements`, `assets`, `attendance`, `dashboard`, `departments`, `documents`, `employees`, `events`, `feedback`, `leave`, `notifications`, `payroll`, `performance`, `reimbursements`, `reports`, `resignations`, `roles`, `sessions`, `teams`, `tickets`, `timetracker`, `training`
 
 - Most modules follow `features/<domain>/api/client.ts`
-- `features/employees/` goes further and also contains `components/` and `types.ts`
-- This folder looks like the main bridge from React views into backend endpoints
+- `features/employees/` goes further with `components/` and `types.ts`
+- All API clients use `api.get/post/put/delete` from `lib/api-client.ts`
 
 ## Shared Frontend Logic: `lib/`
 
-`lib/` contains cross-cutting services and domain logic:
+`lib/` contains 41 cross-cutting service files across 4 subdirectories and 31 top-level files:
 
-- Auth and permissions: `auth.ts`, `auth-server.ts`, `django-auth.ts`, `permissions.ts`, `permissions-server.ts`
-- Backend integration: `api-client.ts`, `django-proxy.ts`, `api-response.ts`
-- Domain engines: `attendance-engine.ts`, `payroll-engine.ts`, `workflow-engine.ts`
-- Workforce monitoring: `agent-auth.ts`, `agent-report-generator.ts`, `activity-classifier.ts`
-- Platform services: `queue.ts`, `redis.ts`, `metrics.ts`, `logger.ts`, `webhooks.ts`, `search-index.ts`
-- Validation and schemas: `lib/schemas/`
-- Integrations/export/email: `connectors/`, `export/`, `email-templates/`
+### Auth and Permissions
+
+- `auth.ts`: legacy NextAuth config (being phased out)
+- `auth-server.ts`: server-side auth helpers
+- `django-auth.ts`: Django JWT login, register, refresh, logout, getMe, JWT decoding
+- `permissions.ts`: dual RBAC matrix (static + Django codenames), feature flags, role mapping
+- `permissions-server.ts`: server-side permission resolution
+
+### Backend Integration
+
+- `api-client.ts`: centralized Django HTTP client with JWT, tenant headers, case transforms, pagination remap
+- `django-proxy.ts`: legacy proxy with circuit breaker + retry (deprecated)
+- `api-response.ts`: API envelope helpers (apiSuccess/apiError)
+- `transform.ts`: camelCase/snake_case transforms
+
+### Domain Engines
+
+- `attendance-engine.ts`: attendance evaluation logic
+- `payroll-engine.ts`: salary calculation, PF, tax slab engine
+- `workflow-engine.ts`: workflow processing helpers
+
+### Workforce Monitoring
+
+- `agent-auth.ts`: withAgentAuth() for desktop device routes
+- `agent-report-generator.ts`: daily activity report generation
+- `activity-classifier.ts`: activity categorization and productivity scoring
+
+### Platform Services
+
+- `queue.ts`: Redis-backed background job queue
+- `redis.ts`: Redis client with in-memory fallback
+- `metrics.ts`: metrics collection and alerting hooks
+- `logger.ts`: structured JSON logging + auditLog() dispatch to Django
+- `webhooks.ts`: outbound webhook dispatch with HMAC signing
+- `search-index.ts`: search index helpers
+- `security.ts`: withAuth() route authorization with Django codename fallback
+- `session-employee.ts`: session-to-employee resolution
+
+### Utilities
+
+- `chart-theme.ts`: chart color theme
+- `email.ts`: email sending via Resend
+- `exportUtils.ts`: export helpers
+- `route-deprecation.ts`: deprecated route logging
+- `salary-store.ts`: salary data store
+- `supabase.ts`: Supabase client
+- `swal.ts`: SweetAlert2 helpers
+- `utils.ts`: general utilities
+
+### Subdirectories
+
+- `lib/schemas/`: Zod validation schemas (agent payloads, etc.)
+- `lib/connectors/`: external service connectors
+- `lib/export/`: PDF/Excel export utilities
+- `lib/email-templates/`: HTML email templates
 
 ## Backend: `backend/`
 
-The Django backend is organized as a standalone service.
+The Django backend is organized as a standalone service with 30 domain apps.
 
 ### Core Backend Files
 
 - `backend/requirements.txt`: Python dependencies
 - `backend/pytest.ini`: backend test configuration
+- `backend/conftest.py`: shared test fixtures
 - `backend/tenant_config.py`, `backend/tenant_store.py`: tenant-related helpers
-- `backend/celery_common/`: shared task helpers
-- `backend/scripts/`: migration/utilities
+- `backend/celery_common/`: shared Celery task helpers
+- `backend/scripts/`: migration/utility scripts
 
 ### Main Django Project
 
-- `backend/hiringnow/config/`: settings, routing, tenant database helpers, ASGI/WSGI
-- `backend/hiringnow/common/`: shared models, helpers, pagination, throttles
-- `backend/hiringnow/management/commands/`: custom Django management commands
+- `backend/hiringnow/config/`: settings, routing, tenant database helpers, ASGI/WSGI, db_utils
+- `backend/hiringnow/common/`: shared models (BaseModel), TenantAwareManager, StandardResultsPagination, throttles
+- `backend/hiringnow/management/commands/`: custom Django management commands (seed_rbac, seed_features)
 - `backend/hiringnow/tests/`: backend architecture and migration tests
+- `backend/hiringnow/future_corrections.md`: tracked technical debt (9 items)
 
-### Django Domain Apps
+### Django Domain Apps (30)
 
-`backend/hiringnow/apps/` contains 30 apps, including:
-
-- HR/core: `employees`, `departments`, `teams`, `attendance`, `leave`, `documents`, `assets`, `training`
-- Engagement/performance: `performance`, `feedback`, `announcements`, `events`
-- Admin/platform: `rbac`, `roles`, `sessions`, `reports`, `features`, `notifications`, `workflows`, `users`, `tenants`, `audit`
-- Operations: `payroll`, `reimbursements`, `resignations`, `tickets`, `dashboard`, `timetracker`, `agent`
+| Category | Apps |
+| --- | --- |
+| HR/Core | `employees`, `departments`, `teams`, `attendance`, `leave`, `documents`, `assets`, `training` |
+| Engagement/Performance | `performance`, `feedback`, `announcements`, `events` |
+| Admin/Platform | `rbac`, `roles`, `sessions`, `reports`, `features`, `notifications`, `workflows`, `users`, `tenants`, `audit` |
+| Operations | `payroll`, `reimbursements`, `resignations`, `tickets`, `dashboard`, `timetracker`, `agent` |
 
 ## Desktop Agent: `time-agent/`
 
-This is a separate desktop runtime, likely Electron-based given the file layout:
+Electron 28 desktop agent running in the system tray for workforce activity tracking:
 
-- `main.js`, `preload.js`: application bootstrap
-- `renderer/`: UI layer
-- `trackers/`: local activity capture
-- `auth.js`, `config.js`: local auth/config logic
-- `assets/`: packaged resources
+- `main.js`, `preload.js`: Electron main process and context bridge
+- `auth.js`: Django JWT login/refresh/logout
+- `config.js`: tracking intervals, screenshot settings, heartbeat frequency
+- `trackers/`: `app-tracker.js`, `idle-detector.js`, `screenshot-capture.js`, `sync-engine.js`
+- `renderer/`: UI layer (`index.html`, `login.html`, `idle-popup.html`)
+- `assets/`: packaged resources (tray icon)
 
 ## Tests and Tooling
 
 - `__tests__/`: Vitest-style unit tests for API and library code
-- `tests/e2e/`: Playwright end-to-end tests
-- `playwright.config.ts`, `vitest.config.ts`: test runners
-- `scripts/`: quality gate, release/rollback, load tests, storage bucket setup
+- `tests/e2e/`: Playwright end-to-end tests (57 tests across 7 spec files)
+- `playwright.config.ts`: Playwright config (single-worker, chromium, screenshot-on-failure)
+- `vitest.config.ts`: Vitest test runner config
 
-## Docs and Infra
+### Scripts (8 files)
 
-- `docs/`: architecture, API documentation, user flows, changelog, backlog, agent docs
-- `infra/nginx/`: gateway config for platform mode
+- `scripts/create-buckets-sql.ts`: SQL for Supabase storage buckets
+- `scripts/init-and-test-buckets.mjs`: bucket initialization and testing
+- `scripts/init-buckets.ts`: storage bucket setup
+- `scripts/load_test.js`: general load testing
+- `scripts/load_test_performance.js`: performance module load testing (13 endpoints, P50/P95/P99)
+- `scripts/quality-gate.js`: quality gate checks
+- `scripts/release_candidate.js`: release candidate pipeline
+- `scripts/rollback.js`: rollback utilities
+
+## Infrastructure and Extensions
+
+- `infra/nginx/`: Nginx gateway config for platform mode
 - `extensions/ems-tracker/`: browser extension area
-- `context/AuthContext.tsx`: shared auth context provider
+- `context/AuthContext.tsx`: shared auth context provider (Django JWT, permissions, feature flags)
 - `types/index.ts`: shared TypeScript types
+- `.github/`: GitHub CI/CD workflows
+- `Dockerfile`: frontend container build
+- `docker-compose.yml`: full-stack orchestration
+- `service-manifest.json`: service registration for multi-service platform
 
-## Architectural Notes
+## Key Design Decisions
 
-- The repo is in a migration state: README and folder layout both indicate a move from Next.js API routes toward Django-backed APIs.
-- The frontend is not purely feature-sliced or purely page-sliced; it currently uses both `components/` and `features/`.
-- RBAC, tenant awareness, workforce monitoring, and reporting are all first-class concerns across the codebase.
+- The repo is in an active migration state: moving from Next.js API routes to Django-backed APIs
+- Frontend uses a hybrid architecture: `components/` (shared UI) + `features/` (domain API clients)
+- RBAC is enforced at two layers: Next.js static matrix (fallback) and Django 63-codename permission system (primary)
+- Tenant awareness via DB-per-tenant isolation (Django) with JWT tenant claims
+- Feature flags control module visibility in sidebar and route gating
+- The desktop agent (`time-agent/`) communicates directly with the Django backend
 
 ## Notable Oddities
 
-There are multiple suspicious root-level and backend-level files with names such as `({,`, `0`, `manager`, `f.toEmployeeId`, and `name.includes(kw)))`. These do not match normal project structure and are worth reviewing before relying on the repository layout for automation or packaging.
-
-There is also an already-dirty working tree, including many modified API routes and several newly added directories under `app/api/notifications/`, `app/api/roles/[id]/permissions/`, and `app/api/teams/`. This index intentionally does not classify those edits as stable architecture.
+There are multiple suspicious root-level and backend-level files with names such as `({,`, `0`, `manager`, `f.toEmployeeId`, and `name.includes(kw)))`. These do not match normal project structure and are likely artifacts from accidental shell operations — they should be cleaned up.

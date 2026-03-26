@@ -1,6 +1,6 @@
 # EMS Pro — Project Backlog
 
-**Last Updated**: March 16, 2026
+**Last Updated**: March 26, 2026
 **Methodology**: Agile Scrum | 2-week sprints
 **Velocity**: ~35 SP/sprint (estimated)
 
@@ -29,7 +29,7 @@
 | Sprint 5 | Apr 28 – May 25 | 65 | — | PLANNED (4 weeks) |
 | Sprint 6+ | May 26+ | 79 | — | BACKLOG |
 
-**Current Position**: Sprint 1 complete. 78 SP delivered across 2 sprints. Sprint 2 starts Mar 17.
+**Current Position**: Sprint 2 in progress (Mar 17 – Mar 30). 78 SP delivered across Sprints 0–1.
 
 ---
 

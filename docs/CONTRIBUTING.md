@@ -12,7 +12,7 @@
 
 ### Django Backend (HiringNow)
 
-1. `cd` to `HiringNow/hiringnow-platform/hiringnow/`
+1. `cd` to `backend/hiringnow/`
 2. Create virtualenv and install: `pip install -r requirements.txt`
 3. Create `.env` from `.env.example` (DB_NAME, DB_USER, DB_PASSWORD, SECRET_KEY, TENANT_DB_SLUGS)
 4. Run migrations: `python manage.py migrate`
@@ -35,18 +35,20 @@ Recommended env vars for full local coverage:
 ## Project Structure
 
 ```text
-app/                  # App Router pages and API routes
-  api/                # 100+ route handlers (legacy, local models only)
-components/           # Shared UI and feature components
+app/                  # App Router pages (26 dirs) and API routes (142 handlers)
+  api/                # Route handlers (legacy + proxy + frontend-owned)
+components/           # Shared UI and feature components (93 files)
+  ui/                 # Design system primitives
   agent/              # Agent-tracking components
   dashboard/          # Role-based dashboards
   performance/        # Performance review UI
 context/
   AuthContext.tsx      # Django JWT auth context (permissions, feature flags, capabilities)
-features/             # Feature modules with API clients for Django
+features/             # 22 feature modules with API clients for Django
   employees/          # Employee list, form, API client, types
   leave/              # Leave API client
-lib/                  # Shared services and helpers
+  ... (20 more domain modules)
+lib/                  # Shared services and helpers (41 files)
   api-client.ts       # Django HTTP client (JWT, tenant header, case transforms, pagination remap)
   django-auth.ts      # Django JWT auth (login, register, refresh, getMe, JWT decoding)
   transform.ts        # camelCase <-> snake_case transforms
@@ -57,9 +59,13 @@ lib/                  # Shared services and helpers
   agent-auth.ts       # withAgentAuth() for desktop devices
   queue.ts            # Background job queue
   webhooks.ts         # Outbound webhook dispatch
-prisma/
-  schema.prisma       # 63 models, 38 enums (retained for local-only models)
+backend/hiringnow/
+  apps/               # 30 Django domain apps
+  config/             # Settings, URLs, DB router
+  common/             # BaseModel, pagination, throttles
+time-agent/           # Electron desktop agent
 __tests__/            # Vitest tests
+tests/e2e/            # Playwright E2E tests (57 tests)
 ```
 
 ---

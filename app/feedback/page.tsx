@@ -299,10 +299,13 @@ export default function FeedbackPage() {
             ) : (
                 <div className="grid gap-3">
                     {filteredFeedback.map(fb => (
-                        <button
+                        <div
                             key={fb.id}
+                            role="button"
+                            tabIndex={0}
                             onClick={() => setViewFeedback(fb)}
-                            className="w-full text-left"
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setViewFeedback(fb) }}
+                            className="w-full text-left cursor-pointer"
                         >
                             <Card className="p-4 hover:border-accent/30 transition-all group">
                                 <div className="flex items-start gap-3">
@@ -346,7 +349,7 @@ export default function FeedbackPage() {
                                     </span>
                                 </div>
                             </Card>
-                        </button>
+                        </div>
                     ))}
                 </div>
             )}

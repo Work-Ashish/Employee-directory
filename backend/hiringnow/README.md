@@ -1,10 +1,10 @@
-# Recruitment Platform API
+# EMS Pro — Django Backend
 
-Multi-tenant SaaS backend for AI-driven recruitment. Built with Django 5, Django REST Framework, SimpleJWT, and PostgreSQL using a **DB-per-tenant** architecture.
+Multi-tenant SaaS backend for the EMS Pro Employee Management System. Built with Django 5.1, Django REST Framework, SimpleJWT, and PostgreSQL using a **DB-per-tenant** architecture.
 
 ## Tech stack
 
-- **Django** 6.x, **Django REST Framework**, **SimpleJWT** (access/refresh, blacklist)
+- **Django** 5.1, **Django REST Framework**, **SimpleJWT** (access/refresh, blacklist)
 - **PostgreSQL** (registry DB + one database per tenant)
 - **django-environ**, **django-cors-headers**, **drf-spectacular** (OpenAPI docs), **Redis** (optional)
 
@@ -118,6 +118,23 @@ Authenticated requests must either include a tenant context (subdomain or `X-Ten
 - `config/` — Django project: settings, root URLs, DB router, tenant context (thread-local), health view, `db_utils` (create_tenant_database).
 - `apps/tenants/` — Tenant model (registry), TenantMiddleware.
 - `apps/users/` — User model, auth serializers/views, TenantJWTAuthentication, auth URLs.
+- `apps/rbac/` — Dynamic roles, permissions, UserRole. `seed_rbac` command (7 roles, 63 codenames, 18 modules).
+- `apps/employees/` — Employee CRUD + sub-profiles (Profile, Address, Banking).
+- `apps/departments/` — Department CRUD with employee count guards.
+- `apps/teams/` — Team CRUD, membership, org chart, auto-sync from hierarchy.
+- `apps/attendance/` — Attendance tracking.
+- `apps/leave/` — Leave management.
+- `apps/payroll/` — Payroll management.
+- `apps/performance/` — Source One performance: ReviewCycle, MonthlyReview, Appraisal, PIP (14 endpoints).
+- `apps/dashboard/` — Stats API (department split, status counts, salary, logins).
+- `apps/features/` — Feature flags per tenant (`seed_features` command).
+- `apps/audit/` — AuditLog model + REST API.
+- `apps/agent/` — Desktop agent tracking: 8 models, 9 endpoints, categorization engine.
+- `apps/workflows/` — Multi-step approval workflows: 4 models, 5 endpoints.
+- `apps/notifications/`, `apps/announcements/`, `apps/events/`, `apps/feedback/`
+- `apps/training/`, `apps/documents/`, `apps/assets/`, `apps/tickets/`
+- `apps/resignations/`, `apps/reimbursements/`, `apps/reports/`
+- `apps/roles/`, `apps/sessions/`, `apps/timetracker/`
 - `common/` — BaseModel (UUID, timestamps), TenantAwareManager, StandardResultsPagination.
 
 API docs can be generated with **drf-spectacular** (see `SPECTACULAR_SETTINGS` in `config/settings/base.py`).

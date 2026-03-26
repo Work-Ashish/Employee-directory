@@ -4,6 +4,23 @@ All notable changes to EMS Pro are documented here.
 
 ---
 
+## [5.4.1] - 2026-03-26
+
+### Documentation
+
+- **Full Documentation Refresh** — Updated all 11 docs/markdown files to reflect current codebase state:
+  - `CODEBASE_INDEX.md`: Complete rewrite with verified counts (142 route handlers, 93 component files, 22 feature modules, 41 lib files, 30 Django apps)
+  - `SYSTEM_ARCHITECTURE.md`: Migration status updated (18/18 done, 100% complete), route count corrected, Gemini model version fixed (2.0 Flash)
+  - `README.md`: Migration status updated to 100% complete, stats updated, 3 missing doc links added (Codebase Index, AI Agents, Performance Agent Architecture)
+  - `API_DOCUMENTATION.md`: Module count updated (22 domain modules)
+  - `CONTRIBUTING.md`: Backend path fixed (`backend/hiringnow/`), project structure tree updated with accurate file counts
+  - `AI_AGENTS.md`: Gemini model version corrected, migration status clarified
+  - `PROJECT_BACKLOG.md`: Updated to Sprint 2 in progress, last-updated date refreshed
+  - `backend/hiringnow/README.md`: Title changed to EMS Pro, Django version fixed (5.1), all 30 apps documented
+  - `PERFORMANCE_AGENT_ARCHITECTURE.md` and `USER_FLOWS.md`: Reviewed, confirmed accurate
+
+---
+
 ## [5.4.0] - 2026-03-23
 
 ### Added

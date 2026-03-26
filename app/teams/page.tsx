@@ -13,9 +13,15 @@ import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
 import { TeamFormModal } from "@/components/teams/TeamFormModal"
 import { TeamDetailModal } from "@/components/teams/TeamDetailModal"
-import { PlusIcon, Pencil1Icon, TrashIcon, PersonIcon, UpdateIcon } from "@radix-ui/react-icons"
+import { StatCard } from "@/components/ui/StatCard"
+import { PlusIcon, Pencil1Icon, TrashIcon, PersonIcon, UpdateIcon, MagnifyingGlassIcon, GroupIcon } from "@radix-ui/react-icons"
 import { TeamAPI } from "@/features/teams/api/client"
 import { confirmDanger, showSuccess } from "@/lib/swal"
+
+const ACCENT_COLORS = [
+    "border-l-accent", "border-l-success", "border-l-warning",
+    "border-l-purple", "border-l-danger", "border-l-[#007aff]",
+]
 
 interface TeamMember {
     employee: { id: string; firstName: string; lastName: string; avatarUrl?: string; designation: string; email?: string }
@@ -74,6 +80,7 @@ export default function TeamsPage() {
     const [detailTeam, setDetailTeam] = React.useState<Team | null>(null)
     const [deleting, setDeleting] = React.useState<string | null>(null)
     const [syncing, setSyncing] = React.useState(false)
+    const [search, setSearch] = React.useState("")
     const syncAttempted = React.useRef(false)
 
     const role = user?.role ?? ""
@@ -148,6 +155,22 @@ export default function TeamsPage() {
         fetchTeams()
     }
 
+    // Computed stats
+    const totalMembers = teams.reduce((sum, t) => sum + t._count.members, 0)
+    const avgSize = teams.length > 0 ? Math.round(totalMembers / teams.length) : 0
+    const myTeam = teams.find(t =>
+        t.lead.id === user?.id || t.members.some(m => m.employee.id === user?.id)
+    )
+
+    // Search filter
+    const q = search.toLowerCase().trim()
+    const filteredTeams = q
+        ? teams.filter(t =>
+            t.name.toLowerCase().includes(q) ||
+            `${t.lead.firstName} ${t.lead.lastName}`.toLowerCase().includes(q)
+        )
+        : teams
+
     if (isLoading || loading) {
         return <div className="p-6 text-text-3 flex items-center gap-2"><Spinner /> Loading...</div>
     }
@@ -174,6 +197,30 @@ export default function TeamsPage() {
                 ) : undefined}
             />
 
+            {/* Stats Row */}
+            {teams.length > 0 && (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                    <StatCard label="Total Teams" value={teams.length} icon={<GroupIcon className="w-4 h-4" />} />
+                    <StatCard label="Total Members" value={totalMembers} icon={<PersonIcon className="w-4 h-4" />} />
+                    <StatCard label="Avg Team Size" value={avgSize} />
+                    <StatCard label="Your Team" value={myTeam?.name || "—"} />
+                </div>
+            )}
+
+            {/* Search Bar */}
+            {teams.length > 0 && (
+                <div className="relative mt-4">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-4" />
+                    <input
+                        type="text"
+                        placeholder="Search teams or team leads..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-bg-2 border border-border rounded-xl text-sm text-text placeholder:text-text-4 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-colors"
+                    />
+                </div>
+            )}
+
             {teams.length === 0 ? (
                 <EmptyState
                     icon={<PersonIcon className="w-6 h-6" />}
@@ -185,12 +232,20 @@ export default function TeamsPage() {
                         </Button>
                     ) : undefined}
                 />
+            ) : filteredTeams.length === 0 ? (
+                <EmptyState
+                    icon={<MagnifyingGlassIcon className="w-6 h-6" />}
+                    title="No teams match your search"
+                    description={`No results for "${search}". Try a different keyword.`}
+                    className="mt-6"
+                />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                    {teams.map(team => (
+                    {filteredTeams.map((team, idx) => (
                         <Card
                             key={team.id}
-                            className="p-5 hover:shadow-md transition-shadow cursor-pointer group"
+                            variant="glass-premium"
+                            className={`p-5 hover:shadow-lg transition-all cursor-pointer group border-l-4 ${ACCENT_COLORS[idx % ACCENT_COLORS.length]}`}
                             onClick={async () => {
                                 try {
                                     const full = await TeamAPI.get(team.id)
@@ -202,7 +257,7 @@ export default function TeamsPage() {
                         >
                             <div className="flex items-start justify-between mb-3">
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-text truncate">{team.name}</h3>
+                                    <h3 className="font-bold text-text truncate text-base">{team.name}</h3>
                                     {team.description && (
                                         <p className="text-xs text-text-3 mt-0.5 line-clamp-2">{team.description}</p>
                                     )}
@@ -219,15 +274,20 @@ export default function TeamsPage() {
                                     name={`${team.lead.firstName} ${team.lead.lastName}`}
                                     size="xs"
                                 />
-                                <span className="text-text-2 truncate">
-                                    {team.lead.firstName} {team.lead.lastName}
-                                </span>
+                                <div className="flex-1 min-w-0">
+                                    <span className="text-text-2 truncate block">
+                                        {team.lead.firstName} {team.lead.lastName}
+                                    </span>
+                                    {team.lead.designation && (
+                                        <span className="text-xs text-text-4 truncate block">{team.lead.designation}</span>
+                                    )}
+                                </div>
                                 <Badge variant="default" size="sm">Lead</Badge>
                             </div>
 
                             {/* Member avatars preview */}
                             {team.members.length > 0 && (
-                                <div className="flex items-center -space-x-2 mb-3">
+                                <div className="flex items-center -space-x-2.5 mb-3">
                                     {team.members.slice(0, 5).map(m => (
                                         <Avatar
                                             key={m.employee.id}
@@ -238,7 +298,7 @@ export default function TeamsPage() {
                                         />
                                     ))}
                                     {team.members.length > 5 && (
-                                        <span className="text-xs text-text-3 ml-3">
+                                        <span className="text-xs text-text-3 ml-3 font-medium">
                                             +{team.members.length - 5} more
                                         </span>
                                     )}

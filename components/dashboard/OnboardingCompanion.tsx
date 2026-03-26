@@ -10,22 +10,9 @@ export function OnboardingCompanion() {
     const [message, setMessage] = React.useState<string | null>(null)
 
     React.useEffect(() => {
-        const fetchOnboarding = async () => {
-            try {
-                const res = await fetch("/api/onboarding/agent", {
-                    method: "GET",
-                    headers: { "Content-Type": "application/json" },
-                })
-                if (!res.ok) return
-                const json = await res.json()
-                setMessage(json.data?.message || json.message || null)
-            } catch {
-                setMessage(null)
-            } finally {
-                setLoading(false)
-            }
-        }
-        fetchOnboarding()
+        // Onboarding agent API route is not yet implemented — skip gracefully
+        setLoading(false)
+        setMessage(null)
     }, [])
 
     if (loading) {

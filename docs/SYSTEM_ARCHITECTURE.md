@@ -2,7 +2,7 @@
 
 ## Overview
 
-EMS Pro is a multi-tenant HRMS with a **Next.js 16 / React 19 / TailwindCSS 3.4** frontend and a **Django 5.1 + Django REST Framework** backend (`backend/`) using DB-per-tenant PostgreSQL isolation, SimpleJWT authentication, and dynamic RBAC. The system has 7 roles, 18 modules (63 permission codenames), 130+ API routes, 83 database models (69 Prisma + 14 Django-only), AI-assisted workflows, a multi-step approval workflow engine, and a desktop agent telemetry/reporting pipeline. 13 of 18 modules are fully migrated to Django; 5 remain partial (Payroll, Feedback, Reports, Settings, Dashboard).
+EMS Pro is a multi-tenant HRMS with a **Next.js 16 / React 19 / TailwindCSS 3.4** frontend and a **Django 5.1 + Django REST Framework** backend (`backend/`) using DB-per-tenant PostgreSQL isolation, SimpleJWT authentication, and dynamic RBAC. The system has 7 roles, 18 modules (63 permission codenames), 142 API route handlers, 83+ database models, AI-assisted workflows, a multi-step approval workflow engine, and a desktop agent telemetry/reporting pipeline. 18 of 18 modules are fully migrated to Django (100% complete).
 
 ---
 
@@ -42,7 +42,7 @@ graph TB
     end
 
     subgraph External Services
-        Gemini["Gemini 2.5 Flash"]
+        Gemini["Gemini 2.0 Flash"]
         Resend["Resend Email"]
     end
 
@@ -77,7 +77,7 @@ graph TB
 
 ## API Layer
 
-The repository currently contains 130+ route handlers.
+The repository currently contains 142 route handlers.
 
 ### Main route groups
 
@@ -184,7 +184,7 @@ Actions:
 
 ## Database
 
-The current Prisma schema has **69 models** and **46 enums**. Django adds 14 additional models not in Prisma (8 agent, 4 performance, 2 team), for a total of **83 models**.
+The Django backend now hosts 30 domain apps with their own models. Combined with remaining Prisma models (retained for legacy/local-only use), the total model count exceeds **83 models** across both systems.
 
 ### Core HR models
 
@@ -354,7 +354,7 @@ The new backend follows the HiringNow platform architecture:
 | `apps.rbac` | Dynamic roles, permissions, UserRole. `seed_rbac` command: 7 roles, 63 codenames, 18 modules | Extended |
 | `apps.employees` | Employee CRUD + sub-profiles (Profile, Address, Banking) | Extended |
 | `apps.departments` | Department CRUD with employee count guards | New |
-| `apps.dashboard` | Stats API (department split, status counts, salary, logins) | New |
+| `apps.dashboard` | Stats API (department split, status counts, salary, logins) | Done |
 | `apps.features` | Feature flags per tenant. `seed_features` command: 14 module flags | Extended |
 | `apps.audit` | AuditLog model + REST API. Receives events from Next.js `auditLog()` | New |
 | `apps.performance` | Source One performance module: ReviewCycle, MonthlyReview, Appraisal, PIP. 14 endpoints with RBAC + digital signatures + 3-tier row-level scoping | New |

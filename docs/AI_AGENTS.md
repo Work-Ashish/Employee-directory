@@ -15,7 +15,7 @@ Session-auth routes use `withAuth()`. Desktop device routes use `withAgentAuth()
 
 ## 1. HR Chatbot
 
-**Endpoint:** `POST /api/chat` *(Currently disabled/501 pending migration to FastAPI/Django)*
+**Endpoint:** `POST /api/chat` *(Currently disabled/501 — pending migration to FastAPI/Django AI microservice)*
 
 Purpose:
 
@@ -87,7 +87,7 @@ Primary output:
 ## Configuration
 
 ```env
-GEMINI_API_KEY=your-gemini-api-key
+GEMINI_API_KEY=your-gemini-api-key   # Gemini 2.0 Flash via @ai-sdk/google
 CRON_SECRET=your-cron-secret
 RESEND_API_KEY=your-resend-api-key
 ```
