@@ -1,17 +1,23 @@
 /**
- * /api/roles/[id]/assign — Django proxy (Sprint 14).
+ * /api/roles/[id]/assign — stub (Sprint 14).
+ *
+ * Django does not expose a /rbac/roles/<id>/assign/ endpoint.
+ * Role-to-user assignment is handled via PUT /api/v1/users/<user_id>/roles/.
+ * This stub returns 501 so the frontend receives a clear signal.
  */
-import { proxyToDjango } from "@/lib/django-proxy"
-import { deprecatedRoute } from "@/lib/route-deprecation"
 import { withAuth } from "@/lib/security"
 import { Module, Action } from "@/lib/permissions"
 
-async function handlePOST(req: Request) {
-    const url = new URL(req.url)
-    const segments = url.pathname.split("/")
-    const id = segments[segments.indexOf("roles") + 1]
-    deprecatedRoute(`/api/roles/${id}/assign POST`, `Django /api/v1/rbac/roles/${id}/assign/`)
-    return proxyToDjango(req, `/rbac/roles/${id}/assign/`)
+async function handlePOST() {
+    return Response.json(
+        {
+            error: "Not implemented",
+            detail:
+                "Role assignment is managed via PUT /api/v1/users/<user_id>/roles/. " +
+                "This endpoint is not supported by the Django backend.",
+        },
+        { status: 501 }
+    )
 }
 
 export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.UPDATE }, handlePOST)

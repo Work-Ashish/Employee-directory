@@ -57,16 +57,31 @@ export function PlanTab() {
   const [billingCycle, setBillingCycle] = React.useState<"monthly" | "annual">("monthly")
   const [isChanging, setIsChanging] = React.useState(false)
 
-  // Load saved plan info
+  // Load plan from Django tenant settings, fallback to localStorage
   React.useEffect(() => {
-    try {
-      const signupData = localStorage.getItem("signup_data")
-      if (signupData) {
-        const parsed = JSON.parse(signupData)
-        if (parsed.subscriptionTier) setCurrentTier(parsed.subscriptionTier)
-        if (parsed.billingCycle) setBillingCycle(parsed.billingCycle)
+    async function loadPlan() {
+      try {
+        const { data } = await api.get<any>("/organization/")
+        const settings = data?.settings || {}
+        if (settings.subscriptionTier || settings.subscription_tier) {
+          setCurrentTier(settings.subscriptionTier || settings.subscription_tier)
+        }
+        if (settings.billingCycle || settings.billing_cycle) {
+          setBillingCycle(settings.billingCycle || settings.billing_cycle)
+        }
+      } catch {
+        // Fallback to localStorage (offline/demo mode)
+        try {
+          const signupData = localStorage.getItem("signup_data")
+          if (signupData) {
+            const parsed = JSON.parse(signupData)
+            if (parsed.subscriptionTier) setCurrentTier(parsed.subscriptionTier)
+            if (parsed.billingCycle) setBillingCycle(parsed.billingCycle)
+          }
+        } catch { /* ignore */ }
       }
-    } catch { /* ignore */ }
+    }
+    loadPlan()
   }, [])
 
   const isAnnual = billingCycle === "annual"

@@ -78,8 +78,8 @@ export function SearchAutocomplete({
                 const items = data?.suggestions ?? []
                 setSuggestions(items)
                 setOpen(items.length > 0)
-            } catch {
-                // silently fail
+            } catch (err) {
+                console.error("SearchAutocomplete search failed:", err)
             } finally {
                 setLoading(false)
             }

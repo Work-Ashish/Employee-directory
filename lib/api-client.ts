@@ -130,7 +130,13 @@ export async function apiClient<T>(
     return { data: null as T, status: 204 };
   }
 
-  const json = await response.json();
+  let json: any;
+  try {
+    const text = await response.text();
+    json = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(`Server returned non-JSON response (${response.status})`);
+  }
 
   if (!response.ok) {
     // Django wraps errors as {"data":null,"error":{"detail":[...]},"meta":{}}

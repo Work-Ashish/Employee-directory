@@ -74,7 +74,9 @@ export function TimeTracker() {
                     setTodaySummary(data.todaySummary)
                 }
             })
-            .catch(() => { })
+            .catch((err) => {
+                console.error("TimeTracker status fetch failed:", err)
+            })
             .finally(() => setLoading(false))
     }, [])
 
@@ -122,7 +124,7 @@ export function TimeTracker() {
             try {
                 const { data } = await api.post<{ status: "ACTIVE" | "IDLE" | "BREAK" }>("/time-tracker/heartbeat/", { mouseClicks: clicks, keystrokes: keys })
                 setActivityStatus(data.status)
-            } catch { }
+            } catch (err) { console.error("TimeTracker heartbeat failed:", err) }
         }, HEARTBEAT_INTERVAL)
 
         return () => { if (heartbeatRef.current) clearInterval(heartbeatRef.current) }

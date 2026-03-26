@@ -37,6 +37,8 @@ interface DataTableProps<TData, TValue> {
     loading?: boolean
     emptyTitle?: string
     emptyDescription?: string
+    searchValue?: string
+    onSearchChange?: (value: string) => void
 }
 
 export function DataTable<TData, TValue>({
@@ -52,6 +54,8 @@ export function DataTable<TData, TValue>({
     loading,
     emptyTitle = "No results",
     emptyDescription,
+    searchValue,
+    onSearchChange,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -107,10 +111,14 @@ export function DataTable<TData, TValue>({
                     </span>
                     <input
                         placeholder={`Search by ${searchKey}...`}
-                        value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
-                        onChange={(event) =>
-                            table.getColumn(searchKey)?.setFilterValue(event.target.value)
-                        }
+                        value={onSearchChange ? (searchValue ?? "") : ((table.getColumn(searchKey)?.getFilterValue() as string) ?? "")}
+                        onChange={(event) => {
+                            if (onSearchChange) {
+                                onSearchChange(event.target.value)
+                            } else {
+                                table.getColumn(searchKey)?.setFilterValue(event.target.value)
+                            }
+                        }}
                         className="input-base pl-10 pr-4 py-2 bg-surface"
                     />
                 </div>

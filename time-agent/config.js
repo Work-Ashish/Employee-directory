@@ -1,5 +1,5 @@
 module.exports = {
-  API_BASE: 'http://127.0.0.1:8000/api/v1',
+  API_BASE: process.env.TIME_AGENT_API_URL || 'http://127.0.0.1:8000/api/v1',
   HEARTBEAT_INTERVAL: 30000,
   SYNC_INTERVAL: 60000,
   IDLE_THRESHOLD: 600,

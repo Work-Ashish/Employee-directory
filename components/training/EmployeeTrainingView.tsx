@@ -33,7 +33,8 @@ export function EmployeeTrainingView({ employeeId }: { employeeId: string }) {
         try {
             setIsLoading(true)
             const data = await TrainingAPI.list()
-            const raw = (data.results || data) as any[]
+            const rawResult = (data as any)?.results || data
+            const raw = Array.isArray(rawResult) ? rawResult : []
             // Map Django Training fields to component's expected shape
             const REVERSE_STATUS: Record<string, string> = {
                 ONGOING: "CRITICAL",

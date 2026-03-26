@@ -41,7 +41,7 @@ export function AgentActivityWidget() {
                     })
                 }
             })
-            .catch(() => {})
+            .catch((err) => { console.error("AgentActivityWidget fetch failed:", err) })
             .finally(() => setLoading(false))
     }, [])
 
@@ -51,7 +51,7 @@ export function AgentActivityWidget() {
 
     if (!data) return null
 
-    const score = Math.round(data.productivityScore * 100)
+    const score = Math.round((data?.productivityScore || 0) * 100)
     const scoreColor = score >= 70 ? "text-success" : score >= 40 ? "text-warning" : "text-danger"
 
     return (

@@ -38,14 +38,6 @@ const employeeSchema = z.object({
     role: z.enum(["CEO", "HR", "PAYROLL", "TEAM_LEAD", "EMPLOYEE"]),
     managerId: z.string().optional().nullable(),
     avatarUrl: z.string().optional().nullable(),
-}).superRefine((val, ctx) => {
-    if (val.role !== "CEO" && !val.managerId) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Manager is required for non-CEO employees",
-            path: ["managerId"],
-        })
-    }
 })
 
 type EmployeeFormData = z.infer<typeof employeeSchema>
@@ -81,6 +73,7 @@ function EmployeesContent() {
 
     const page = parseInt(searchParams?.get("page") || "1", 10)
     const limit = parseInt(searchParams?.get("limit") || "10", 10)
+    const searchQuery = searchParams?.get("search") || ""
 
     const [totalRows, setTotalRows] = React.useState(0)
     const [pageCount, setPageCount] = React.useState(1)
@@ -169,7 +162,7 @@ function EmployeesContent() {
         try {
             setIsLoading(true)
             const [empRes, deptRes, mgrRes] = await Promise.all([
-                EmployeeAPI.fetchEmployees(page, limit),
+                EmployeeAPI.fetchEmployees(page, limit, searchQuery ? { search: searchQuery } : undefined),
                 DepartmentAPI.list(),
                 EmployeeAPI.fetchManagers(),
             ])
@@ -183,7 +176,7 @@ function EmployeesContent() {
         } finally {
             setIsLoading(false)
         }
-    }, [page, limit])
+    }, [page, limit, searchQuery])
 
     React.useEffect(() => {
         if (!authLoading) fetchData()
@@ -266,6 +259,14 @@ function EmployeesContent() {
                 pageCount={pageCount}
                 pageIndex={Math.max(0, page - 1)}
                 totalRows={totalRows}
+                searchValue={searchQuery}
+                onSearchChange={(value) => {
+                    const params = new URLSearchParams(searchParams?.toString() || "")
+                    if (value) params.set("search", value)
+                    else params.delete("search")
+                    params.set("page", "1")
+                    router.push(`${pathname}?${params.toString()}`)
+                }}
                 onPageChange={(newPageIndex) => {
                     const params = new URLSearchParams(searchParams?.toString() || "")
                     params.set("page", (newPageIndex + 1).toString())

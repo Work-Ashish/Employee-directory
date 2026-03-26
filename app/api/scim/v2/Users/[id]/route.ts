@@ -1,36 +1,23 @@
 /**
  * /api/scim/v2/Users/[id] — Django proxy (Sprint 14).
  * SCIM endpoint handles its own auth via Bearer token.
+ *
+ * NOTE: Django endpoint /api/v1/scim/v2/Users/{id}/ does not exist yet.
  */
-import { proxyToDjango } from "@/lib/django-proxy"
-import { deprecatedRoute } from "@/lib/route-deprecation"
+import { NextResponse } from "next/server"
 
-function extractId(req: Request): string {
-    const url = new URL(req.url)
-    const segments = url.pathname.split("/").filter(Boolean)
-    return segments[segments.length - 1]
+export async function GET() {
+    return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }
 
-export async function GET(req: Request) {
-    const id = extractId(req)
-    deprecatedRoute("/api/scim/v2/Users/[id] GET", "Django /api/v1/scim/v2/Users/{id}/")
-    return proxyToDjango(req, `/scim/v2/Users/${id}/`)
+export async function PUT() {
+    return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }
 
-export async function PUT(req: Request) {
-    const id = extractId(req)
-    deprecatedRoute("/api/scim/v2/Users/[id] PUT", "Django /api/v1/scim/v2/Users/{id}/")
-    return proxyToDjango(req, `/scim/v2/Users/${id}/`)
+export async function PATCH() {
+    return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }
 
-export async function PATCH(req: Request) {
-    const id = extractId(req)
-    deprecatedRoute("/api/scim/v2/Users/[id] PATCH", "Django /api/v1/scim/v2/Users/{id}/")
-    return proxyToDjango(req, `/scim/v2/Users/${id}/`)
-}
-
-export async function DELETE(req: Request) {
-    const id = extractId(req)
-    deprecatedRoute("/api/scim/v2/Users/[id] DELETE", "Django /api/v1/scim/v2/Users/{id}/")
-    return proxyToDjango(req, `/scim/v2/Users/${id}/`)
+export async function DELETE() {
+    return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }

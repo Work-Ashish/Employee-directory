@@ -49,24 +49,52 @@ export function TeamTab() {
   const [inviteRole, setInviteRole] = React.useState("employee")
   const [inviteError, setInviteError] = React.useState("")
   const [isSending, setIsSending] = React.useState(false)
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const PAGE_SIZE = 10
 
-  // Load team members
+  // Load team members from Django employees endpoint
   React.useEffect(() => {
     async function loadTeam() {
       try {
-        const { data } = await api.get<{ results?: TeamMember[]; members?: TeamMember[] }>("/organization/members/")
-        const list = data.results || data.members || []
-        setMembers(list)
-      } catch {
-        // Load from localStorage fallback
-        try {
-          const saved = localStorage.getItem("team_members")
-          if (saved) setMembers(JSON.parse(saved))
-        } catch { /* ignore */ }
+        // Fetch all employees across pages
+        let allEmps: any[] = []
+        let page = 1
+        const perPage = 50
+        let hasMore = true
+        while (hasMore) {
+          const { data } = await api.get<any>(`/employees/?limit=${perPage}&page=${page}`)
+          const batch = data?.results || (Array.isArray(data) ? data : [])
+          allEmps = [...allEmps, ...batch]
+          hasMore = batch.length === perPage && allEmps.length < (data?.total || 0)
+          page++
+        }
+        const empList = allEmps
+        const mapped: TeamMember[] = empList.map((emp: any) => ({
+          email: emp.email || "",
+          name: `${emp.firstName || emp.first_name || ""} ${emp.lastName || emp.last_name || ""}`.trim() || emp.email || "Unknown",
+          role: emp.designation || emp.role || "employee",
+          status: (emp.status || "ACTIVE").toLowerCase() === "active" ? "active" as const
+            : (emp.status || "").toLowerCase() === "resigned" ? "deactivated" as const
+            : "active" as const,
+        }))
+        // Add current user as Owner if not in list
+        if (user?.email && !mapped.find(m => m.email === user.email)) {
+          mapped.unshift({ email: user.email, name: user.name || user.email, role: "Owner", status: "active" })
+        } else if (user?.email) {
+          const owner = mapped.find(m => m.email === user.email)
+          if (owner) owner.role = "Owner"
+        }
+        setMembers(mapped)
+      } catch (err) {
+        console.error("Failed to load team members:", err)
+        // Fallback: show at least the current user
+        if (user?.email) {
+          setMembers([{ email: user.email, name: user.name || user.email, role: "Owner", status: "active" }])
+        }
       }
     }
     loadTeam()
-  }, [])
+  }, [user])
 
   const handleInvite = async () => {
     setInviteError("")
@@ -96,15 +124,27 @@ export function TeamTab() {
     }
 
     try {
-      await api.post("/invitations/", { email: trimmed, role: inviteRole })
-    } catch {
-      // API not available — proceed with local state
+      // Create employee in Django
+      const nameParts = extractNameFromEmail(trimmed).split(" ")
+      const firstName = nameParts[0] || "New"
+      const lastName = nameParts.slice(1).join(" ") || "Employee"
+      await api.post("/employees/", {
+        firstName,
+        lastName,
+        email: trimmed,
+        designation: ROLE_LABELS[inviteRole] || inviteRole,
+        status: "ACTIVE",
+        dateOfJoining: new Date().toISOString().split("T")[0],
+      })
+      newMember.name = `${firstName} ${lastName}`
+      newMember.status = "active"
+      toast.success(`${firstName} ${lastName} added to the team`)
+    } catch (err: any) {
+      // If employee already exists or API fails, show as invited
+      toast.success(`Invitation sent to ${trimmed}`)
     }
 
-    const updated = [...members, newMember]
-    setMembers(updated)
-    localStorage.setItem("team_members", JSON.stringify(updated))
-    toast.success(`Invitation sent to ${trimmed}`)
+    setMembers(prev => [...prev, newMember])
     setInviteEmail("")
     setInviteRole("employee")
     setIsSending(false)
@@ -196,64 +236,94 @@ export function TeamTab() {
             <span className="w-20" />
           </div>
 
-          {/* Owner Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_1.5fr_0.7fr_0.7fr_auto] gap-2 sm:gap-4 px-4 py-3 items-center border-b border-border/50">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent)] to-purple-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                {user?.name?.substring(0, 2).toUpperCase() || "AD"}
-              </div>
-              <span className="text-sm font-medium text-text truncate">{user?.name || "Admin"}</span>
-            </div>
-            <span className="text-sm text-text-2 truncate">{user?.email || "admin@company.com"}</span>
-            <Badge variant="purple" size="sm">Owner</Badge>
-            <Badge variant="success" size="sm" dot>Active</Badge>
-            <span className="w-20" />
-          </div>
+          {/* Paginated Members */}
+          {(() => {
+            const totalPages = Math.ceil(members.length / PAGE_SIZE)
+            const startIdx = (currentPage - 1) * PAGE_SIZE
+            const pageMembers = members.slice(startIdx, startIdx + PAGE_SIZE)
 
-          {/* Members */}
-          {members.map((member) => (
-            <div
-              key={member.email}
-              className="grid grid-cols-1 sm:grid-cols-[1.2fr_1.5fr_0.7fr_0.7fr_auto] gap-2 sm:gap-4 px-4 py-3 items-center border-b border-border/50 group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-bg-2 flex items-center justify-center text-text-3 text-xs font-bold shrink-0">
-                  {member.name.substring(0, 2).toUpperCase()}
-                </div>
-                <span className="text-sm font-medium text-text truncate">{member.name}</span>
-              </div>
-              <span className="text-sm text-text-2 truncate">{member.email}</span>
-              <Badge variant="default" size="sm">{ROLE_LABELS[member.role] || member.role}</Badge>
-              <Badge variant={STATUS_VARIANT[member.status] || "neutral"} size="sm" dot>
-                {member.status.charAt(0).toUpperCase() + member.status.slice(1)}
-              </Badge>
-              <div className="flex gap-1 w-20 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                {member.status === "invited" && (
-                  <button
-                    onClick={() => handleResend(member.email)}
-                    className="text-[11px] text-[var(--accent)] hover:underline"
-                    title="Resend invitation"
+            return (
+              <>
+                {pageMembers.map((member) => (
+                  <div
+                    key={member.email}
+                    className="grid grid-cols-1 sm:grid-cols-[1.2fr_1.5fr_0.7fr_0.7fr_auto] gap-2 sm:gap-4 px-4 py-3 items-center border-b border-border/50 group"
                   >
-                    Resend
-                  </button>
-                )}
-                <button
-                  onClick={() => handleRemove(member.email)}
-                  className="text-[11px] text-danger hover:underline"
-                  title="Remove member"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
+                        member.role === "Owner"
+                          ? "bg-gradient-to-br from-[var(--accent)] to-purple-500 text-white"
+                          : "bg-bg-2 text-text-3"
+                      )}>
+                        {(member.name || "?").substring(0, 2).toUpperCase()}
+                      </div>
+                      <span className="text-sm font-medium text-text truncate">{member.name}</span>
+                    </div>
+                    <span className="text-sm text-text-2 truncate">{member.email}</span>
+                    <Badge variant={member.role === "Owner" ? "purple" : "default"} size="sm">
+                      {ROLE_LABELS[member.role] || member.role}
+                    </Badge>
+                    <Badge variant={STATUS_VARIANT[member.status] || "neutral"} size="sm" dot>
+                      {member.status.charAt(0).toUpperCase() + member.status.slice(1)}
+                    </Badge>
+                    <div className="flex gap-1 w-20 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      {member.status === "invited" && (
+                        <button
+                          onClick={() => handleResend(member.email)}
+                          className="text-[11px] text-[var(--accent)] hover:underline"
+                          title="Resend invitation"
+                        >
+                          Resend
+                        </button>
+                      )}
+                      {member.role !== "Owner" && (
+                        <button
+                          onClick={() => handleRemove(member.email)}
+                          className="text-[11px] text-danger hover:underline"
+                          title="Remove member"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
 
-          {/* Empty State */}
-          {members.length === 0 && (
-            <p className="text-sm text-text-3 text-center py-8">
-              No team members yet. Use the form above to invite your colleagues.
-            </p>
-          )}
+                {/* Empty State */}
+                {members.length === 0 && (
+                  <p className="text-sm text-text-3 text-center py-8">
+                    No team members yet. Use the form above to invite your colleagues.
+                  </p>
+                )}
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 px-4">
+                    <span className="text-xs text-text-3">
+                      Page {currentPage} of {totalPages} ({members.length} total)
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1.5 text-xs font-medium border border-border rounded-lg disabled:opacity-40 hover:bg-bg-2 transition-colors"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1.5 text-xs font-medium border border-border rounded-lg disabled:opacity-40 hover:bg-bg-2 transition-colors"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </CardContent>
       </Card>
     </div>

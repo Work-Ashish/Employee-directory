@@ -65,7 +65,9 @@ export function NotificationCenter() {
     }
 
     const formatTime = (date: string) => {
-        const diff = Date.now() - new Date(date).getTime()
+        const d = new Date(date)
+        if (isNaN(d.getTime())) return "Unknown"
+        const diff = Date.now() - d.getTime()
         const mins = Math.floor(diff / 60000)
         if (mins < 60) return `${mins}m ago`
         const hours = Math.floor(mins / 60)

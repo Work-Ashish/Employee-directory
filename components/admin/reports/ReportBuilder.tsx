@@ -187,7 +187,7 @@ export function ReportBuilder() {
         DepartmentAPI.list().then(d => {
             const arr = (d as any)?.results || extractArray(d)
             setDepartments((arr as { id: string; name: string }[]).map(dept => ({ id: dept.id, name: dept.name })))
-        }).catch(() => {})
+        }).catch((err) => { console.error("ReportBuilder department fetch failed:", err) })
 
         fetchSavedReports()
     }, [])

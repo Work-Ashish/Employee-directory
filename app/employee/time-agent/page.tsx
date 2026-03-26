@@ -61,9 +61,9 @@ export default function EmployeeTimeAgentPage() {
         try {
             setLoading(true)
 
-            // Get employee's device
+            // Get employee's own device — use employee-scoped endpoint, not admin
             try {
-                const { data: devicesData } = await api.get<any>('/admin/agent/devices/?limit=1')
+                const { data: devicesData } = await api.get<any>('/agent/devices/?limit=1')
                 const devices = devicesData?.data || devicesData?.results || []
                 if (devices.length > 0) {
                     const d = devices[0]
@@ -75,8 +75,8 @@ export default function EmployeeTimeAgentPage() {
                         lastHeartbeat: d.lastHeartbeat || d.last_heartbeat || null,
                     })
                 }
-            } catch {
-                // Device info not available — not critical
+            } catch (err) {
+                console.warn("[TimeAgent] Could not fetch device info:", err)
             }
 
             // Fetch last 7 days of daily reports from the new endpoint
@@ -157,8 +157,8 @@ export default function EmployeeTimeAgentPage() {
             }
 
             setReports(fetchedReports)
-        } catch {
-            // Silent fail — employee may not have agent access
+        } catch (err) {
+            console.error("[TimeAgent] Failed to fetch activity data:", err)
         } finally {
             setLoading(false)
         }

@@ -31,7 +31,7 @@ export default function MyDocuments() {
                 setDocuments(rawDocs.map((d: any) => ({
                     ...d,
                     url: d.url || d.fileUrl || "",
-                    uploadDate: d.uploadDate || d.createdAt || "",
+                    uploadDate: d.uploadDate || d.createdAt || new Date().toISOString(),
                 })))
             } catch {
                 toast.error("Failed to load documents")

@@ -34,7 +34,7 @@ export const NotificationAPI = {
   },
 
   markAllRead: async (): Promise<void> => {
-    await api.put("/notifications/read-all/")
+    await api.put("/notifications/read/")
   },
 
   listAlerts: async (): Promise<AdminAlert[]> => {

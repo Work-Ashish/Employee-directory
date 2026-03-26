@@ -1,10 +1,10 @@
 /**
  * /api/admin/orphan-check — Django proxy (Sprint 14).
+ *
+ * NOTE: Django endpoint /api/v1/employees/orphan-check/ does not exist yet.
  */
-import { proxyToDjango } from "@/lib/django-proxy"
-import { deprecatedRoute } from "@/lib/route-deprecation"
+import { NextResponse } from "next/server"
 
-export async function GET(req: Request) {
-    deprecatedRoute("/api/admin/orphan-check GET", "Django /api/v1/employees/orphan-check/")
-    return proxyToDjango(req, "/employees/orphan-check/")
+export async function GET() {
+    return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }

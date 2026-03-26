@@ -66,6 +66,9 @@ export function AIChatbot() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ messages: apiMessages }),
             })
+            if (!res.ok) {
+                throw new Error(`Chat API error: ${res.status}`)
+            }
             const data = await res.json()
 
             const assistantMessage: Message = {
@@ -103,7 +106,7 @@ export function AIChatbot() {
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
                     position: "fixed",
-                    bottom: 24,
+                    bottom: 80,
                     right: 24,
                     width: 56,
                     height: 56,
@@ -140,7 +143,7 @@ export function AIChatbot() {
                 <div
                     style={{
                         position: "fixed",
-                        bottom: 92,
+                        bottom: 148,
                         right: 24,
                         width: 400,
                         maxWidth: "calc(100vw - 48px)",

@@ -92,12 +92,14 @@ export function CsvImportModal({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ rows }),
             })
-            const json = await res.json()
             if (!res.ok) {
+                let errorMsg = "Import failed."
+                try { const errJson = await res.json(); errorMsg = errJson.error || errorMsg } catch {}
                 setState("error")
-                setErrorMsg(json.error || "Import failed.")
+                setErrorMsg(errorMsg)
                 return
             }
+            const json = await res.json()
             setImportResult({ inserted: json.inserted ?? rows.length, skipped: json.skipped ?? 0 })
             setState("done")
             onSuccess()

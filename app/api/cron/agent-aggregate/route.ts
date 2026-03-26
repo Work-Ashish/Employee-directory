@@ -1,10 +1,10 @@
 /**
  * /api/cron/agent-aggregate — Django proxy (Sprint 14).
+ *
+ * NOTE: Django endpoint /api/v1/cron/agent-aggregate/ does not exist yet.
  */
-import { proxyToDjango } from "@/lib/django-proxy"
-import { deprecatedRoute } from "@/lib/route-deprecation"
+import { NextResponse } from "next/server"
 
-export async function POST(req: Request) {
-    deprecatedRoute("/api/cron/agent-aggregate POST", "Django /api/v1/cron/agent-aggregate/")
-    return proxyToDjango(req, "/cron/agent-aggregate/")
+export async function POST() {
+    return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }

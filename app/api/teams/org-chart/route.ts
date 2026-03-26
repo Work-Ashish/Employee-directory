@@ -1,6 +1,3 @@
-/**
- * /api/org-chart — Django proxy (Sprint 14).
- */
 import { proxyToDjango } from "@/lib/django-proxy"
 
 export async function GET(req: Request) {

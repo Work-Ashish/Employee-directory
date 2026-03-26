@@ -2,6 +2,7 @@
  * /api/admin/assets/import — Django proxy (Sprint 13).
  *
  * Called by CsvImportModal on the admin assets page.
+ * TODO: Django endpoint /api/v1/admin/assets/import/ not yet implemented — add to Django apps/assets/urls.py
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"

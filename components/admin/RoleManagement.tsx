@@ -89,7 +89,7 @@ export function RoleManagement() {
         try {
             const data = await EmployeeAPI.fetchEmployees(1, 500)
             setEmployees((data as any)?.results || extractArray<EmployeeOption>(data))
-        } catch { /* non-critical */ }
+        } catch (err) { console.error("RoleManagement fetch failed:", err) }
     }, [])
 
     React.useEffect(() => { fetchRoles(); fetchEmployees() }, [fetchRoles, fetchEmployees])
@@ -606,7 +606,7 @@ function AssignDialog({
                 const ids = new Set<string>((data.employees || []).map((e: any) => e.employeeId || e.employee?.id))
                 setAssigned(ids)
                 setSelected(ids)
-            } catch { /* non-critical */ }
+            } catch (err) { console.error("RoleManagement fetch failed:", err) }
         }
         loadAssigned()
     }, [role, open])

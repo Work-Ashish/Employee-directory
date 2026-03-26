@@ -129,9 +129,12 @@ class TeamMemberView(APIView):
     """
     POST   /teams/{id}/members/  -- add a member to the team
     DELETE /teams/{id}/members/  -- remove a member from the team
+    GET    /teams/{id}/members/  -- list team members
     """
 
     def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
         return [IsAuthenticated(), HasPermission('teams.manage')]
 
     def _get_team(self, pk):
@@ -199,12 +202,13 @@ class OrgChartView(APIView):
     """
 
     def get_permissions(self):
-        return [IsAuthenticated(), HasPermission('teams.view')]
+        return [IsAuthenticated()]
 
     def get(self, request):
         employees = Employee.objects.select_related('reporting_to').values(
             'id', 'first_name', 'last_name', 'designation',
-            'department', 'reporting_to_id',
+            'department', 'reporting_to_id', 'employee_code',
+            'email', 'phone',
         )
 
         # Build adjacency list: manager_id -> [children]
@@ -215,19 +219,30 @@ class OrgChartView(APIView):
             emp_id = str(emp['id'])
             nodes[emp_id] = {
                 'id': emp_id,
+                'first_name': emp['first_name'],
+                'last_name': emp['last_name'],
                 'name': f"{emp['first_name']} {emp['last_name']}",
-                'designation': emp['designation'],
-                'department': emp['department'],
+                'designation': emp['designation'] or '',
+                'department': emp['department'] or '',
+                'employee_code': emp['employee_code'] or '',
+                'email': emp['email'] or '',
+                'phone': emp['phone'] or '',
+                'reporting_to': str(emp['reporting_to_id']) if emp['reporting_to_id'] else None,
                 'children': [],
             }
             parent_id = str(emp['reporting_to_id']) if emp['reporting_to_id'] else None
             children_map[parent_id].append(emp_id)
 
-        def build_tree(parent_id):
+        def build_tree(parent_id, visited=None):
+            if visited is None:
+                visited = set()
             tree = []
             for child_id in children_map.get(parent_id, []):
+                if child_id in visited:
+                    continue  # prevent circular reference infinite recursion
+                visited.add(child_id)
                 node = nodes[child_id]
-                node['children'] = build_tree(child_id)
+                node['children'] = build_tree(child_id, visited)
                 tree.append(node)
             return tree
 

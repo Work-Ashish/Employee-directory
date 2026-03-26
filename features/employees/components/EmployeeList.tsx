@@ -28,6 +28,8 @@ interface EmployeeListProps {
     onExportCSV: () => void
     onExportPDF: () => void
     isResettingCreds: string | null
+    searchValue?: string
+    onSearchChange?: (value: string) => void
 }
 
 function getStatusVariant(status: string) {
@@ -55,7 +57,9 @@ export const EmployeeList = React.memo(function EmployeeList({
     onImportClick,
     onExportCSV,
     onExportPDF,
-    isResettingCreds
+    isResettingCreds,
+    searchValue,
+    onSearchChange
 }: EmployeeListProps) {
     const columns = React.useMemo<ColumnDef<TableEmployee>[]>(() => [
         {
@@ -169,6 +173,8 @@ export const EmployeeList = React.memo(function EmployeeList({
             columns={columns}
             data={employees}
             searchKey="name"
+            searchValue={searchValue}
+            onSearchChange={onSearchChange}
             pageCount={pageCount}
             pageIndex={pageIndex}
             totalRows={totalRows}

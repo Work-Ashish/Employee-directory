@@ -1,29 +1,18 @@
 /**
  * /api/settings/webhooks/[id] — Django proxy (Sprint 14).
+ *
+ * NOTE: Django endpoint /api/v1/webhooks/{id}/ does not exist yet.
  */
-import { proxyToDjango } from "@/lib/django-proxy"
-import { deprecatedRoute } from "@/lib/route-deprecation"
+import { NextResponse } from "next/server"
 
-export async function GET(req: Request) {
-    const url = new URL(req.url)
-    const segments = url.pathname.split("/")
-    const id = segments[segments.indexOf("webhooks") + 1]
-    deprecatedRoute(`/api/settings/webhooks/${id} GET`, `Django /api/v1/webhooks/${id}/`)
-    return proxyToDjango(req, `/webhooks/${id}/`)
+export async function GET() {
+    return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }
 
-export async function PUT(req: Request) {
-    const url = new URL(req.url)
-    const segments = url.pathname.split("/")
-    const id = segments[segments.indexOf("webhooks") + 1]
-    deprecatedRoute(`/api/settings/webhooks/${id} PUT`, `Django /api/v1/webhooks/${id}/`)
-    return proxyToDjango(req, `/webhooks/${id}/`)
+export async function PUT() {
+    return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }
 
-export async function DELETE(req: Request) {
-    const url = new URL(req.url)
-    const segments = url.pathname.split("/")
-    const id = segments[segments.indexOf("webhooks") + 1]
-    deprecatedRoute(`/api/settings/webhooks/${id} DELETE`, `Django /api/v1/webhooks/${id}/`)
-    return proxyToDjango(req, `/webhooks/${id}/`)
+export async function DELETE() {
+    return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AppShell } from "@/components/AppShell";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -42,9 +43,11 @@ export default function RootLayout({
             <AOSProvider />
             <canvas id="bg-canvas" className="fixed inset-0 pointer-events-none z-0 opacity-25" />
             <div className="flex h-screen overflow-hidden w-full">
-              <AppShell>
-                {children}
-              </AppShell>
+              <ErrorBoundary>
+                <AppShell>
+                  {children}
+                </AppShell>
+              </ErrorBoundary>
             </div>
             <Toaster position="top-right" theme="system" />
         </ThemeProvider>

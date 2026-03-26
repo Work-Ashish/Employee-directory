@@ -5,6 +5,6 @@ import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
 
 export async function POST(req: Request) {
-    deprecatedRoute("/api/time-tracker/heartbeat POST", "Django /api/v1/timetracker/heartbeat/")
-    return proxyToDjango(req, "/timetracker/heartbeat/")
+    deprecatedRoute("/api/time-tracker/heartbeat POST", "Django /api/v1/time-tracker/heartbeat/")
+    return proxyToDjango(req, "/time-tracker/heartbeat/")
 }

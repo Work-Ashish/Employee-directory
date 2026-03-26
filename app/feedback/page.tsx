@@ -139,29 +139,57 @@ export default function FeedbackPage() {
     const myEmployeeId = React.useMemo(() => {
         if (!user) return null
         // Prefer direct employeeId from auth context
-        if ((user as any).employeeId) return (user as any).employeeId
+        const directId = (user as any).employeeId
+        if (directId) {
+            const resolved = String(directId).trim()
+            console.debug("[Feedback] myEmployeeId from auth context:", resolved)
+            return resolved
+        }
         // Fallback: match by name
         const me = employees.find(e =>
             `${e.firstName} ${e.lastName}`.toLowerCase() === user.name?.toLowerCase()
         )
-        return me?.id || null
+        const fallbackId = me?.id ? String(me.id).trim() : null
+        console.debug("[Feedback] myEmployeeId from name match:", fallbackId, "| user.name:", user.name)
+        return fallbackId
     }, [user, employees])
 
     const filteredFeedback = React.useMemo(() => {
         if (isAdmin && tab === "all") return feedbackList
+        const myId = myEmployeeId ? String(myEmployeeId).trim() : null
         if (tab === "received") {
             // Feedback where I am the recipient AND I am NOT the sender
-            return feedbackList.filter(f => f.toEmployeeId === myEmployeeId && f.fromEmployeeId !== myEmployeeId)
+            return feedbackList.filter(f => {
+                const toId = f.toEmployeeId ? String(f.toEmployeeId).trim() : ""
+                const fromId = f.fromEmployeeId ? String(f.fromEmployeeId).trim() : ""
+                return toId === myId && fromId !== myId
+            })
         }
         if (tab === "sent") {
             // Feedback where I am the sender
-            return feedbackList.filter(f => f.fromEmployeeId === myEmployeeId)
+            return feedbackList.filter(f => {
+                const fromId = f.fromEmployeeId ? String(f.fromEmployeeId).trim() : ""
+                return fromId === myId
+            })
         }
         return feedbackList
     }, [feedbackList, tab, myEmployeeId, isAdmin])
 
-    const receivedCount = React.useMemo(() => feedbackList.filter(f => f.toEmployeeId === myEmployeeId && f.fromEmployeeId !== myEmployeeId).length, [feedbackList, myEmployeeId])
-    const sentCount = React.useMemo(() => feedbackList.filter(f => f.fromEmployeeId === myEmployeeId).length, [feedbackList, myEmployeeId])
+    const receivedCount = React.useMemo(() => {
+        const myId = myEmployeeId ? String(myEmployeeId).trim() : null
+        return feedbackList.filter(f => {
+            const toId = f.toEmployeeId ? String(f.toEmployeeId).trim() : ""
+            const fromId = f.fromEmployeeId ? String(f.fromEmployeeId).trim() : ""
+            return toId === myId && fromId !== myId
+        }).length
+    }, [feedbackList, myEmployeeId])
+    const sentCount = React.useMemo(() => {
+        const myId = myEmployeeId ? String(myEmployeeId).trim() : null
+        return feedbackList.filter(f => {
+            const fromId = f.fromEmployeeId ? String(f.fromEmployeeId).trim() : ""
+            return fromId === myId
+        }).length
+    }, [feedbackList, myEmployeeId])
 
     const filteredEmployees = React.useMemo(() => {
         // Exclude self from employee picker

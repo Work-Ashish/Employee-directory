@@ -1,10 +1,10 @@
 /**
  * /api/onboarding/agent — Django proxy (Sprint 14).
+ *
+ * NOTE: Django endpoint /api/v1/onboarding/agent/ does not exist yet.
  */
-import { proxyToDjango } from "@/lib/django-proxy"
-import { deprecatedRoute } from "@/lib/route-deprecation"
+import { NextResponse } from "next/server"
 
-export async function POST(req: Request) {
-    deprecatedRoute("/api/onboarding/agent POST", "Django /api/v1/onboarding/agent/")
-    return proxyToDjango(req, "/onboarding/agent/")
+export async function POST() {
+    return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }

@@ -34,3 +34,8 @@ SECURE_SSL_REDIRECT = True
 
 # Trust X-Forwarded-Proto from reverse proxy (nginx/ALB/CloudFront)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Static and media files for production (collectstatic output & user uploads)
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/media/'

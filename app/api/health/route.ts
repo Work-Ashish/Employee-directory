@@ -1,6 +1,6 @@
 import { apiSuccess, apiError, ApiErrorCode } from "@/lib/api-response"
 
-const DJANGO_URL = process.env.DJANGO_BACKEND_URL || "http://localhost:8000"
+const DJANGO_URL = process.env.DJANGO_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
 
 export async function GET() {
     try {

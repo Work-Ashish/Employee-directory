@@ -1,15 +1,14 @@
 /**
  * /api/settings/webhooks — Django proxy (Sprint 14).
+ *
+ * NOTE: Django endpoint /api/v1/webhooks/ does not exist yet.
  */
-import { proxyToDjango } from "@/lib/django-proxy"
-import { deprecatedRoute } from "@/lib/route-deprecation"
+import { NextResponse } from "next/server"
 
-export async function GET(req: Request) {
-    deprecatedRoute("/api/settings/webhooks GET", "Django /api/v1/webhooks/")
-    return proxyToDjango(req, "/webhooks/")
+export async function GET() {
+    return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }
 
-export async function POST(req: Request) {
-    deprecatedRoute("/api/settings/webhooks POST", "Django /api/v1/webhooks/")
-    return proxyToDjango(req, "/webhooks/")
+export async function POST() {
+    return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }

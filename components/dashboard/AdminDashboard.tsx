@@ -28,11 +28,11 @@ export function AdminDashboard() {
         try {
             if (isFirstLoad.current) setLoading(true)
             const [dashData, loginStats] = await Promise.all([
-                DashboardAPI.getStats(),
-                DashboardAPI.getLogins(),
+                DashboardAPI.getStats().catch((err) => { console.error("Dashboard stats fetch failed:", err); return null }),
+                DashboardAPI.getLogins().catch((err) => { console.error("Dashboard logins fetch failed:", err); return null }),
             ])
-            setData(dashData)
-            setLoginData(loginStats)
+            if (dashData) setData(dashData)
+            if (loginStats) setLoginData(loginStats)
         } catch (error) {
             console.error("Dashboard fetch error:", error)
         } finally {

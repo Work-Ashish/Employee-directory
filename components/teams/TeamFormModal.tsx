@@ -68,7 +68,7 @@ export function TeamFormModal({ isOpen, onClose, team, onSaved }: TeamFormModalP
                 const list = data.results || []
                 setEmployees(Array.isArray(list) ? list as unknown as Employee[] : [])
             })
-            .catch(() => {})
+            .catch((err) => { console.error("TeamFormModal employee fetch failed:", err); setError("Failed to load employees") })
             .finally(() => setLoadingEmp(false))
     }, [isOpen])
 

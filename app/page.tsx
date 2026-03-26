@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { AdminDashboard } from "@/components/dashboard/AdminDashboard"
 import { EmployeeDashboard } from "@/components/dashboard/EmployeeDashboard"
+import { TeamLeadDashboard } from "@/components/dashboard/TeamLeadDashboard"
 import { Roles, type Role } from "@/lib/permissions"
 
 export default function Dashboard() {
@@ -26,6 +27,8 @@ export default function Dashboard() {
     case Roles.CEO:
     case Roles.HR:
       return <AdminDashboard />
+    case Roles.TEAM_LEAD:
+      return <TeamLeadDashboard />
     default:
       return <EmployeeDashboard />
   }

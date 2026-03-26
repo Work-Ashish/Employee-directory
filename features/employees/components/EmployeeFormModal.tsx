@@ -211,7 +211,7 @@ export const EmployeeFormModal = React.memo(function EmployeeFormModal({
                         />
                         {selectedRole !== "CEO" ? (
                             <Combobox
-                                label="Reporting Manager *"
+                                label="Reporting Manager"
                                 options={managerComboOptions}
                                 value={form.watch('managerId') || ''}
                                 onValueChange={(val) => form.setValue('managerId', val, { shouldValidate: true })}
