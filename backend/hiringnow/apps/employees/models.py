@@ -1,7 +1,7 @@
 import secrets
 import string
 
-from django.db import models
+from django.db import models, transaction
 
 from common.models import BaseModel
 from apps.users.models import User
@@ -113,14 +113,22 @@ class Employee(BaseModel):
     def save(self, *args, **kwargs):
         # auto-generate employee_code on first save if not provided
         if not self.employee_code:
-            last = Employee.objects.order_by('-created_at').first()
-            next_num = 1
-            if last and last.employee_code:
-                try:
-                    next_num = int(last.employee_code.split('-')[1]) + 1
-                except (IndexError, ValueError):
-                    next_num = Employee.objects.count() + 1
-            self.employee_code = f"EMP-{next_num:04d}"
+            with transaction.atomic():
+                last = (
+                    Employee.objects
+                    .select_for_update()
+                    .order_by('-created_at')
+                    .first()
+                )
+                next_num = 1
+                if last and last.employee_code:
+                    try:
+                        next_num = int(last.employee_code.split('-')[1]) + 1
+                    except (IndexError, ValueError):
+                        next_num = Employee.objects.count() + 1
+                self.employee_code = f"EMP-{next_num:04d}"
+                super().save(*args, **kwargs)
+                return
         super().save(*args, **kwargs)
 
     @staticmethod

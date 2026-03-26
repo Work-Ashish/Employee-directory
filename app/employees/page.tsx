@@ -87,6 +87,7 @@ function EmployeesContent() {
 
     const [credCard, setCredCard] = React.useState<{ username: string; password: string; name: string } | null>(null)
     const [isResettingCreds, setIsResettingCreds] = React.useState<string | null>(null)
+    const [isRelinkingUsers, setIsRelinkingUsers] = React.useState(false)
 
     const [managers, setManagers] = React.useState<{id: string, firstName: string, lastName: string, designation: string, department?: {name: string}}[]>([])
 
@@ -225,6 +226,25 @@ function EmployeesContent() {
         }
     }
 
+    const handleRelinkUsers = async () => {
+        if (!await confirmAction("Repair Employee Logins?", "This will link employees without a login account connection to existing users with the same email address.")) return
+        setIsRelinkingUsers(true)
+        try {
+            const result = await EmployeeAPI.relinkUsers()
+            const summary = `${result.relinkedCount} relinked, ${result.skippedCount} skipped.`
+            if (result.relinkedCount > 0) {
+                showSuccess("Login Links Repaired", summary)
+            } else {
+                toast.success(`No links changed. ${summary}`)
+            }
+            fetchData()
+        } catch (err: any) {
+            toast.error(err?.message || "Failed to repair employee logins")
+        } finally {
+            setIsRelinkingUsers(false)
+        }
+    }
+
     const onSubmit = async (data: EmployeeFormData) => {
         try {
             const isEdit = modalMode === "EDIT"
@@ -276,11 +296,13 @@ function EmployeesContent() {
                 onOpenEditModal={openEditModal}
                 onOpenViewModal={openViewModal}
                 onResetCredentials={handleResetCredentials}
+                onRelinkUsers={handleRelinkUsers}
                 onDelete={handleDelete}
                 onImportClick={() => setIsBulkImportOpen(true)}
                 onExportCSV={() => exportToCSV(employees.map(({ color, initials, raw, ...rest }) => rest), 'employees_list')}
                 onExportPDF={() => exportToPDF(['Name', 'Email', 'Department', 'Role', 'Status', 'Start Date'], employees.map(e => [e.name, e.email, e.dept, e.role, e.status, e.start]), 'employees_list', 'Employee Directory Report')}
                 isResettingCreds={isResettingCreds}
+                isRelinkingUsers={isRelinkingUsers}
             />
 
             <EmployeeFormModal

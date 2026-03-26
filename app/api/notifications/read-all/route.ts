@@ -10,11 +10,15 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth, type AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function PUT(req: Request) {
+async function handlePUT(req: Request, _context: AuthContext) {
     deprecatedRoute(
         "/api/notifications/read-all PUT",
         "Django /api/v1/notifications/read/"
     )
     return proxyToDjango(req, "/notifications/read/")
 }
+
+export const PUT = withAuth({ module: Module.DASHBOARD, action: Action.UPDATE }, handlePUT)

@@ -4,15 +4,20 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handleGET(req: Request, context: AuthContext) {
+    const id = context.params.id
     deprecatedRoute(`/api/performance/reviews/${id} GET`, "Django /api/v1/performance/reviews/:id/")
     return proxyToDjango(req, `/performance/reviews/${id}/`)
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handlePUT(req: Request, context: AuthContext) {
+    const id = context.params.id
     deprecatedRoute(`/api/performance/reviews/${id} PUT`, "Django /api/v1/performance/reviews/:id/")
     return proxyToDjango(req, `/performance/reviews/${id}/`)
 }
+
+export const GET = withAuth({ module: Module.PERFORMANCE, action: Action.VIEW }, handleGET)
+export const PUT = withAuth({ module: Module.PERFORMANCE, action: Action.UPDATE }, handlePUT)

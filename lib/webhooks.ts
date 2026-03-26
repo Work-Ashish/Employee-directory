@@ -39,7 +39,12 @@ function isPrivateUrl(urlString: string): boolean {
             hostname === "localhost" ||
             hostname === "127.0.0.1" ||
             hostname === "::1" ||
+            hostname === "[::1]" ||
             hostname === "0.0.0.0" ||
+            hostname.startsWith("::ffff:127.") ||
+            hostname.startsWith("0:0:0:0:0:ffff:") ||
+            hostname.startsWith("::ffff:10.") ||
+            hostname.startsWith("::ffff:192.168.") ||
             hostname.startsWith("10.") ||
             hostname.startsWith("192.168.") ||
             hostname === "169.254.169.254" ||
@@ -75,7 +80,10 @@ export async function dispatchWebhookEvent(
         const response = await fetch(
             `${DJANGO_BASE}/api/v1/webhooks/active/?organization_id=${encodeURIComponent(organizationId)}&event=${encodeURIComponent(event)}`,
             {
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Token ${process.env.DJANGO_SERVICE_TOKEN || ""}`,
+                },
                 signal: AbortSignal.timeout(5000),
             }
         )
@@ -99,7 +107,10 @@ export async function dispatchWebhookEvent(
             try {
                 const deliveryResponse = await fetch(`${DJANGO_BASE}/api/v1/webhooks/deliveries/`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Token ${process.env.DJANGO_SERVICE_TOKEN || ""}`,
+                    },
                     body: JSON.stringify({
                         webhook_id: webhook.id,
                         event,

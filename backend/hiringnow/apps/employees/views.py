@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from apps.rbac.permissions import HasPermission
 from apps.employees.models import Employee, EmploymentType
 from apps.teams.services import sync_employee_team
+from apps.users.models import User
 from apps.employees.serializers import (
     EmployeeSerializer,
     EmployeeCreateSerializer,
@@ -201,6 +202,59 @@ class EmployeeCredentialsView(APIView):
             'employee_id': str(employee.id),
             'email': employee.email,
             'temp_password': temp_password,
+        })
+
+
+class EmployeeRelinkUsersView(APIView):
+    """POST /employees/relink-users/ — link orphan employees to users by email."""
+
+    def get_permissions(self):
+        return [IsAuthenticated(), HasPermission('employees.manage')]
+
+    def post(self, request):
+        relinked = []
+        skipped = []
+
+        employees = Employee.objects.filter(
+            user__isnull=True,
+            deleted_at__isnull=True,
+        ).exclude(email='')
+
+        for employee in employees:
+            user = User.objects.filter(email__iexact=employee.email).first()
+            if not user:
+                skipped.append({
+                    'employee_id': str(employee.id),
+                    'email': employee.email,
+                    'reason': 'No matching user found',
+                })
+                continue
+
+            existing_employee = Employee.objects.filter(
+                user=user,
+                deleted_at__isnull=True,
+            ).exclude(pk=employee.pk).first()
+            if existing_employee:
+                skipped.append({
+                    'employee_id': str(employee.id),
+                    'email': employee.email,
+                    'reason': f'User already linked to employee {existing_employee.employee_code or existing_employee.id}',
+                })
+                continue
+
+            employee.user = user
+            employee.save(update_fields=['user', 'updated_at'])
+            relinked.append({
+                'employee_id': str(employee.id),
+                'user_id': str(user.id),
+                'email': employee.email,
+            })
+
+        return Response({
+            'relinked_count': len(relinked),
+            'skipped_count': len(skipped),
+            'relinked': relinked,
+            'skipped': skipped,
         })
 
 

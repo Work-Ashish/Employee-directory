@@ -44,44 +44,57 @@ class RegisterSerializer(serializers.Serializer):
         except Exception as e:
             tenant.delete(using = 'default')
             raise serializers.ValidationError({'detail': f'Could not create tenant DB: {e}'})
+
         if db_name not in settings.DATABASES:
             default = settings.DATABASES['default'].copy()
             default['NAME'] = db_name
             settings.DATABASES[db_name] = default
-        call_command('migrate', '--database', db_name, '--run-syncdb', verbosity = 0)
-        set_current_tenant(tenant)
-        user = User.objects.db_manager(db_name).create_user(
-            email = validated_data['email'],
-            password = password,
-            tenant = tenant,
-            first_name = validated_data.get('first_name', ''),
-            last_name = validated_data.get('last_name', ''),
-            is_tenant_admin = True,
-        )
 
-        # Auto-create an Employee record linked to the registering user
-        from apps.employees.models import Employee
-        Employee.objects.create(
-            user=user,
-            first_name=user.first_name or tenant_name,
-            last_name=user.last_name,
-            email=user.email,
-            designation='Admin',
-            status=Employee.Status.ACTIVE,
-        )
+        try:
+            call_command('migrate', '--database', db_name, '--run-syncdb', verbosity = 0)
+            set_current_tenant(tenant)
+            user = User.objects.db_manager(db_name).create_user(
+                email = validated_data['email'],
+                password = password,
+                tenant = tenant,
+                first_name = validated_data.get('first_name', ''),
+                last_name = validated_data.get('last_name', ''),
+                is_tenant_admin = True,
+            )
 
-        # Seed RBAC roles/permissions and assign admin role to this user
-        try:
-            call_command('seed_rbac', '--database', db_name, verbosity=0)
-        except Exception:
-            pass  # non-fatal — roles can be seeded later
-        try:
-            from apps.rbac.models import Role, UserRole
-            admin_role = Role.objects.filter(slug='admin').first()
-            if admin_role:
-                UserRole.objects.get_or_create(user=user, role=admin_role)
-        except Exception:
-            pass  # non-fatal
+            # Auto-create an Employee record linked to the registering user
+            from apps.employees.models import Employee
+            Employee.objects.create(
+                user=user,
+                first_name=user.first_name or tenant_name,
+                last_name=user.last_name,
+                email=user.email,
+                designation='Admin',
+                status=Employee.Status.ACTIVE,
+            )
+
+            # Seed RBAC roles/permissions and assign admin role to this user
+            try:
+                call_command('seed_rbac', '--database', db_name, verbosity=0)
+            except Exception:
+                pass  # non-fatal — roles can be seeded later
+            try:
+                from apps.rbac.models import Role, UserRole
+                admin_role = Role.objects.filter(slug='admin').first()
+                if admin_role:
+                    UserRole.objects.get_or_create(user=user, role=admin_role)
+            except Exception:
+                pass  # non-fatal
+        except Exception as e:
+            # Drop the orphaned tenant database on any post-creation failure
+            try:
+                from config.db_utils import drop_tenant_database
+                drop_tenant_database(db_name)
+            except Exception:
+                pass
+            # Clean up the registry entry
+            tenant.delete(using='default')
+            raise
 
         return {'tenant': tenant, 'user': user}
 

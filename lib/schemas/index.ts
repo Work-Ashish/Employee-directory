@@ -31,6 +31,9 @@ export const leaveSchema = z.object({
     endDate: z.coerce.date(),
     reason: z.string().min(5, "Reason must be at least 5 characters"),
     employeeId: z.string().optional(), // Can be inferred from session
+}).refine(data => new Date(data.endDate) >= new Date(data.startDate), {
+    message: "End date must be on or after start date",
+    path: ["endDate"],
 })
 
 export const updateLeaveSchema = z.object({
@@ -72,6 +75,9 @@ export const eventSchema = z.object({
     end: z.string().or(z.date()),
     allDay: z.boolean().default(false),
     type: z.enum(["EVENT", "MEETING", "HOLIDAY", "LEAVE", "BIRTHDAY"]).default("EVENT"),
+}).refine(data => new Date(data.end) >= new Date(data.start), {
+    message: "End date/time must be on or after start date/time",
+    path: ["end"],
 })
 
 export const announcementSchema = z.object({

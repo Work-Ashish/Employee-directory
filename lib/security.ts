@@ -92,7 +92,7 @@ export function withAuth(requirement: AuthRequirement, handler: AuthHandler) {
 
             // ── Permission / RBAC Check ──────────────────────────
             // Tenant admins bypass all permission checks (matches Django is_tenant_admin)
-            const skipPermCheck = isTenantAdmin(role)
+            const skipPermCheck = isTenantAdmin(role) || (session.user as Record<string, unknown>).isTenantAdmin === true
 
             if (!skipPermCheck) {
                 if (isLegacyAuth(requirement)) {
@@ -109,27 +109,33 @@ export function withAuth(requirement: AuthRequirement, handler: AuthHandler) {
                 } else {
                     // Permission path: check static matrix → Django codenames → functional roles
                     const perms = isPermissionArray(requirement) ? requirement : [requirement as PermissionRequirement]
-                    const denied = perms.find(p => !hasPermission(role, p.module, p.action))
-                    if (denied) {
-                        // Fallback 1: check Django codenames from user's RBAC roles
-                        const codename = toCodename(denied.module, denied.action)
-                        let codenameGranted = false
-                        try {
-                            // Check if user's Django roles grant this codename
-                            // (server-side: query Django's role_permissions for user)
-                            if (employeeId) {
-                                codenameGranted = await hasFunctionalPermission(employeeId, denied.module, denied.action)
+                    const deniedPerms = perms.filter(p => !hasPermission(role, p.module, p.action))
+                    if (deniedPerms.length > 0) {
+                        // Fallback: check ALL denied perms against Django codenames / functional roles
+                        const stillDenied: PermissionRequirement[] = []
+                        for (const denied of deniedPerms) {
+                            let codenameGranted = false
+                            try {
+                                if (employeeId) {
+                                    codenameGranted = await hasFunctionalPermission(employeeId, denied.module, denied.action)
+                                }
+                            } catch {
+                                // Non-critical
                             }
-                        } catch {
-                            // Non-critical
+                            if (!codenameGranted) {
+                                stillDenied.push(denied)
+                            }
                         }
 
-                        if (!codenameGranted) {
+                        if (stillDenied.length > 0) {
+                            const first = stillDenied[0]
+                            const codename = toCodename(first.module, first.action)
                             logger.warn("Forbidden permission", {
-                                userId, role, module: denied.module, action: denied.action, codename, path, requestId
+                                userId, role, module: first.module, action: first.action, codename, path, requestId,
+                                totalDenied: stillDenied.length,
                             })
                             return apiError(
-                                `Forbidden. Your role (${role}) does not have ${denied.action} permission on ${denied.module}.`,
+                                `Forbidden. Your role (${role}) does not have ${first.action} permission on ${first.module}.`,
                                 ApiErrorCode.FORBIDDEN,
                                 403
                             )

@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.db import transaction
 from django.db.models import Sum, Count, Q, F
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -308,6 +309,10 @@ class AgentHeartbeatView(APIView):
         if not device:
             return Response({'detail': 'Device not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Verify device ownership
+        if device.employee.user != request.user:
+            return Response({'error': 'Device not owned by authenticated user'}, status=status.HTTP_403_FORBIDDEN)
+
         device.last_heartbeat = timezone.now()
         update_fields = ['last_heartbeat', 'updated_at']
 
@@ -334,6 +339,10 @@ class AgentIngestView(APIView):
 
         device = get_object_or_404(AgentDevice, pk=data['device_id'])
 
+        # Verify device ownership
+        if device.employee.user != request.user:
+            return Response({'error': 'Device not owned by authenticated user'}, status=status.HTTP_403_FORBIDDEN)
+
         # Reject if device is not active
         if device.status != AgentDevice.Status.ACTIVE:
             return Response(
@@ -342,76 +351,77 @@ class AgentIngestView(APIView):
             )
 
         created_sessions = 0
-        for sess_data in data['sessions']:
-            session = ActivitySession.objects.create(
-                device=device,
-                started_at=sess_data['started_at'],
-                ended_at=sess_data.get('ended_at'),
-                active_seconds=sess_data.get('active_seconds', 0),
-                idle_seconds=sess_data.get('idle_seconds', 0),
-                keystrokes=sess_data.get('keystrokes', 0),
-                mouse_clicks=sess_data.get('mouse_clicks', 0),
-            )
+        with transaction.atomic():
+            for sess_data in data['sessions']:
+                session = ActivitySession.objects.create(
+                    device=device,
+                    started_at=sess_data['started_at'],
+                    ended_at=sess_data.get('ended_at'),
+                    active_seconds=sess_data.get('active_seconds', 0),
+                    idle_seconds=sess_data.get('idle_seconds', 0),
+                    keystrokes=sess_data.get('keystrokes', 0),
+                    mouse_clicks=sess_data.get('mouse_clicks', 0),
+                )
 
-            # Bulk create nested records with auto-categorization
-            app_usages = sess_data.get('app_usages', [])
-            if app_usages:
-                app_objs = []
-                for a in app_usages:
-                    cat = a.get('category', AppUsage.Category.UNCATEGORIZED)
-                    if cat == AppUsage.Category.UNCATEGORIZED:
-                        cat = categorize_app(a['app_name'])
-                    app_objs.append(AppUsage(
-                        session=session,
-                        app_name=a['app_name'],
-                        window_title=a.get('window_title', ''),
-                        total_seconds=a['total_seconds'],
-                        category=cat,
-                    ))
-                AppUsage.objects.bulk_create(app_objs)
+                # Bulk create nested records with auto-categorization
+                app_usages = sess_data.get('app_usages', [])
+                if app_usages:
+                    app_objs = []
+                    for a in app_usages:
+                        cat = a.get('category', AppUsage.Category.UNCATEGORIZED)
+                        if cat == AppUsage.Category.UNCATEGORIZED:
+                            cat = categorize_app(a['app_name'])
+                        app_objs.append(AppUsage(
+                            session=session,
+                            app_name=a['app_name'],
+                            window_title=a.get('window_title', ''),
+                            total_seconds=a['total_seconds'],
+                            category=cat,
+                        ))
+                    AppUsage.objects.bulk_create(app_objs)
 
-            website_visits = sess_data.get('website_visits', [])
-            if website_visits:
-                visit_objs = []
-                for w in website_visits:
-                    cat = w.get('category', AppUsage.Category.UNCATEGORIZED)
-                    if cat == AppUsage.Category.UNCATEGORIZED:
-                        cat = categorize_domain(w['domain'])
-                    visit_objs.append(WebsiteVisit(
-                        session=session,
-                        domain=w['domain'],
-                        url=w.get('url', ''),
-                        total_seconds=w['total_seconds'],
-                        category=cat,
-                    ))
-                WebsiteVisit.objects.bulk_create(visit_objs)
+                website_visits = sess_data.get('website_visits', [])
+                if website_visits:
+                    visit_objs = []
+                    for w in website_visits:
+                        cat = w.get('category', AppUsage.Category.UNCATEGORIZED)
+                        if cat == AppUsage.Category.UNCATEGORIZED:
+                            cat = categorize_domain(w['domain'])
+                        visit_objs.append(WebsiteVisit(
+                            session=session,
+                            domain=w['domain'],
+                            url=w.get('url', ''),
+                            total_seconds=w['total_seconds'],
+                            category=cat,
+                        ))
+                    WebsiteVisit.objects.bulk_create(visit_objs)
 
-            idle_events = sess_data.get('idle_events', [])
-            if idle_events:
-                IdleEvent.objects.bulk_create([
-                    IdleEvent(
-                        session=session,
-                        started_at=ie['started_at'],
-                        ended_at=ie.get('ended_at'),
-                        duration_seconds=ie['duration_seconds'],
-                        response=ie.get('response', IdleEvent.Response.NO_RESPONSE),
-                        work_description=ie.get('work_description', ''),
-                    )
-                    for ie in idle_events
-                ])
+                idle_events = sess_data.get('idle_events', [])
+                if idle_events:
+                    IdleEvent.objects.bulk_create([
+                        IdleEvent(
+                            session=session,
+                            started_at=ie['started_at'],
+                            ended_at=ie.get('ended_at'),
+                            duration_seconds=ie['duration_seconds'],
+                            response=ie.get('response', IdleEvent.Response.NO_RESPONSE),
+                            work_description=ie.get('work_description', ''),
+                        )
+                        for ie in idle_events
+                    ])
 
-            screenshots = sess_data.get('screenshots', [])
-            if screenshots:
-                Screenshot.objects.bulk_create([
-                    Screenshot(
-                        session=session,
-                        image_url=s['image_url'],
-                        captured_at=s['captured_at'],
-                    )
-                    for s in screenshots
-                ])
+                screenshots = sess_data.get('screenshots', [])
+                if screenshots:
+                    Screenshot.objects.bulk_create([
+                        Screenshot(
+                            session=session,
+                            image_url=s['image_url'],
+                            captured_at=s['captured_at'],
+                        )
+                        for s in screenshots
+                    ])
 
-            created_sessions += 1
+                created_sessions += 1
 
         return Response({
             'status': 'ok',

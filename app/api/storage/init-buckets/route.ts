@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
-import { getServerSession } from "@/lib/auth-server"
+import { withAuth, type AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 const REQUIRED_BUCKETS = [
     { name: "avatars", public: true },
@@ -10,13 +11,8 @@ const REQUIRED_BUCKETS = [
     { name: "receipts", public: true },
 ]
 
-export async function POST(req: Request) {
+async function handlePOST(_req: Request, _context: AuthContext) {
     try {
-        const session = await getServerSession()
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
         const results: { bucket: string; status: string; error?: string }[] = []
 
         // List existing buckets
@@ -59,13 +55,8 @@ export async function POST(req: Request) {
 }
 
 // GET - Check status of all required buckets
-export async function GET() {
+async function handleGET(_req: Request, _context: AuthContext) {
     try {
-        const session = await getServerSession()
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
         const { data: existingBuckets, error } = await supabaseAdmin.storage.listBuckets()
         if (error) {
             return NextResponse.json({
@@ -95,3 +86,6 @@ export async function GET() {
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
     }
 }
+
+export const POST = withAuth({ module: Module.SETTINGS, action: Action.CREATE }, handlePOST)
+export const GET = withAuth({ module: Module.SETTINGS, action: Action.VIEW }, handleGET)

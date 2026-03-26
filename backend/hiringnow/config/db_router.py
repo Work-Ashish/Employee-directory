@@ -1,6 +1,14 @@
+import threading
+
 from django.conf import settings
 
 from config.tenant_context import get_current_tenant
+
+_db_lock = threading.Lock()
+
+# Django built-in app labels that should always route to 'default'
+_BUILTIN_APP_LABELS = frozenset({"contenttypes", "auth", "admin", "sessions"})
+
 
 # route models between registry DB and tenant DBs
 class TenantDatabaseRouter:
@@ -21,15 +29,19 @@ class TenantDatabaseRouter:
         label = f"{model._meta.app_label}.{model._meta.model_name}"
         if label in self.registry_models:
             return "default"
+        # Fallback for Django built-in apps
+        if model._meta.app_label in _BUILTIN_APP_LABELS:
+            return "default"
         if model._meta.app_label in self.tenant_scoped_apps:
             tenant = get_current_tenant()
             if tenant and getattr(tenant, "db_name", None):
                 db_name = tenant.db_name
-                # Dynamically register tenant DB if not already in DATABASES
-                if db_name not in settings.DATABASES:
-                    default = settings.DATABASES["default"].copy()
-                    default["NAME"] = db_name
-                    settings.DATABASES[db_name] = default
+                # Dynamically register tenant DB with thread-safe lock
+                with _db_lock:
+                    if db_name not in settings.DATABASES:
+                        default = settings.DATABASES["default"].copy()
+                        default["NAME"] = db_name
+                        settings.DATABASES[db_name] = default
                 if db_name in settings.DATABASES:
                     return db_name
         raise RuntimeError(
@@ -38,7 +50,10 @@ class TenantDatabaseRouter:
         )
 
     def allow_relation(self, obj1, obj2, **hints):
-        return None
+        # Prevent cross-database relations
+        db1 = self._db_for_model(type(obj1))
+        db2 = self._db_for_model(type(obj2))
+        return db1 == db2
 
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         if db == "default":

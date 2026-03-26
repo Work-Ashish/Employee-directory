@@ -42,7 +42,7 @@ export function generateXeroCSV(payrolls: any[]): string {
         p.netSalary,
         new Date().toISOString().split("T")[0],
         `Salary for ${p.month}`
-    ].map(v => `"${v}"`).join(",")) // Quote for safety
+    ].map(csvQuote).join(","))
 
     return [headers.join(","), ...rows].join("\n")
 }

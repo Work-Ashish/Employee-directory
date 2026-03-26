@@ -6,10 +6,23 @@
  */
 import { NextResponse } from "next/server"
 
-export async function GET() {
+function validateScimToken(req: Request): NextResponse | null {
+    const scimToken = process.env.SCIM_TOKEN
+    const authHeader = req.headers.get("authorization")
+    if (!scimToken || authHeader !== `Bearer ${scimToken}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    return null
+}
+
+export async function GET(req: Request) {
+    const denied = validateScimToken(req)
+    if (denied) return denied
     return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+    const denied = validateScimToken(req)
+    if (denied) return denied
     return NextResponse.json({ error: 'Not implemented' }, { status: 501 })
 }

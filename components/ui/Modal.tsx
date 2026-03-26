@@ -5,6 +5,8 @@ import { createPortal } from "react-dom"
 import { Cross2Icon } from "@radix-ui/react-icons"
 import { cn } from "@/lib/utils"
 
+let openCount = 0
+
 interface ModalProps {
     isOpen: boolean
     onClose: () => void
@@ -23,12 +25,17 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
 
     React.useEffect(() => {
         if (isOpen) {
+            openCount++
             document.body.style.overflow = 'hidden'
-        } else {
-            document.body.style.overflow = 'unset'
         }
         return () => {
-            document.body.style.overflow = 'unset'
+            if (isOpen) {
+                openCount--
+                if (openCount <= 0) {
+                    openCount = 0
+                    document.body.style.overflow = 'unset'
+                }
+            }
         }
     }, [isOpen])
 

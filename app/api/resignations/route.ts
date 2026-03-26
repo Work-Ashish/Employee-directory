@@ -3,18 +3,24 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET(req: Request) {
+async function handleGET(req: Request) {
     deprecatedRoute("/api/resignations GET", "Django /api/v1/resignations/")
     return proxyToDjango(req, "/resignations/")
 }
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
     deprecatedRoute("/api/resignations POST", "Django /api/v1/resignations/")
     return proxyToDjango(req, "/resignations/")
 }
 
-export async function PUT(req: Request) {
+async function handlePUT(req: Request) {
     deprecatedRoute("/api/resignations PUT", "Django /api/v1/resignations/")
     return proxyToDjango(req, "/resignations/")
 }
+
+export const GET = withAuth({ module: Module.RESIGNATION, action: Action.VIEW }, handleGET)
+export const POST = withAuth({ module: Module.RESIGNATION, action: Action.CREATE }, handlePOST)
+export const PUT = withAuth({ module: Module.RESIGNATION, action: Action.UPDATE }, handlePUT)

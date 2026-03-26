@@ -5,10 +5,30 @@
  * salary data to a JSON file so it survives server restarts and
  * Next.js hot reloads. For production, back with a database.
  */
-import { readFileSync, writeFileSync, existsSync } from "fs"
+import { readFileSync, writeFileSync, existsSync, mkdirSync, rmdirSync } from "fs"
 import { join } from "path"
 
 const SALARY_FILE = join(process.cwd(), ".salary-data.json")
+const LOCK_PATH = join(process.cwd(), ".salary-data.lock")
+
+function acquireLock(): boolean {
+    try { mkdirSync(LOCK_PATH); return true; } catch { return false; }
+}
+
+function releaseLock(): void {
+    try { rmdirSync(LOCK_PATH); } catch { /* lock already released */ }
+}
+
+/** Spin-wait to acquire the file lock (max ~500ms) */
+function waitForLock(): boolean {
+    for (let i = 0; i < 50; i++) {
+        if (acquireLock()) return true
+        // Synchronous busy-wait ~10ms (acceptable for file-backed store)
+        const end = Date.now() + 10
+        while (Date.now() < end) { /* spin */ }
+    }
+    return false
+}
 
 function loadFromDisk(): Map<string, number> {
     const map = new Map<string, number>()
@@ -56,27 +76,47 @@ function reloadFromDisk(): void {
 
 export const salaryStore = {
     get(employeeId: string): number | undefined {
-        reloadFromDisk()
-        return _store.get(employeeId)
+        const locked = waitForLock()
+        try {
+            reloadFromDisk()
+            return _store.get(employeeId)
+        } finally {
+            if (locked) releaseLock()
+        }
     },
     set(employeeId: string, salary: number): void {
-        reloadFromDisk()
-        _store.set(employeeId, salary)
-        saveToDisk(_store)
+        const locked = waitForLock()
+        try {
+            reloadFromDisk()
+            _store.set(employeeId, salary)
+            saveToDisk(_store)
+        } finally {
+            if (locked) releaseLock()
+        }
     },
     getAll(): Record<string, number> {
-        reloadFromDisk()
-        const data: Record<string, number> = {}
-        for (const [id, salary] of _store) {
-            data[id] = salary
+        const locked = waitForLock()
+        try {
+            reloadFromDisk()
+            const data: Record<string, number> = {}
+            for (const [id, salary] of _store) {
+                data[id] = salary
+            }
+            return data
+        } finally {
+            if (locked) releaseLock()
         }
-        return data
     },
     setBatch(entries: Array<{ employeeId: string; salary: number }>): void {
-        reloadFromDisk()
-        for (const entry of entries) {
-            _store.set(entry.employeeId, entry.salary)
+        const locked = waitForLock()
+        try {
+            reloadFromDisk()
+            for (const entry of entries) {
+                _store.set(entry.employeeId, entry.salary)
+            }
+            saveToDisk(_store)
+        } finally {
+            if (locked) releaseLock()
         }
-        saveToDisk(_store)
     },
 }

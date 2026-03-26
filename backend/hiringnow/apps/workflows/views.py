@@ -85,6 +85,23 @@ class WorkflowTemplateDetailView(APIView):
 
     def put(self, request, pk):
         template = self._get_template(pk)
+
+        # Validate entity_type and status against valid choices before applying
+        if 'entity_type' in request.data:
+            valid_entity_types = {c[0] for c in WorkflowTemplate.EntityType.choices}
+            if request.data['entity_type'] not in valid_entity_types:
+                return Response(
+                    {'detail': f"Invalid entity_type. Must be one of: {', '.join(sorted(valid_entity_types))}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        if 'status' in request.data:
+            valid_statuses = {c[0] for c in WorkflowTemplate.Status.choices}
+            if request.data['status'] not in valid_statuses:
+                return Response(
+                    {'detail': f"Invalid status. Must be one of: {', '.join(sorted(valid_statuses))}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         for field in ('name', 'description', 'entity_type', 'status'):
             if field in request.data:
                 setattr(template, field, request.data[field])
@@ -209,6 +226,45 @@ class WorkflowInstanceActionView(APIView):
                 {'detail': 'Current step not found in template.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Verify the requesting user is an authorized approver for this step
+        from apps.workflows.models import WorkflowStep
+        approver_type = current_step.approver_type
+        if approver_type == WorkflowStep.ApproverType.REPORTING_MANAGER:
+            target_emp = instance.initiated_by
+            if not target_emp or employee != target_emp.reporting_to:
+                return Response(
+                    {'error': 'Not authorized to act on this step. Requires reporting manager.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        elif approver_type == WorkflowStep.ApproverType.SPECIFIC_EMPLOYEE:
+            if current_step.approver_id and employee.id != current_step.approver_id:
+                return Response(
+                    {'error': 'Not authorized to act on this step. Requires designated approver.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        elif approver_type == WorkflowStep.ApproverType.HR:
+            from apps.rbac.models import UserRole
+            user_roles = set(
+                UserRole.objects.filter(user=request.user)
+                .values_list('role__slug', flat=True)
+            )
+            if not ({'admin', 'hr_manager'} & user_roles) and not getattr(request.user, 'is_tenant_admin', False):
+                return Response(
+                    {'error': 'Not authorized to act on this step. Requires HR.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        elif approver_type == WorkflowStep.ApproverType.DEPARTMENT_HEAD:
+            target_emp = instance.initiated_by
+            if target_emp and target_emp.department_ref:
+                dept = target_emp.department_ref
+                dept_head = getattr(dept, 'head', None)
+                if dept_head and employee.id != dept_head.id:
+                    return Response(
+                        {'error': 'Not authorized to act on this step. Requires department head.'},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+        # AUTO_APPROVE: no check needed, any authenticated user can advance it
 
         decision = serializer.validated_data['decision']
 

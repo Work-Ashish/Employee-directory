@@ -1,4 +1,4 @@
-import { parse, differenceInMinutes, isSameDay } from "date-fns"
+import { parse, differenceInMinutes, isSameDay, addDays } from "date-fns"
 
 /**
  * Local type definitions replacing @prisma/client types.
@@ -65,7 +65,12 @@ export function evaluateAttendance(
 
     // Parse shift timings for today
     const shiftStart = parse(shift.startTime, "HH:mm", today)
-    const shiftEnd = parse(shift.endTime, "HH:mm", today)
+    let shiftEnd = parse(shift.endTime, "HH:mm", today)
+
+    // Handle overnight shifts (e.g. 22:00 - 06:00)
+    if (shiftEnd <= shiftStart) {
+        shiftEnd = addDays(shiftEnd, 1)
+    }
 
     // 3. Late Check
     const lateMinutes = differenceInMinutes(checkIn, shiftStart)

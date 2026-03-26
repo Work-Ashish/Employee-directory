@@ -7,6 +7,8 @@
 import { NextResponse } from "next/server"
 import { sendEmail } from "@/lib/email"
 import crypto from "crypto"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 interface InvitePayload {
   email: string
@@ -146,7 +148,7 @@ function buildInviteEmail(params: {
   `
 }
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
   try {
     const body = (await req.json()) as InviteRequest
     const { invites, organizationName, organizationSlug } = body
@@ -213,3 +215,5 @@ export async function POST(req: Request) {
     )
   }
 }
+
+export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }, handlePOST)

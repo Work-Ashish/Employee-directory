@@ -5,6 +5,9 @@
  * If the employee has no linked user, creates one and links it.
  */
 import { NextResponse } from "next/server"
+import crypto from "crypto"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 function getDjangoBase(): string {
     return (
@@ -25,19 +28,14 @@ function forwardHeaders(req: Request): Record<string, string> {
 }
 
 function generateTempPassword(): string {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
-    let password = ""
-    for (let i = 0; i < 12; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    return password
+    return crypto.randomBytes(12).toString('base64url').slice(0, 16)
 }
 
-export async function POST(
+async function handlePOST(
     req: Request,
-    { params }: { params: Promise<{ id: string }> }
+    context: AuthContext
 ) {
-    const { id } = await params
+    const id = context.params.id
     const base = getDjangoBase()
     const headers = forwardHeaders(req)
 
@@ -175,9 +173,12 @@ export async function POST(
     }
 }
 
-export async function GET() {
+async function handleGET() {
     return NextResponse.json(
         { error: { detail: "Use POST to reset credentials" } },
         { status: 405 }
     )
 }
+
+export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.UPDATE }, handlePOST)
+export const GET = withAuth({ module: Module.EMPLOYEES, action: Action.UPDATE }, handleGET)

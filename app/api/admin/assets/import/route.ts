@@ -6,8 +6,12 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
     deprecatedRoute("/api/admin/assets/import POST", "Django /api/v1/admin/assets/import/")
     return proxyToDjango(req, "/admin/assets/import/")
 }
+
+export const POST = withAuth({ module: Module.ASSETS, action: Action.CREATE }, handlePOST)

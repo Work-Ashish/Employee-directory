@@ -181,7 +181,13 @@ class PayrollDetailView(APIView):
             for field in updatable_fields:
                 if field in request.data:
                     old_val = str(getattr(payroll, field))
-                    new_val = request.data[field]
+                    try:
+                        new_val = Decimal(str(request.data[field]))
+                    except Exception:
+                        return Response(
+                            {'detail': f'Invalid numeric value for {field}.'},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
                     setattr(payroll, field, new_val)
                     changes[field] = {'old': old_val, 'new': str(new_val)}
 

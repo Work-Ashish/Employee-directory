@@ -18,18 +18,18 @@ export function SessionManager() {
     const [loading, setLoading] = useState(true)
     const [revoking, setRevoking] = useState<string | null>(null)
 
-    const fetchSessions = async () => {
-        try {
-            const data = await SessionAPI.list()
-            setSessions(data.results || (data as any).data || [])
-        } catch (error) {
-            toast.error("Failed to fetch sessions")
-        } finally {
-            setLoading(false)
-        }
-    }
-
     useEffect(() => {
+        const fetchSessions = async () => {
+            try {
+                const data = await SessionAPI.list()
+                setSessions(data.results || (data as any).data || [])
+            } catch (error) {
+                toast.error("Failed to fetch sessions")
+            } finally {
+                setLoading(false)
+            }
+        }
+
         fetchSessions()
         const interval = setInterval(fetchSessions, 30000)
         return () => clearInterval(interval)

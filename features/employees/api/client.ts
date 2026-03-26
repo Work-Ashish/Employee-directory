@@ -16,6 +16,13 @@ interface CredentialsResponse {
     tempPassword: string
 }
 
+interface RelinkUsersResponse {
+    relinkedCount: number
+    skippedCount: number
+    relinked: Array<{ employeeId: string; userId: string; email: string }>
+    skipped: Array<{ employeeId: string; email: string; reason: string }>
+}
+
 /**
  * Transform a Django employee response into the shape the frontend expects.
  * Django returns `department` as a plain string; the frontend expects it as
@@ -220,6 +227,11 @@ export const EmployeeAPI = {
         }
         const json = await res.json()
         return json.data || json
+    },
+
+    relinkUsers: async (): Promise<RelinkUsersResponse> => {
+        const { data } = await api.post<RelinkUsersResponse>("/employees/relink-users/", {})
+        return data
     },
 
     upsertEmployee: async (isEdit: boolean, id: string | undefined, payload: unknown): Promise<EmployeeApiData> => {

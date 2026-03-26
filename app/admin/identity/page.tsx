@@ -3,7 +3,7 @@
 import { SessionManager } from "@/components/admin/SessionManager"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { CheckCircledIcon, LockClosedIcon, PersonIcon, GlobeIcon } from "@radix-ui/react-icons"
 import { canAccessModule, Module } from "@/lib/permissions"
 import { PageHeader } from "@/components/ui/PageHeader"
@@ -14,6 +14,11 @@ import { Button } from "@/components/ui/Button"
 export default function IdentityPage() {
     const { user, isLoading } = useAuth()
     const router = useRouter()
+    const [host, setHost] = useState('')
+
+    useEffect(() => {
+        setHost(window.location.host)
+    }, [])
 
     useEffect(() => {
         if (!isLoading && !canAccessModule(user?.role ?? "", Module.SETTINGS)) {
@@ -83,7 +88,7 @@ export default function IdentityPage() {
                             <div className="space-y-3">
                                 <div className="text-xs font-bold text-text-3 uppercase tracking-tight">Endpoint URL</div>
                                 <div className="p-2 bg-surface border border-border rounded font-mono text-xs break-all">
-                                    {window.location.host}/api/scim/v2
+                                    {host}/api/scim/v2
                                 </div>
 
                                 <div className="text-xs font-bold text-text-3 uppercase tracking-tight mt-4">Security Token</div>

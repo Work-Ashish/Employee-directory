@@ -205,7 +205,7 @@ export const PERMISSIONS: PermissionMatrix = {
   TEAM_LEAD: {
     [Module.EMPLOYEES]:     [],
     [Module.PAYROLL]:       [VIEW],
-    [Module.TEAMS]:         [VIEW],
+    [Module.TEAMS]:         [VIEW, ASSIGN],
     [Module.PERFORMANCE]:   [VIEW, CREATE, REVIEW],
     [Module.FEEDBACK]:      [VIEW, CREATE],
     [Module.DASHBOARD]:     [VIEW],

@@ -6,6 +6,8 @@
  * recent hires) on the Next.js side.
  */
 import { NextResponse } from "next/server"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 export const dynamic = "force-dynamic"
 export const fetchCache = "force-no-store"
@@ -48,7 +50,7 @@ interface RawEmployee {
     created_at?: string
 }
 
-export async function GET(req: Request) {
+async function handleGET(req: Request) {
     try {
         const base = getDjangoBase()
         const headers = forwardHeaders(req)
@@ -177,3 +179,5 @@ export async function GET(req: Request) {
         )
     }
 }
+
+export const GET = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, handleGET)

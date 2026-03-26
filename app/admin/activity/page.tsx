@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/context/AuthContext"
+import { canAccessModule, Module } from "@/lib/permissions"
 import { cn } from "@/lib/utils"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { Spinner } from "@/components/ui/Spinner"
@@ -42,22 +45,32 @@ const STATUS_CONFIG = {
 }
 
 export default function ActivityDashboardPage() {
+    const { user, isLoading: authLoading } = useAuth()
+    const router = useRouter()
     const [data, setData] = useState<DashboardData | null>(null)
     const [loading, setLoading] = useState(true)
     const [filter, setFilter] = useState<string>("all")
 
-    const fetchData = () => {
-        api.get<DashboardData>('/time-tracker/dashboard/')
-            .then(({ data }) => setData(data))
-            .catch(() => { })
-            .finally(() => setLoading(false))
-    }
+    useEffect(() => {
+        if (!authLoading && !canAccessModule(user?.role ?? "", Module.AGENT_TRACKING)) {
+            router.push("/")
+        }
+    }, [user, authLoading, router])
 
     useEffect(() => {
+        const fetchData = () => {
+            api.get<DashboardData>('/time-tracker/dashboard/')
+                .then(({ data }) => setData(data))
+                .catch(() => { })
+                .finally(() => setLoading(false))
+        }
+
         fetchData()
         const interval = setInterval(fetchData, 30_000) // refresh every 30s
         return () => clearInterval(interval)
     }, [])
+
+    if (authLoading || !canAccessModule(user?.role ?? "", Module.AGENT_TRACKING)) return null
 
     if (loading) {
         return (

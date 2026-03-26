@@ -150,7 +150,6 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
             'is_archived',
             'profile', 'address_info', 'banking',
         ]
-        read_only_fields = ['user']
 
     def validate_email(self, value):
         if Employee.objects.filter(email=value, deleted_at__isnull=True).exclude(pk=self.instance.pk).exists():

@@ -16,6 +16,7 @@ import Link from "next/link"
 import { useAuth } from "@/context/AuthContext"
 import { cn } from "@/lib/utils"
 import { DashboardAPI } from "@/features/dashboard/api/client"
+import { TeamAPI } from "@/features/teams/api/client"
 
 const MOTIVATIONAL_QUOTES = [
     { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
@@ -109,8 +110,76 @@ export function TeamLeadDashboard() {
     const fetchDashboardData = React.useCallback(async () => {
         try {
             if (isFirstLoad.current) setLoading(true)
-            const dashData = await DashboardAPI.getStats()
-            setData(dashData as unknown as DashboardData)
+
+            // Fetch dashboard stats and team data in parallel
+            const [dashData, teamResult] = await Promise.allSettled([
+                DashboardAPI.getStats(),
+                TeamAPI.list(),
+            ])
+
+            const stats = dashData.status === "fulfilled"
+                ? (dashData.value as unknown as DashboardData)
+                : null
+
+            let teamData: TeamData | null = null
+
+            if (teamResult.status === "fulfilled" && teamResult.value.results?.length > 0) {
+                // Pick the first team the user leads/belongs to
+                const firstTeam = teamResult.value.results[0]
+                const teamId = String(firstTeam.id)
+
+                try {
+                    // Fetch full team details with members
+                    const teamDetail = await TeamAPI.get(teamId)
+                    const members: TeamMember[] = (teamDetail.members || []).map((m) => {
+                        // m.employee can be an object or a string ID depending on serializer
+                        const emp = typeof m.employee === "object" && m.employee !== null
+                            ? m.employee
+                            : null
+                        const name = emp
+                            ? `${emp.firstName} ${emp.lastName}`.trim()
+                            : (m as any).employeeName || "Unknown"
+                        const designation = emp?.designation
+                            || (m as any).designation
+                            || ""
+                        const avatarUrl = emp?.avatarUrl
+                            || (m as any).avatarUrl
+                            || null
+
+                        return {
+                            id: emp?.id || String(m.employee),
+                            name,
+                            designation,
+                            avatarUrl,
+                            attendanceStatus: "PRESENT" as const, // Default; no attendance data from this endpoint
+                        }
+                    })
+
+                    teamData = {
+                        id: teamId,
+                        name: teamDetail.name,
+                        description: teamDetail.description ?? null,
+                        memberCount: teamDetail.memberCount ?? teamDetail._count?.members ?? members.length,
+                        members,
+                    }
+                } catch (detailErr) {
+                    console.error("Team detail fetch error:", detailErr)
+                    // Still show basic team info from the list response
+                    teamData = {
+                        id: teamId,
+                        name: firstTeam.name,
+                        description: firstTeam.description ?? null,
+                        memberCount: firstTeam.memberCount ?? firstTeam._count?.members ?? 0,
+                        members: [],
+                    }
+                }
+            }
+
+            setData({
+                stats: stats?.stats ?? null,
+                teamStatus: (stats as any)?.teamStatus ?? [],
+                team: teamData,
+            })
         } catch (error) {
             console.error("Dashboard fetch error:", error)
         } finally {
@@ -131,6 +200,8 @@ export function TeamLeadDashboard() {
                 if (interval) clearInterval(interval)
                 interval = null
             } else {
+                if (interval) clearInterval(interval)
+                interval = null
                 fetchDashboardData()
                 startPolling()
             }

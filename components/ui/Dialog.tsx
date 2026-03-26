@@ -4,6 +4,8 @@ import * as React from "react"
 import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 
+let openCount = 0
+
 const sizeStyles = {
   sm: "max-w-lg",
   default: "max-w-2xl",
@@ -23,14 +25,19 @@ export interface DialogProps {
 export function Dialog({ open, onClose, size = "default", children, className }: DialogProps) {
   React.useEffect(() => {
     if (!open) return
+    openCount++
+    document.body.style.overflow = "hidden"
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose()
     }
     document.addEventListener("keydown", handleKey)
-    document.body.style.overflow = "hidden"
     return () => {
       document.removeEventListener("keydown", handleKey)
-      document.body.style.overflow = ""
+      openCount--
+      if (openCount <= 0) {
+        openCount = 0
+        document.body.style.overflow = ""
+      }
     }
   }, [open, onClose])
 

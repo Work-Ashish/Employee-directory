@@ -21,7 +21,10 @@ function getSupabaseAdmin(): SupabaseClient {
     if (!url || !anonKey) {
         throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY")
     }
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || anonKey
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || (() => {
+        console.warn('[supabase] SUPABASE_SERVICE_ROLE_KEY not set, admin client using anon key — RLS bypass will not work')
+        return anonKey
+    })()
     _supabaseAdmin = createClient(url, serviceKey, {
         auth: { autoRefreshToken: false, persistSession: false }
     })

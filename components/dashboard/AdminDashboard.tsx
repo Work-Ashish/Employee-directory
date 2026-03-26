@@ -53,6 +53,8 @@ export function AdminDashboard() {
                 if (interval) clearInterval(interval)
                 interval = null
             } else {
+                if (interval) clearInterval(interval)
+                interval = null
                 fetchDashboardData()
                 startPolling()
             }

@@ -11,35 +11,56 @@
  */
 
 // ---------------------------------------------------------------------------
-// Circuit Breaker (module-level state)
+// Circuit Breaker (per-path-prefix state)
 // ---------------------------------------------------------------------------
 type CircuitState = "CLOSED" | "OPEN" | "HALF_OPEN";
 
 const CB_FAILURE_THRESHOLD = 5;
 const CB_COOLDOWN_MS = 30_000; // 30 seconds
 
-let cbState: CircuitState = "CLOSED";
-let cbConsecutiveFailures = 0;
-let cbOpenedAt = 0; // timestamp when circuit tripped to OPEN
-
-function cbRecordSuccess(): void {
-  cbConsecutiveFailures = 0;
-  cbState = "CLOSED";
+interface CircuitBreakerEntry {
+  state: CircuitState;
+  failures: number;
+  openedAt: number;
 }
 
-function cbRecordFailure(): void {
-  cbConsecutiveFailures++;
-  if (cbConsecutiveFailures >= CB_FAILURE_THRESHOLD) {
-    cbState = "OPEN";
-    cbOpenedAt = Date.now();
+const circuitBreakers = new Map<string, CircuitBreakerEntry>();
+
+/** Derive a path prefix from a Django path (first two segments, e.g. "/employees/list/" -> "/employees"). */
+function getPathPrefix(djangoPath: string): string {
+  const normalized = djangoPath.startsWith("/") ? djangoPath : `/${djangoPath}`;
+  const segments = normalized.split("/").filter(Boolean);
+  return `/${segments[0] || "_root"}`;
+}
+
+function getCB(pathPrefix: string): CircuitBreakerEntry {
+  if (!circuitBreakers.has(pathPrefix)) {
+    circuitBreakers.set(pathPrefix, { state: "CLOSED", failures: 0, openedAt: 0 });
+  }
+  return circuitBreakers.get(pathPrefix)!;
+}
+
+function cbRecordSuccess(pathPrefix: string): void {
+  const cb = getCB(pathPrefix);
+  cb.failures = 0;
+  cb.state = "CLOSED";
+}
+
+function cbRecordFailure(pathPrefix: string): void {
+  const cb = getCB(pathPrefix);
+  cb.failures++;
+  if (cb.failures >= CB_FAILURE_THRESHOLD) {
+    cb.state = "OPEN";
+    cb.openedAt = Date.now();
   }
 }
 
-function cbCanAttempt(): boolean {
-  if (cbState === "CLOSED") return true;
-  if (cbState === "OPEN") {
-    if (Date.now() - cbOpenedAt >= CB_COOLDOWN_MS) {
-      cbState = "HALF_OPEN";
+function cbCanAttempt(pathPrefix: string): boolean {
+  const cb = getCB(pathPrefix);
+  if (cb.state === "CLOSED") return true;
+  if (cb.state === "OPEN") {
+    if (Date.now() - cb.openedAt >= CB_COOLDOWN_MS) {
+      cb.state = "HALF_OPEN";
       return true; // allow one probe request
     }
     return false;
@@ -51,22 +72,35 @@ function cbCanAttempt(): boolean {
 
 /** Reset circuit breaker state (for testing). */
 export function resetCircuitBreaker(): void {
-  cbState = "CLOSED";
-  cbConsecutiveFailures = 0;
-  cbOpenedAt = 0;
+  circuitBreakers.clear();
 }
 
 /** Return the current circuit breaker state for health-check endpoints. */
-export function getCircuitBreakerState(): {
+export function getCircuitBreakerState(djangoPath?: string): {
   state: CircuitState;
   consecutiveFailures: number;
   openedAt: number | null;
 } {
-  return {
-    state: cbState,
-    consecutiveFailures: cbConsecutiveFailures,
-    openedAt: cbState !== "CLOSED" ? cbOpenedAt : null,
-  };
+  if (djangoPath) {
+    const cb = getCB(getPathPrefix(djangoPath));
+    return {
+      state: cb.state,
+      consecutiveFailures: cb.failures,
+      openedAt: cb.state !== "CLOSED" ? cb.openedAt : null,
+    };
+  }
+  // Aggregate: return the worst state across all breakers
+  let worstState: CircuitState = "CLOSED";
+  let maxFailures = 0;
+  let latestOpenedAt: number | null = null;
+  for (const cb of circuitBreakers.values()) {
+    if (cb.failures > maxFailures) maxFailures = cb.failures;
+    if (cb.state === "OPEN" || (cb.state === "HALF_OPEN" && worstState === "CLOSED")) {
+      worstState = cb.state;
+      latestOpenedAt = cb.openedAt;
+    }
+  }
+  return { state: worstState, consecutiveFailures: maxFailures, openedAt: latestOpenedAt };
 }
 
 // ---------------------------------------------------------------------------
@@ -131,7 +165,8 @@ export async function proxyToDjango(
   options: ProxyOptions = {}
 ): Promise<Response> {
   // --- Circuit breaker gate ------------------------------------------------
-  if (!cbCanAttempt()) {
+  const pathPrefix = getPathPrefix(djangoPath);
+  if (!cbCanAttempt(pathPrefix)) {
     return Response.json(
       {
         error: "Circuit breaker is OPEN — Django backend unavailable",
@@ -219,15 +254,15 @@ export async function proxyToDjango(
         RETRYABLE_STATUSES.has(djangoResponse.status) &&
         attempt < maxAttempts - 1
       ) {
-        cbRecordFailure();
+        cbRecordFailure(pathPrefix);
         continue;
       }
 
       // Determine success/failure for the circuit breaker
       if (djangoResponse.ok) {
-        cbRecordSuccess();
+        cbRecordSuccess(pathPrefix);
       } else if (RETRYABLE_STATUSES.has(djangoResponse.status)) {
-        cbRecordFailure();
+        cbRecordFailure(pathPrefix);
       }
 
       // --- Relay Django's response back to the client ---------------------
@@ -245,7 +280,7 @@ export async function proxyToDjango(
       });
     } catch (error: unknown) {
       clearTimeout(timer);
-      cbRecordFailure();
+      cbRecordFailure(pathPrefix);
 
       // If retries remain and method is idempotent, keep trying
       if (canRetry && attempt < maxAttempts - 1) {

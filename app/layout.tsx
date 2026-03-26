@@ -11,12 +11,12 @@ export const metadata: Metadata = {
   title: "EMS Pro – Enterprise Dashboard",
   description: "Enterprise Management System",
   manifest: "/manifest.json",
-  themeColor: "#007aff",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: "#007aff",
 };
 
 export default function RootLayout({

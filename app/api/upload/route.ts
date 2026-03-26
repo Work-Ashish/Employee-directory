@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
-import { getServerSession } from "@/lib/auth-server"
+import { withAuth, type AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 const ALLOWED_MIME_TYPES = [
@@ -16,13 +17,8 @@ const ALLOWED_MIME_TYPES = [
     "text/csv",
 ]
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request, _context: AuthContext) {
     try {
-        const session = await getServerSession()
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
         const formData = await req.formData()
         const file = formData.get("file") as File
         const bucket = formData.get("bucket") as string
@@ -94,3 +90,5 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
     }
 }
+
+export const POST = withAuth({ module: Module.DOCUMENTS, action: Action.CREATE }, handlePOST)

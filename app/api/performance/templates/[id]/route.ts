@@ -4,21 +4,27 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handleGET(req: Request, context: AuthContext) {
+    const id = context.params.id
     deprecatedRoute(`/api/performance/templates/${id} GET`, "Django /api/v1/performance/templates/:id/")
     return proxyToDjango(req, `/performance/templates/${id}/`)
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handlePUT(req: Request, context: AuthContext) {
+    const id = context.params.id
     deprecatedRoute(`/api/performance/templates/${id} PUT`, "Django /api/v1/performance/templates/:id/")
     return proxyToDjango(req, `/performance/templates/${id}/`)
 }
 
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handleDELETE(req: Request, context: AuthContext) {
+    const id = context.params.id
     deprecatedRoute(`/api/performance/templates/${id} DELETE`, "Django /api/v1/performance/templates/:id/")
     return proxyToDjango(req, `/performance/templates/${id}/`)
 }
+
+export const GET = withAuth({ module: Module.PERFORMANCE, action: Action.VIEW }, handleGET)
+export const PUT = withAuth({ module: Module.PERFORMANCE, action: Action.UPDATE }, handlePUT)
+export const DELETE = withAuth({ module: Module.PERFORMANCE, action: Action.DELETE }, handleDELETE)

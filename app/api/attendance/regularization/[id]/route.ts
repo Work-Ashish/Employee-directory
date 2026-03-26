@@ -3,8 +3,10 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET(req: Request) {
+async function handleGET(req: Request) {
     const url = new URL(req.url)
     const segments = url.pathname.split("/")
     const id = segments[segments.indexOf("regularization") + 1]
@@ -12,7 +14,7 @@ export async function GET(req: Request) {
     return proxyToDjango(req, `/attendance/regularization/${id}/`)
 }
 
-export async function PUT(req: Request) {
+async function handlePUT(req: Request) {
     const url = new URL(req.url)
     const segments = url.pathname.split("/")
     const id = segments[segments.indexOf("regularization") + 1]
@@ -20,10 +22,14 @@ export async function PUT(req: Request) {
     return proxyToDjango(req, `/attendance/regularization/${id}/`)
 }
 
-export async function DELETE(req: Request) {
+async function handleDELETE(req: Request) {
     const url = new URL(req.url)
     const segments = url.pathname.split("/")
     const id = segments[segments.indexOf("regularization") + 1]
     deprecatedRoute(`/api/attendance/regularization/${id} DELETE`, `Django /api/v1/attendance/regularization/${id}/`)
     return proxyToDjango(req, `/attendance/regularization/${id}/`)
 }
+
+export const GET = withAuth({ module: Module.ATTENDANCE, action: Action.VIEW }, handleGET)
+export const PUT = withAuth({ module: Module.ATTENDANCE, action: Action.UPDATE }, handlePUT)
+export const DELETE = withAuth({ module: Module.ATTENDANCE, action: Action.DELETE }, handleDELETE)

@@ -9,6 +9,8 @@
  * The current approach uses a module-level Map that resets on server restart.
  */
 import { NextResponse } from "next/server"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 interface DepartmentRecord {
     id: string
@@ -61,7 +63,7 @@ async function fetchDepartmentsFromDjango(req: Request): Promise<Map<string, num
     return counts
 }
 
-export async function GET(req: Request) {
+async function handleGET(req: Request) {
     const djangoDepts = await fetchDepartmentsFromDjango(req)
 
     // Merge Django-sourced departments into local store
@@ -85,7 +87,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ data: departments })
 }
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
     try {
         const body = await req.json()
         const name = body.name?.trim()
@@ -122,3 +124,6 @@ export async function POST(req: Request) {
         )
     }
 }
+
+export const GET = withAuth({ module: Module.EMPLOYEES, action: Action.VIEW }, handleGET)
+export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }, handlePOST)

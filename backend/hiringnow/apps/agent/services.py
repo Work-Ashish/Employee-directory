@@ -22,39 +22,43 @@ def compute_daily_summary(employee_id, date):
     Returns:
         DailyActivitySummary instance, or None if no data exists.
     """
-    # Check for existing summary first
-    existing = DailyActivitySummary.objects.filter(
-        employee_id=employee_id,
-        date=date,
-    ).first()
-
-    if existing:
-        return existing
-
     # Calculate from raw data
     result = calculate_daily_productivity(employee_id, date)
     if not result:
-        return None
+        # Return existing summary if any, otherwise None
+        return DailyActivitySummary.objects.filter(
+            employee_id=employee_id, date=date,
+        ).first()
 
-    summary = DailyActivitySummary.objects.create(
+    defaults = {
+        'total_seconds': result['total_seconds'],
+        'active_seconds': result['active_seconds'],
+        'idle_seconds': result['idle_seconds'],
+        'productive_seconds': result['productive_seconds'],
+        'unproductive_seconds': result['unproductive_seconds'],
+        'neutral_seconds': result['neutral_seconds'],
+        'keystroke_count': result['keystroke_count'],
+        'mouse_click_count': result['mouse_click_count'],
+        'screenshot_count': result['screenshot_count'],
+        'idle_event_count': result['idle_event_count'],
+        'productivity_score': round(result['score'] * 100, 2),
+        'top_apps': result['top_apps'],
+        'top_websites': result['top_websites'],
+        'clock_in': result['clock_in'],
+        'clock_out': result['clock_out'],
+    }
+
+    summary, created = DailyActivitySummary.objects.get_or_create(
         employee_id=employee_id,
         date=date,
-        total_seconds=result['total_seconds'],
-        active_seconds=result['active_seconds'],
-        idle_seconds=result['idle_seconds'],
-        productive_seconds=result['productive_seconds'],
-        unproductive_seconds=result['unproductive_seconds'],
-        neutral_seconds=result['neutral_seconds'],
-        keystroke_count=result['keystroke_count'],
-        mouse_click_count=result['mouse_click_count'],
-        screenshot_count=result['screenshot_count'],
-        idle_event_count=result['idle_event_count'],
-        productivity_score=round(result['score'] * 100, 2),
-        top_apps=result['top_apps'],
-        top_websites=result['top_websites'],
-        clock_in=result['clock_in'],
-        clock_out=result['clock_out'],
+        defaults=defaults,
     )
+
+    if not created:
+        # Update existing summary with fresh data
+        for field, value in defaults.items():
+            setattr(summary, field, value)
+        summary.save()
 
     return summary
 

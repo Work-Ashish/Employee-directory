@@ -4,7 +4,6 @@ import * as React from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
-import { api } from "@/lib/api-client"
 
 export function OnboardingCompanion() {
     const [loading, setLoading] = React.useState(true)
@@ -13,10 +12,15 @@ export function OnboardingCompanion() {
     React.useEffect(() => {
         const fetchOnboarding = async () => {
             try {
-                const { data } = await api.get<{ message: string }>('/onboarding/agent/')
-                setMessage(data.message)
-            } catch (error) {
-                console.error("Failed to fetch onboarding message:", error)
+                const res = await fetch("/api/onboarding/agent", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                })
+                if (!res.ok) return
+                const json = await res.json()
+                setMessage(json.data?.message || json.message || null)
+            } catch {
+                setMessage(null)
             } finally {
                 setLoading(false)
             }

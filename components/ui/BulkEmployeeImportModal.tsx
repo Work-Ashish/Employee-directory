@@ -154,7 +154,8 @@ export function BulkEmployeeImportModal({ isOpen, onClose, departments, onSucces
         const reader = new FileReader()
         reader.onload = (e) => {
             try {
-                const data = new Uint8Array(e.target!.result as ArrayBuffer)
+                if (!e.target?.result) return
+                const data = new Uint8Array(e.target.result as ArrayBuffer)
                 const workbook = XLSX.read(data, { type: "array" })
                 const sheet = workbook.Sheets[workbook.SheetNames[0]]
                 const parsed: Record<string, any>[] = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false })

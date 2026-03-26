@@ -7,3 +7,6 @@ class EmployeesConfig(AppConfig):
     name = 'apps.employees'
     label = 'employees'
     verbose_name = 'Employees'
+
+    def ready(self):
+        import apps.employees.signals  # noqa

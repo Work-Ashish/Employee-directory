@@ -791,9 +791,66 @@ class AppraisalEligibilityView(APIView):
             else:
                 employees = employees.none()
 
+        # Batch-fetch monthly reviews for all employees to avoid N+1 queries
+        employee_ids = list(employees.values_list('id', flat=True))
+        fy_start = int('20' + financial_year.split('-')[0])
+
+        from apps.performance.models import MonthlyReview, PIP
+        all_reviews = MonthlyReview.objects.filter(
+            employee_id__in=employee_ids,
+            review_year=fy_start,
+            review_month__gte=4,
+            review_month__lte=9,
+            status__in=['REVIEWED', 'ACKNOWLEDGED'],
+        ).values('employee_id', 'rating', 'review_month')
+
+        # Group reviews by employee
+        from collections import defaultdict
+        reviews_by_emp = defaultdict(list)
+        for r in all_reviews:
+            reviews_by_emp[r['employee_id']].append(r)
+
+        # Batch-fetch active PIPs
+        active_pip_emp_ids = set(
+            PIP.objects.filter(
+                employee_id__in=employee_ids, status='ACTIVE',
+            ).values_list('employee_id', flat=True)
+        )
+
         results = []
         for emp in employees:
-            eligibility = check_six_monthly_eligibility(emp.id, financial_year)
+            emp_reviews = reviews_by_emp.get(emp.id, [])
+            ratings = [r['rating'] for r in emp_reviews if r['rating'] is not None]
+            count = len(emp_reviews)
+
+            if count < 4:
+                eligibility = {
+                    'eligible': False,
+                    'reason': f'Only {count}/6 monthly reviews submitted (minimum 4 needed)',
+                }
+            elif not ratings:
+                eligibility = {'eligible': False, 'reason': 'No ratings assigned yet'}
+            elif any(r < 3 for r in ratings):
+                below_3 = sum(1 for r in ratings if r < 3)
+                eligibility = {
+                    'eligible': False,
+                    'reason': f'{below_3} month(s) rated below 3',
+                }
+            elif sum(1 for r in ratings if r >= 4) < 4:
+                high = sum(1 for r in ratings if r >= 4)
+                eligibility = {
+                    'eligible': False,
+                    'reason': f'Only {high}/6 months rated 4+ (need at least 4)',
+                }
+            elif emp.id in active_pip_emp_ids:
+                eligibility = {'eligible': False, 'reason': 'Active PIP exists'}
+            else:
+                high = sum(1 for r in ratings if r >= 4)
+                eligibility = {
+                    'eligible': True,
+                    'reason': f'{high}/6 months rated 4+, no ratings below 3, no active PIPs',
+                }
+
             results.append({
                 'employee_id': str(emp.id),
                 'employee_name': f"{emp.first_name} {emp.last_name}",

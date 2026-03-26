@@ -18,7 +18,11 @@ export const exportToCSV = (data: Record<string, unknown>[], filename: string) =
     const csvContent = [
         headers.map(quoteField).join(','),
         ...data.map(row => headers.map(header => {
-            const val = row[header] != null ? String(row[header]) : '';
+            let val = row[header] != null ? String(row[header]) : '';
+            // Prevent CSV formula injection
+            if (typeof val === 'string' && /^[=+\-@\t\r]/.test(val)) {
+                val = "'" + val;
+            }
             return quoteField(val);
         }).join(','))
     ].join('\n');

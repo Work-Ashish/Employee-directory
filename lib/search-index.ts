@@ -1,4 +1,5 @@
 const DJANGO_BASE = process.env.DJANGO_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
+const DJANGO_SERVICE_TOKEN = process.env.DJANGO_SERVICE_TOKEN || ""
 
 // ── Entity Types ──
 
@@ -10,7 +11,7 @@ export async function indexEmployee(employeeId: string) {
     try {
         await fetch(`${DJANGO_BASE}/api/v1/search/index/employee/`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "Authorization": `Token ${DJANGO_SERVICE_TOKEN}` },
             body: JSON.stringify({ employee_id: employeeId }),
             signal: AbortSignal.timeout(5000),
         })
@@ -23,7 +24,7 @@ export async function indexCandidate(candidateId: string) {
     try {
         await fetch(`${DJANGO_BASE}/api/v1/search/index/candidate/`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "Authorization": `Token ${DJANGO_SERVICE_TOKEN}` },
             body: JSON.stringify({ candidate_id: candidateId }),
             signal: AbortSignal.timeout(5000),
         })
@@ -36,7 +37,7 @@ export async function indexDocument(documentId: string) {
     try {
         await fetch(`${DJANGO_BASE}/api/v1/search/index/document/`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "Authorization": `Token ${DJANGO_SERVICE_TOKEN}` },
             body: JSON.stringify({ document_id: documentId }),
             signal: AbortSignal.timeout(5000),
         })
@@ -51,7 +52,7 @@ export async function reindexAll(organizationId: string): Promise<{ employees: n
     try {
         const response = await fetch(`${DJANGO_BASE}/api/v1/search/reindex/`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "Authorization": `Token ${DJANGO_SERVICE_TOKEN}` },
             body: JSON.stringify({ organization_id: organizationId }),
             signal: AbortSignal.timeout(60000),
         })
@@ -98,7 +99,7 @@ export async function searchIndex(
         }
 
         const response = await fetch(`${DJANGO_BASE}/api/v1/search/?${params.toString()}`, {
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "Authorization": `Token ${DJANGO_SERVICE_TOKEN}` },
             signal: AbortSignal.timeout(5000),
         })
 

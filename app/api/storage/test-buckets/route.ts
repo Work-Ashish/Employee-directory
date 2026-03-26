@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
-import { getServerSession } from "@/lib/auth-server"
+import { withAuth, type AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 const BUCKETS_TO_TEST = ["avatars", "documents", "assets", "training", "receipts"]
 
-export async function POST() {
+async function handlePOST(_req: Request, _context: AuthContext) {
     try {
-        const session = await getServerSession()
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
         const results: {
             bucket: string
             upload: boolean
@@ -102,3 +98,5 @@ export async function POST() {
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
     }
 }
+
+export const POST = withAuth({ module: Module.SETTINGS, action: Action.VIEW }, handlePOST)

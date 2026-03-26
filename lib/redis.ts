@@ -22,6 +22,16 @@ if (upstashUrl && upstashToken) {
 // In-memory fallback
 const inMemoryStore = new Map<string, { value: unknown; expiresAt: number }>()
 
+// Periodically sweep expired keys from the in-memory fallback store
+if (typeof setInterval !== 'undefined') {
+    setInterval(() => {
+        const now = Date.now()
+        for (const [key, entry] of inMemoryStore.entries()) {
+            if (entry.expiresAt <= now) inMemoryStore.delete(key)
+        }
+    }, 60_000)
+}
+
 export const redis = {
     async set(key: string, value: unknown, config?: { ex?: number }) {
         if (redisClient) {

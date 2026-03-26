@@ -6,10 +6,12 @@
  * In production this should query Django's session/audit log endpoints.
  */
 import { NextResponse } from "next/server"
+import { withAuth, type AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+async function handleGET(_req: Request, _context: AuthContext) {
     // Without a Django sessions/audit endpoint, return minimal data.
     // The dashboard will show "0 Active Today" and no recent logins,
     // which is accurate until a login-tracking endpoint exists.
@@ -23,3 +25,5 @@ export async function GET() {
         },
     })
 }
+
+export const GET = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, handleGET)

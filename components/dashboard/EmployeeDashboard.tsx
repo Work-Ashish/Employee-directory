@@ -14,7 +14,7 @@ import { AgentActivityWidget } from "@/components/agent/AgentActivityWidget"
 import { TodoList } from "./TodoList"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { DashboardAPI } from "@/features/dashboard/api/client"
+import { api } from "@/lib/api-client"
 
 const MOTIVATIONAL_QUOTES = [
     { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
@@ -76,19 +76,112 @@ export function EmployeeDashboard() {
     const [loading, setLoading] = React.useState(true)
     const [data, setData] = React.useState<any>(null)
     const isFirstLoad = React.useRef(true)
+    const emptyDashboardData = React.useMemo(() => ({
+        stats: {
+            attendanceCount: 0,
+            leavesUsed: 0,
+            pendingTrainingCount: 0,
+            reviewStatus: "Upcoming",
+        },
+        schedule: [],
+        teamStatus: [],
+    }), [])
 
     const fetchDashboardData = React.useCallback(async () => {
         try {
             if (isFirstLoad.current) setLoading(true)
-            const dashData = await DashboardAPI.getStats()
+            const [profileResult, teamsResult] = await Promise.allSettled([
+                api.get<any>("/employees/profile/"),
+                api.get<any>("/teams/"),
+            ])
+
+            const dashData = {
+                ...emptyDashboardData,
+                teamStatus: [] as Array<{ name: string; status: string; initials: string }>,
+            }
+
+            let teamMembers: Array<{ name: string; status: string; initials: string }> = []
+
+            // Primary: use Teams API to get teammates
+            if (
+                profileResult.status === "fulfilled" &&
+                teamsResult.status === "fulfilled" &&
+                teamsResult.value.data?.results?.length > 0
+            ) {
+                const myId = String(profileResult.value.data?.id || "")
+                const firstTeam = teamsResult.value.data.results[0]
+
+                // Fetch team detail to get full member info
+                try {
+                    const teamDetail = await api.get<any>(`/teams/${firstTeam.id}/`)
+                    const members = teamDetail.data?.members || []
+                    teamMembers = members
+                        .filter((m: any) => String(m.employeeId || m.employee_id || "") !== myId)
+                        .slice(0, 6)
+                        .map((m: any) => {
+                            const name = String(m.employeeName || m.name || "Teammate")
+                            const parts = name.split(" ")
+                            return {
+                                name,
+                                status: "Active",
+                                initials: `${parts[0]?.[0] || ""}${parts[1]?.[0] || ""}`.toUpperCase() || "TM",
+                            }
+                        })
+                } catch {
+                    // Team detail failed, ignore and fall through to org-chart
+                }
+            }
+
+            // Fallback: use org-chart if Teams API returned no members
+            if (teamMembers.length === 0 && profileResult.status === "fulfilled") {
+                try {
+                    const orgChartResult = await api.get<{ orgChart: Array<Record<string, unknown>> }>("/teams/org-chart/")
+                    const me = profileResult.value.data
+                    const flatNodes: Array<Record<string, unknown>> = []
+
+                    const visit = (nodes: Array<Record<string, unknown>>) => {
+                        for (const node of nodes) {
+                            flatNodes.push(node)
+                            const children = Array.isArray(node.children) ? (node.children as Array<Record<string, unknown>>) : []
+                            if (children.length > 0) {
+                                visit(children)
+                            }
+                        }
+                    }
+
+                    visit(orgChartResult.data.orgChart || [])
+
+                    const currentNode = flatNodes.find((node) => String(node.id || "") === String(me.id || ""))
+                    const managerId = currentNode?.reportingTo ? String(currentNode.reportingTo) : null
+
+                    if (managerId) {
+                        teamMembers = flatNodes
+                            .filter((node) => String(node.reportingTo || "") === managerId && String(node.id || "") !== String(me.id || ""))
+                            .slice(0, 6)
+                            .map((node) => {
+                                const name = String(node.name || "Teammate")
+                                const parts = name.split(" ")
+                                return {
+                                    name,
+                                    status: "Active",
+                                    initials: `${parts[0]?.[0] || ""}${parts[1]?.[0] || ""}`.toUpperCase() || "TM",
+                                }
+                            })
+                    }
+                } catch {
+                    // Org-chart also failed, leave empty
+                }
+            }
+
+            dashData.teamStatus = teamMembers
             setData(dashData)
-        } catch (error) {
-            console.error("Dashboard fetch error:", error)
+        } catch {
+            setData(emptyDashboardData)
         } finally {
             isFirstLoad.current = false
             setLoading(false)
         }
-    }, [])
+    }, [emptyDashboardData])
 
     React.useEffect(() => {
         fetchDashboardData()
@@ -102,6 +195,8 @@ export function EmployeeDashboard() {
                 if (interval) clearInterval(interval)
                 interval = null
             } else {
+                if (interval) clearInterval(interval)
+                interval = null
                 fetchDashboardData()
                 startPolling()
             }
@@ -156,9 +251,9 @@ export function EmployeeDashboard() {
                         ))
                     ) : (
                         <>
-                            <div data-aos="fade-up" data-aos-delay="0"><DashboardStatCard label="Attendance" value={data?.stats?.attendanceCount || 0} sub="Days present this month" badge="Live" badgeType="up" icon={<ClockIcon className="w-5 h-5" />} /></div>
-                            <div data-aos="fade-up" data-aos-delay="100"><DashboardStatCard label="Leaves Used" value={data?.stats?.leavesUsed || 0} sub="Approved leaves this year" badge="Yearly" badgeType="neutral" icon={<CalendarIcon className="w-5 h-5" />} /></div>
-                            <div data-aos="fade-up" data-aos-delay="200"><DashboardStatCard label="Pending Training" value={data?.stats?.pendingTrainingCount || 0} sub="Assigned modules"
+                            <div data-aos="fade-up" data-aos-delay="0"><DashboardStatCard label="Attendance" value={String(data?.stats?.attendanceCount || 0)} sub="Days present this month" badge="Live" badgeType="up" icon={<ClockIcon className="w-5 h-5" />} /></div>
+                            <div data-aos="fade-up" data-aos-delay="100"><DashboardStatCard label="Leaves Used" value={String(data?.stats?.leavesUsed || 0)} sub="Approved leaves this year" badge="Yearly" badgeType="neutral" icon={<CalendarIcon className="w-5 h-5" />} /></div>
+                            <div data-aos="fade-up" data-aos-delay="200"><DashboardStatCard label="Pending Training" value={String(data?.stats?.pendingTrainingCount || 0)} sub="Assigned modules"
                                 badge={data?.stats?.pendingTrainingCount > 0 ? "Priority" : "Done"}
                                 badgeType={data?.stats?.pendingTrainingCount > 0 ? "down" : "up"}
                                 icon={<BackpackIcon className="w-5 h-5" />} /></div>

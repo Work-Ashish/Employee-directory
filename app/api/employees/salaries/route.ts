@@ -9,12 +9,14 @@
  */
 import { NextResponse } from "next/server"
 import { salaryStore } from "@/lib/salary-store"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET() {
+async function handleGET() {
     return NextResponse.json({ data: salaryStore.getAll() })
 }
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
     try {
         const body = await req.json()
 
@@ -49,3 +51,6 @@ export async function POST(req: Request) {
         )
     }
 }
+
+export const GET = withAuth({ module: Module.PAYROLL, action: Action.VIEW }, handleGET)
+export const POST = withAuth({ module: Module.PAYROLL, action: Action.CREATE }, handlePOST)

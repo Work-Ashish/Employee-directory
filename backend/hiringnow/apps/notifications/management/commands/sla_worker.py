@@ -54,10 +54,10 @@ class Command(BaseCommand):
         breached = 0
 
         for instance in pending:
-            steps = instance.template.steps.all().order_by("step_order")
+            steps = instance.template.steps.all().order_by("order")
             current_step = None
             for step in steps:
-                if step.step_order == instance.current_step:
+                if step.order == instance.current_step:
                     current_step = step
                     break
 

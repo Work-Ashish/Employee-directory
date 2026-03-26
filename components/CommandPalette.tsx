@@ -33,7 +33,7 @@ export function CommandPalette() {
 
     return (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-start justify-center pt-[14vh] animate-in fade-in duration-200" onClick={() => setOpen(false)}>
-            <Command className="w-full max-w-[640px] bg-surface rounded-xl border border-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <Command className="w-full max-w-[640px] bg-surface rounded-xl border border-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center border-b border-border px-3 bg-glass-bg">
                     <MagnifyingGlassIcon className="mr-2 h-5 w-5 shrink-0 opacity-50" />
                     <Command.Input

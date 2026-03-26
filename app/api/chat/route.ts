@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { google } from "@ai-sdk/google"
 import { generateText } from "ai"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 const SYSTEM_PROMPT = `You are EMS Pro Assistant — a helpful, concise HR management AI embedded in an Employee Management System.
 
@@ -22,7 +24,7 @@ interface ChatMessage {
     content: string
 }
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
     try {
         const body = await req.json()
         const messages: ChatMessage[] = body.messages || []
@@ -58,3 +60,6 @@ export async function POST(req: Request) {
         )
     }
 }
+
+// Chat just requires authentication, no specific module permission
+export const POST = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, handlePOST)

@@ -26,7 +26,8 @@ export function decodeJwtPayload(token: string): Record<string, unknown> {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return {};
-    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    let payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (payload.length % 4) payload += '=';
     return JSON.parse(atob(payload));
   } catch {
     return {};
@@ -36,7 +37,7 @@ export function decodeJwtPayload(token: string): Record<string, unknown> {
 /** Set a cookie so Next.js middleware can detect authentication */
 function setAuthCookie(token: string): void {
   const maxAge = 60 * 60 * 24 * 7; // 7 days — matches refresh token lifetime
-  document.cookie = `access_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  document.cookie = `access_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax; Secure`;
 }
 
 /** Clear the auth cookie */
@@ -286,5 +287,6 @@ export async function getMe(): Promise<AuthUser> {
 }
 
 export function isAuthenticated(): boolean {
+  if (typeof window === "undefined") return false;
   return !!localStorage.getItem("access_token");
 }

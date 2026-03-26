@@ -1,4 +1,6 @@
-const { execSync } = require('child_process');
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
 const config = require('../config');
 
 let trackingInterval = null;
@@ -18,59 +20,70 @@ let estimatedMouseClicks = 0;
  * Falls back gracefully on error or non-Windows platforms.
  * @returns {{ app: string, title: string }}
  */
-function getActiveWindow() {
-  if (process.platform === 'win32') {
-    try {
-      const ps = [
-        '$ErrorActionPreference="SilentlyContinue"',
-        'Add-Type -TypeDefinition @"',
-        'using System;',
-        'using System.Runtime.InteropServices;',
-        'using System.Text;',
-        'public class WinAPI {',
-        '  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();',
-        '  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder t, int c);',
-        '  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);',
-        '}',
-        '"@',
-        '$h=[WinAPI]::GetForegroundWindow()',
-        '$t=New-Object Text.StringBuilder 512',
-        '[void][WinAPI]::GetWindowText($h,$t,512)',
-        '$pid=0;[void][WinAPI]::GetWindowThreadProcessId($h,[ref]$pid)',
-        '$p=Get-Process -Id $pid -EA 0',
-        '[PSCustomObject]@{app=$p.ProcessName;title=$t.ToString()}|ConvertTo-Json -Compress',
-      ].join(';');
+// Cache for the last known window (used while async call is in-flight)
+let lastKnownWindow = { app: 'Unknown', title: '' };
+let asyncPending = false;
 
-      const result = execSync(
-        `powershell -NoProfile -ExecutionPolicy Bypass -Command "${ps}"`,
-        { encoding: 'utf8', timeout: 3000, windowsHide: true }
-      );
-      const data = JSON.parse(result.trim());
-      return {
-        app: data.app || 'Unknown',
-        title: data.title || '',
-      };
-    } catch {
-      return { app: 'Unknown', title: '' };
-    }
+/**
+ * Get the currently active window using async exec.
+ * Updates lastKnownWindow when the result arrives.
+ */
+function refreshActiveWindowAsync() {
+  if (asyncPending) return; // skip if a call is already in-flight
+  asyncPending = true;
+
+  if (process.platform === 'win32') {
+    const ps = [
+      '$ErrorActionPreference="SilentlyContinue"',
+      'Add-Type -TypeDefinition @"',
+      'using System;',
+      'using System.Runtime.InteropServices;',
+      'using System.Text;',
+      'public class WinAPI {',
+      '  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();',
+      '  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder t, int c);',
+      '  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);',
+      '}',
+      '"@',
+      '$h=[WinAPI]::GetForegroundWindow()',
+      '$t=New-Object Text.StringBuilder 512',
+      '[void][WinAPI]::GetWindowText($h,$t,512)',
+      '$pid=0;[void][WinAPI]::GetWindowThreadProcessId($h,[ref]$pid)',
+      '$p=Get-Process -Id $pid -EA 0',
+      '[PSCustomObject]@{app=$p.ProcessName;title=$t.ToString()}|ConvertTo-Json -Compress',
+    ].join(';');
+
+    execAsync(
+      `powershell -NoProfile -ExecutionPolicy Bypass -Command "${ps}"`,
+      { encoding: 'utf8', timeout: 3000, windowsHide: true }
+    )
+      .then(({ stdout }) => {
+        const data = JSON.parse(stdout.trim());
+        lastKnownWindow = { app: data.app || 'Unknown', title: data.title || '' };
+      })
+      .catch(() => { /* keep lastKnownWindow */ })
+      .finally(() => { asyncPending = false; });
+    return;
   }
 
   if (process.platform === 'darwin') {
-    try {
-      const script =
-        'tell application "System Events" to get {name, title} of first application process whose frontmost is true';
-      const result = execSync(`osascript -e '${script}'`, {
-        encoding: 'utf8',
-        timeout: 3000,
-      });
-      const parts = result.trim().split(', ');
-      return { app: parts[0] || 'Unknown', title: parts[1] || '' };
-    } catch {
-      return { app: 'Unknown', title: '' };
-    }
+    const script =
+      'tell application "System Events" to get {name, title} of first application process whose frontmost is true';
+    execAsync(`osascript -e '${script}'`, { encoding: 'utf8', timeout: 3000 })
+      .then(({ stdout }) => {
+        const parts = stdout.trim().split(', ');
+        lastKnownWindow = { app: parts[0] || 'Unknown', title: parts[1] || '' };
+      })
+      .catch(() => { /* keep lastKnownWindow */ })
+      .finally(() => { asyncPending = false; });
+    return;
   }
 
-  return { app: 'Unknown', title: '' };
+  asyncPending = false;
+}
+
+function getActiveWindow() {
+  return lastKnownWindow;
 }
 
 /**
@@ -79,6 +92,7 @@ function getActiveWindow() {
  */
 function recordAppTime() {
   const now = Date.now();
+  refreshActiveWindowAsync();
   const win = getActiveWindow();
 
   if (lastCheckTime && currentApp) {
@@ -87,7 +101,7 @@ function recordAppTime() {
       appUsageMap[currentApp] = { totalSeconds: 0, titles: new Set() };
     }
     appUsageMap[currentApp].totalSeconds += elapsed;
-    if (currentTitle) {
+    if (currentTitle && appUsageMap[currentApp].titles.size <= 50) {
       appUsageMap[currentApp].titles.add(currentTitle);
     }
   }
@@ -142,6 +156,7 @@ function start() {
   lastCheckTime = Date.now();
 
   // Do an initial capture
+  refreshActiveWindowAsync();
   const win = getActiveWindow();
   currentApp = win.app;
   currentTitle = win.title;

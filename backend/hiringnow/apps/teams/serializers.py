@@ -7,6 +7,8 @@ class TeamMemberSerializer(serializers.ModelSerializer):
     """Read serializer for team members."""
 
     employee_name = serializers.SerializerMethodField()
+    designation = serializers.SerializerMethodField()
+    avatar_url = serializers.SerializerMethodField()
 
     class Meta:
         model = TeamMember
@@ -15,6 +17,8 @@ class TeamMemberSerializer(serializers.ModelSerializer):
             'team',
             'employee',
             'employee_name',
+            'designation',
+            'avatar_url',
             'role',
             'created_at',
             'updated_at',
@@ -23,6 +27,12 @@ class TeamMemberSerializer(serializers.ModelSerializer):
 
     def get_employee_name(self, obj):
         return f"{obj.employee.first_name} {obj.employee.last_name}"
+
+    def get_designation(self, obj):
+        return getattr(obj.employee, 'designation', '') or ''
+
+    def get_avatar_url(self, obj):
+        return getattr(obj.employee, 'avatar_url', None) or None
 
 
 class TeamSerializer(serializers.ModelSerializer):

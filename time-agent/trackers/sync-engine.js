@@ -143,6 +143,7 @@ async function syncData() {
   if (!deviceId) {
     // Device not registered yet — store for retry
     pendingPayloads.push({ sessions: [session] });
+    if (pendingPayloads.length > 100) pendingPayloads.shift();
     appTracker.reset();
     idleDetector.reset();
     sessionStartTime = new Date().toISOString();
@@ -172,6 +173,7 @@ async function syncData() {
   } else {
     // Keep data for retry; store current session as pending
     pendingPayloads.push({ sessions: [session] });
+    if (pendingPayloads.length > 100) pendingPayloads.shift();
     // Still reset trackers to avoid double-counting
     appTracker.reset();
     idleDetector.reset();

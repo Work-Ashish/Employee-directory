@@ -23,11 +23,13 @@ interface EmployeeListProps {
     onOpenEditModal: (emp: any) => void
     onOpenViewModal: (emp: any) => void
     onResetCredentials: (emp: any) => void
+    onRelinkUsers: () => void
     onDelete: (id: string, name: string) => void
     onImportClick: () => void
     onExportCSV: () => void
     onExportPDF: () => void
     isResettingCreds: string | null
+    isRelinkingUsers?: boolean
     searchValue?: string
     onSearchChange?: (value: string) => void
 }
@@ -53,11 +55,13 @@ export const EmployeeList = React.memo(function EmployeeList({
     onOpenEditModal,
     onOpenViewModal,
     onResetCredentials,
+    onRelinkUsers,
     onDelete,
     onImportClick,
     onExportCSV,
     onExportPDF,
     isResettingCreds,
+    isRelinkingUsers,
     searchValue,
     onSearchChange
 }: EmployeeListProps) {
@@ -187,6 +191,9 @@ export const EmployeeList = React.memo(function EmployeeList({
                 <>
                     <Button variant="secondary" size="sm" onClick={onImportClick} leftIcon={<DownloadIcon className="w-3.5 h-3.5 rotate-180" />}>
                         Import
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={onRelinkUsers} loading={isRelinkingUsers}>
+                        Repair Logins
                     </Button>
                     <Button variant="secondary" size="sm" onClick={onExportCSV} leftIcon={<DownloadIcon className="w-3.5 h-3.5" />}>
                         CSV

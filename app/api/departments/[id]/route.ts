@@ -6,11 +6,15 @@
  * Employees with this department string in Django are unaffected.
  */
 import { NextResponse } from "next/server"
+import { withAuth, type AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function DELETE(
+async function handleDELETE(
     _req: Request,
-    { params }: { params: Promise<{ id: string }> }
+    context: AuthContext
 ) {
-    const { id } = await params
+    const { id } = context.params
     return NextResponse.json({ data: { id, deleted: true } })
 }
+
+export const DELETE = withAuth({ module: Module.EMPLOYEES, action: Action.DELETE }, handleDELETE)

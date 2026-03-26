@@ -3,21 +3,27 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handleGET(req: Request, context: AuthContext) {
+    const id = context.params.id
     deprecatedRoute(`/api/documents/${id} GET`, "Django /api/v1/documents/:id/")
     return proxyToDjango(req, `/documents/${id}/`)
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handlePUT(req: Request, context: AuthContext) {
+    const id = context.params.id
     deprecatedRoute(`/api/documents/${id} PUT`, "Django /api/v1/documents/:id/")
     return proxyToDjango(req, `/documents/${id}/`)
 }
 
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handleDELETE(req: Request, context: AuthContext) {
+    const id = context.params.id
     deprecatedRoute(`/api/documents/${id} DELETE`, "Django /api/v1/documents/:id/")
     return proxyToDjango(req, `/documents/${id}/`)
 }
+
+export const GET = withAuth({ module: Module.DOCUMENTS, action: Action.VIEW }, handleGET)
+export const PUT = withAuth({ module: Module.DOCUMENTS, action: Action.UPDATE }, handlePUT)
+export const DELETE = withAuth({ module: Module.DOCUMENTS, action: Action.DELETE }, handleDELETE)

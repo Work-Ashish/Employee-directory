@@ -36,6 +36,7 @@ class Attendance(BaseModel):
     class Meta:
         db_table = 'attendances'
         ordering = ['-date']
+        unique_together = [('employee', 'date')]
         indexes = [
             models.Index(fields=['employee', 'date']),
         ]

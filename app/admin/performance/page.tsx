@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/context/AuthContext"
+import { canAccessModule, Module } from "@/lib/permissions"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api-client"
 import { PageHeader } from "@/components/ui/PageHeader"
@@ -52,9 +55,17 @@ const SEVERITY_COLORS = {
 }
 
 export default function PerformanceAdminDashboard() {
+    const { user, isLoading: authLoading } = useAuth()
+    const router = useRouter()
     const [alerts, setAlerts] = useState<Alert[]>([])
     const [scores, setScores] = useState<Score[]>([])
     const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        if (!authLoading && !canAccessModule(user?.role ?? "", Module.PERFORMANCE)) {
+            router.push("/")
+        }
+    }, [user, authLoading, router])
 
     useEffect(() => {
         api.get('/performance/metrics/')
@@ -66,6 +77,8 @@ export default function PerformanceAdminDashboard() {
             .catch(console.error)
             .finally(() => setLoading(false))
     }, [])
+
+    if (authLoading || !canAccessModule(user?.role ?? "", Module.PERFORMANCE)) return null
 
     if (loading) {
         return (

@@ -114,13 +114,20 @@ export function RecruitmentKanban() {
         }
 
         setColumns((prev) => {
-            const activeItems = activeColumn.items
-            const overItems = overColumn.items
+            const prevActiveColumn = prev.find((col) => col.items.some((item) => item.id === activeId) || col.id === activeId)
+            const prevOverColumn = prev.find((col) => col.items.some((item) => item.id === overId) || col.id === overId)
+
+            if (!prevActiveColumn || !prevOverColumn || prevActiveColumn === prevOverColumn) {
+                return prev
+            }
+
+            const activeItems = prevActiveColumn.items
+            const overItems = prevOverColumn.items
             const activeIndex = activeItems.findIndex((i) => i.id === activeId)
             const overIndex = overItems.findIndex((i) => i.id === overId)
 
             let newIndex
-            if (overId === overColumn.id) {
+            if (overId === prevOverColumn.id) {
                 newIndex = overItems.length + 1
             } else {
                 const isBelowOverItem =
@@ -132,9 +139,9 @@ export function RecruitmentKanban() {
             }
 
             return prev.map((c) => {
-                if (c.id === activeColumn.id) {
+                if (c.id === prevActiveColumn.id) {
                     return { ...c, items: activeItems.filter((i) => i.id !== activeId) }
-                } else if (c.id === overColumn.id) {
+                } else if (c.id === prevOverColumn.id) {
                     return {
                         ...c,
                         items: [
@@ -237,11 +244,10 @@ export function RecruitmentKanban() {
                 ))}
             </div>
             <DragOverlay dropAnimation={dropAnimation}>
-                {activeId ? (
-                    <CandidateCard candidate={
-                        columns.flatMap(c => c.items).find(i => i.id === activeId)!
-                    } isOverlay />
-                ) : null}
+                {activeId ? (() => {
+                    const candidate = columns.flatMap(c => c.items).find(i => i.id === activeId)
+                    return candidate ? <CandidateCard candidate={candidate} isOverlay /> : null
+                })() : null}
             </DragOverlay>
         </DndContext>
     )

@@ -2,6 +2,7 @@
 
 import pytest
 
+from apps.users.models import User
 from apps.teams.models import Team, TeamMember
 
 TEAMS_URL = "/api/v1/teams/"
@@ -140,3 +141,31 @@ def test_unauthenticated_teams(api_client):
     """Unauthenticated request returns 403."""
     response = api_client.get(TEAMS_URL)
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_team_lead_sees_team_by_matching_email_even_without_employee_user_link(api_client, department):
+    """A lead should still see their team if the employee.user link is missing but email matches."""
+    user = User.objects.create_user(
+        username='leaduser',
+        email='lead@test.com',
+        password='TestPass123!',
+    )
+    lead_employee = Team._meta.get_field('lead').related_model.objects.create(
+        first_name='Lead',
+        last_name='User',
+        email='lead@test.com',
+        employee_code='EMP-0100',
+        department_ref=department,
+        designation='Team Lead',
+        status='active',
+    )
+    team = Team.objects.create(name="QA Leads", department=department, lead=lead_employee)
+
+    api_client.force_authenticate(user=user)
+    response = api_client.get(TEAMS_URL)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["results"][0]["id"] == str(team.pk)

@@ -20,12 +20,18 @@ contextBridge.exposeInMainWorld('timeAgent', {
 
   // Events from main process
   onStatusUpdate: (callback) => {
-    ipcRenderer.on('status:update', (_event, data) => callback(data));
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('status:update', handler);
+    return () => ipcRenderer.removeListener('status:update', handler);
   },
   onIdleDetected: (callback) => {
-    ipcRenderer.on('idle:detected', (_event, data) => callback(data));
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('idle:detected', handler);
+    return () => ipcRenderer.removeListener('idle:detected', handler);
   },
   onTrackingStateChange: (callback) => {
-    ipcRenderer.on('tracking:state-change', (_event, data) => callback(data));
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('tracking:state-change', handler);
+    return () => ipcRenderer.removeListener('tracking:state-change', handler);
   },
 });

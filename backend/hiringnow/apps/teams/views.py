@@ -38,8 +38,16 @@ class TeamListCreateView(APIView):
         user = request.user
         if not getattr(user, 'is_tenant_admin', False):
             from django.db.models import Q
+            employee_profile = getattr(user, 'employee_profile', None)
+            filters = Q(lead__user=user) | Q(members__employee__user=user)
+            # Be resilient to legacy imports where Employee.user was never linked
+            # but the logged-in user still corresponds to the same employee record.
+            if employee_profile:
+                filters |= Q(lead_id=employee_profile.id) | Q(members__employee_id=employee_profile.id)
+            if getattr(user, 'email', None):
+                filters |= Q(lead__email__iexact=user.email) | Q(members__employee__email__iexact=user.email)
             queryset = queryset.filter(
-                Q(members__employee__user=user) | Q(lead__user=user)
+                filters
             ).distinct()
 
         # -- Filters
@@ -139,6 +147,21 @@ class TeamMemberView(APIView):
 
     def _get_team(self, pk):
         return get_object_or_404(Team, pk=pk)
+
+    def get(self, request, pk):
+        team = self._get_team(pk)
+        members = TeamMember.objects.filter(team=team).select_related(
+            'employee', 'employee__user'
+        )
+        data = [{
+            'id': str(m.id),
+            'employee_id': str(m.employee_id),
+            'name': f"{m.employee.first_name} {m.employee.last_name}",
+            'email': m.employee.email,
+            'designation': m.employee.designation or '',
+            'role': m.role,
+        } for m in members]
+        return Response(data)
 
     def post(self, request, pk):
         team = self._get_team(pk)

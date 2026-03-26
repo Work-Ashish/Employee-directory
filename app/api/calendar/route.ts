@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "@/lib/auth-server"
 import { google } from "googleapis"
+import { withAuth, type AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET() {
+async function handleGET(_req: Request, _context: AuthContext) {
     try {
-        const session = await getServerSession()
-        if (!session?.user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
         // Google Calendar integration requires a separate OAuth flow (not part of Django JWT auth).
         // TODO: Re-implement Google OAuth token storage when Google Calendar integration is restored.
         const accessToken: string | undefined = undefined
@@ -54,3 +50,5 @@ export async function GET() {
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
     }
 }
+
+export const GET = withAuth({ module: Module.DASHBOARD, action: Action.VIEW }, handleGET)

@@ -5,6 +5,8 @@
  * based on department, designation seniority, and existing employees.
  */
 import { NextResponse } from "next/server"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 function getDjangoBase(): string {
     return (
@@ -52,7 +54,15 @@ interface ImportRow {
     managerEmail?: string
 }
 
-export async function POST(req: Request) {
+function normalizeKey(value: string | number | undefined | null): string {
+    return String(value || "").trim().toLowerCase()
+}
+
+function buildFullName(firstName?: string | null, lastName?: string | null): string {
+    return `${firstName || ""} ${lastName || ""}`.trim()
+}
+
+async function handlePOST(req: Request) {
     try {
         const body = await req.json()
         const rows: ImportRow[] = body.rows || []
@@ -76,30 +86,41 @@ export async function POST(req: Request) {
 
         // Build department → highest-seniority existing employee map
         const deptHeads = new Map<string, { email: string; name: string; score: number }>()
+        const existingRefs = new Map<string, { email: string; name: string }>()
         for (const emp of existingEmployees) {
-            const dept = ((emp.department as string) || "").toLowerCase()
+            const dept = normalizeKey(emp.department as string)
             const desig = (emp.designation as string) || ""
             const score = seniorityScore(desig)
             const existing = deptHeads.get(dept)
+            const fullName = buildFullName(emp.first_name as string, emp.last_name as string)
+            const refValue = { email: emp.email as string, name: fullName }
+            if (emp.email) existingRefs.set(normalizeKey(emp.email as string), refValue)
+            if (emp.employee_code) existingRefs.set(normalizeKey(emp.employee_code as string), refValue)
+            if (fullName) existingRefs.set(normalizeKey(fullName), refValue)
             if (!existing || score > existing.score) {
                 deptHeads.set(dept, {
                     email: emp.email as string,
-                    name: `${emp.first_name} ${emp.last_name}`,
+                    name: fullName,
                     score,
                 })
             }
         }
 
         // Also build map from CSV rows for cross-referencing
-        const csvByEmail = new Map<string, ImportRow>()
+        const csvRefs = new Map<string, ImportRow>()
         for (const row of rows) {
-            if (row.email) csvByEmail.set(row.email.toLowerCase(), row)
+            const name = row.fullName || `${row.firstName || ""} ${row.lastName || ""}`.trim()
+            if (row.email) csvRefs.set(normalizeKey(row.email), row)
+            if ((row as Record<string, unknown>).employeeCode) {
+                csvRefs.set(normalizeKey((row as Record<string, unknown>).employeeCode as string), row)
+            }
+            if (name) csvRefs.set(normalizeKey(name), row)
         }
 
         // Group CSV rows by department for intra-batch resolution
         const csvDeptGroups = new Map<string, ImportRow[]>()
         for (const row of rows) {
-            const dept = (row.departmentName || "").toLowerCase()
+            const dept = normalizeKey(row.departmentName)
             if (!csvDeptGroups.has(dept)) csvDeptGroups.set(dept, [])
             csvDeptGroups.get(dept)!.push(row)
         }
@@ -107,22 +128,27 @@ export async function POST(req: Request) {
         const suggestions = rows.map((row) => {
             const name = row.fullName || `${row.firstName || ""} ${row.lastName || ""}`.trim()
             const desig = row.designation || ""
-            const dept = (row.departmentName || "").toLowerCase()
+            const dept = normalizeKey(row.departmentName)
             const score = seniorityScore(desig)
+            const managerRef = normalizeKey(row.managerEmail)
 
             // Already has a manager assigned
-            if (row.managerEmail) {
+            if (managerRef) {
+                const matchedExisting = existingRefs.get(managerRef)
+                const matchedCsv = csvRefs.get(managerRef)
+                const matchedName = matchedExisting?.name || (matchedCsv?.fullName || `${matchedCsv?.firstName || ""} ${matchedCsv?.lastName || ""}`.trim()) || null
+                const matchedEmail = matchedExisting?.email || matchedCsv?.email || row.managerEmail || null
                 return {
                     rowIndex: row.rowIndex,
                     email: row.email || "",
                     name,
                     designation: desig,
                     departmentName: row.departmentName || "",
-                    suggestedManagerEmail: row.managerEmail,
-                    suggestedManagerName: null,
+                    suggestedManagerEmail: matchedEmail,
+                    suggestedManagerName: matchedName,
                     seniorityScore: score,
-                    resolution: "already-set" as const,
-                    confidence: "high" as const,
+                    resolution: matchedEmail ? "already-set" as const : "unresolved" as const,
+                    confidence: matchedEmail ? "high" as const : "low" as const,
                 }
             }
 
@@ -211,3 +237,5 @@ export async function POST(req: Request) {
         )
     }
 }
+
+export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.VIEW }, handlePOST)

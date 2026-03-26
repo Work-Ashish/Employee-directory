@@ -265,10 +265,12 @@ export default function LoginPage() {
                 </div>
 
                 {/* Dev quick-fill helper – hover top-right corner */}
-                <div className="absolute top-0 right-0 opacity-0 hover:opacity-100 p-2 text-[10px] text-white/50 bg-black/50 rounded-bl-lg transition-opacity pointer-events-auto">
-                    <div className="cursor-pointer hover:text-white" onClick={() => { setTenantSlug("demo"); setEmail("admin@emspro.com"); setPassword("admin123!") }}>Admin</div>
-                    <div className="cursor-pointer hover:text-white" onClick={() => { setTenantSlug("demo"); setEmail("user@emspro.com"); setPassword("user123!") }}>User</div>
-                </div>
+                {process.env.NODE_ENV === 'development' && (
+                    <div className="absolute top-0 right-0 opacity-0 hover:opacity-100 p-2 text-[10px] text-white/50 bg-black/50 rounded-bl-lg transition-opacity pointer-events-auto">
+                        <div className="cursor-pointer hover:text-white" onClick={() => { setTenantSlug("demo"); setEmail("admin@emspro.com"); setPassword("admin123!") }}>Admin</div>
+                        <div className="cursor-pointer hover:text-white" onClick={() => { setTenantSlug("demo"); setEmail("user@emspro.com"); setPassword("user123!") }}>User</div>
+                    </div>
+                )}
             </motion.div>
         </div>
     )

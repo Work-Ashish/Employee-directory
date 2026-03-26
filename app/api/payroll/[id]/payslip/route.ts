@@ -6,9 +6,13 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params
+async function handleGET(req: Request, context: AuthContext) {
+    const id = context.params.id
     deprecatedRoute(`/api/payroll/${id}/payslip GET`, "Django /api/v1/payroll/:id/payslip/")
     return proxyToDjango(req, `/payroll/${id}/payslip/`)
 }
+
+export const GET = withAuth({ module: Module.PAYROLL, action: Action.VIEW }, handleGET)

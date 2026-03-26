@@ -1,19 +1,18 @@
-import threading
+import contextvars
 
-_thread_local = threading.local()
+_current_tenant = contextvars.ContextVar('current_tenant', default=None)
 
 
-# set the current tenant in thread-local storage
+# set the current tenant in context-local storage (async-safe)
 def set_current_tenant(tenant):
-    _thread_local.tenant = tenant
+    _current_tenant.set(tenant)
 
 
-# get the current tenant from thread-local storage
+# get the current tenant from context-local storage
 def get_current_tenant():
-    return getattr(_thread_local, "tenant", None)
+    return _current_tenant.get()
 
 
-# clear the current tenant from thread-local storage
+# clear the current tenant from context-local storage
 def clear_current_tenant():
-    if hasattr(_thread_local, "tenant"):
-        del _thread_local.tenant
+    _current_tenant.set(None)

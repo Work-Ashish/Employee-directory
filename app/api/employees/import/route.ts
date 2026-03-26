@@ -9,6 +9,9 @@
  * regardless of CSV row order.
  */
 import { NextResponse } from "next/server"
+import crypto from "crypto"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 function getDjangoBase(): string {
     return (
@@ -29,10 +32,7 @@ function forwardHeaders(req: Request): Record<string, string> {
 }
 
 function generateTempPassword(): string {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
-    let pw = ""
-    for (let i = 0; i < 12; i++) pw += chars.charAt(Math.floor(Math.random() * chars.length))
-    return pw
+    return crypto.randomBytes(12).toString('base64url').slice(0, 16)
 }
 
 interface ImportRow {
@@ -47,6 +47,14 @@ interface ImportRow {
     dateOfJoining?: string
     salary?: string | number
     role?: string
+}
+
+function normalizeKey(value: string | number | undefined | null): string {
+    return String(value || "").trim().toLowerCase()
+}
+
+function buildFullName(firstName?: string | null, lastName?: string | null): string {
+    return `${firstName || ""} ${lastName || ""}`.trim()
 }
 
 /**
@@ -121,7 +129,29 @@ function extractDjangoError(errJson: Record<string, unknown>): string {
     return fieldErrors.length > 0 ? fieldErrors.join("; ") : JSON.stringify(errData)
 }
 
-export async function POST(req: Request) {
+async function fetchExistingUserMap(
+    base: string,
+    headers: Record<string, string>
+): Promise<Map<string, string>> {
+    const emailToUserId = new Map<string, string>()
+    try {
+        const res = await fetch(`${base}/api/v1/users/?limit=1000`, {
+            headers,
+            signal: AbortSignal.timeout(15_000),
+        })
+        if (!res.ok) return emailToUserId
+        const json = await res.json()
+        const users = json.data?.results || json.results || (Array.isArray(json.data) ? json.data : [])
+        for (const user of users) {
+            if (user?.email && user?.id) {
+                emailToUserId.set(normalizeKey(user.email as string), user.id as string)
+            }
+        }
+    } catch { /* proceed without */ }
+    return emailToUserId
+}
+
+async function handlePOST(req: Request) {
     try {
         const body = await req.json()
         const rows: ImportRow[] = body.rows || []
@@ -135,6 +165,7 @@ export async function POST(req: Request) {
 
         const headers = forwardHeaders(req)
         const base = getDjangoBase()
+        const emailToUserId = await fetchExistingUserMap(base, headers)
 
         // Fetch existing employees to check for duplicates
         let existingEmployees: Record<string, unknown>[] = []
@@ -151,15 +182,26 @@ export async function POST(req: Request) {
 
         // email → employee ID map (existing + newly created)
         const emailToId = new Map<string, string>()
+        const nameToId = new Map<string, string>()
         // employee_code → employee ID map for duplicate detection
         const codeToId = new Map<string, string>()
         for (const emp of existingEmployees) {
             if (emp.email && emp.id) {
-                emailToId.set((emp.email as string).toLowerCase(), emp.id as string)
+                emailToId.set(normalizeKey(emp.email as string), emp.id as string)
             }
             if (emp.employee_code && emp.id) {
-                codeToId.set((emp.employee_code as string).toLowerCase(), emp.id as string)
+                codeToId.set(normalizeKey(emp.employee_code as string), emp.id as string)
             }
+            const fullName = buildFullName(emp.first_name as string, emp.last_name as string)
+            if (fullName && emp.id) {
+                nameToId.set(normalizeKey(fullName), emp.id as string)
+            }
+        }
+
+        const resolveManagerId = (reference: string | undefined | null): string | null => {
+            const key = normalizeKey(reference)
+            if (!key) return null
+            return emailToId.get(key) || codeToId.get(key) || nameToId.get(key) || null
         }
 
         const inserted: number[] = []
@@ -170,7 +212,7 @@ export async function POST(req: Request) {
         // Track which created employees need reporting_to set in pass 2
         const pendingManagerLinks: Array<{
             employeeId: string
-            managerEmail: string
+            managerReference: string
             rowIndex: number
         }> = []
 
@@ -200,10 +242,11 @@ export async function POST(req: Request) {
             }
 
             const empCode = (row.employeeCode || "").trim()
+            let userId = emailToUserId.get(normalizeKey(email)) || null
 
             // Check if employee already exists (by email or employee_code)
-            const existingByEmail = emailToId.get(email.toLowerCase())
-            const existingByCode = empCode ? codeToId.get(empCode.toLowerCase()) : undefined
+            const existingByEmail = emailToId.get(normalizeKey(email))
+            const existingByCode = empCode ? codeToId.get(normalizeKey(empCode)) : undefined
             const existingEmpId = existingByEmail || existingByCode || null
 
             // Build employee payload
@@ -221,14 +264,16 @@ export async function POST(req: Request) {
             if (empCode) djangoPayload.employee_code = empCode
 
             // If managerEmail resolves to an EXISTING employee (not in this batch), set it now
-            const mgrEmail = (row.managerEmail || "").trim().toLowerCase()
-            if (mgrEmail && emailToId.has(mgrEmail)) {
-                djangoPayload.reporting_to = emailToId.get(mgrEmail)
+            const mgrRef = String(row.managerEmail || "").trim()
+            const resolvedManagerId = resolveManagerId(mgrRef)
+            if (resolvedManagerId) {
+                djangoPayload.reporting_to = resolvedManagerId
             }
 
             try {
                 // ── UPDATE existing employee ──
                 if (existingEmpId) {
+                    if (userId) djangoPayload.user = userId
                     const updateRes = await fetch(`${base}/api/v1/employees/${existingEmpId}/`, {
                         method: "PUT",
                         headers,
@@ -236,14 +281,15 @@ export async function POST(req: Request) {
                         signal: AbortSignal.timeout(15_000),
                     })
                     if (updateRes.ok) {
-                        emailToId.set(email.toLowerCase(), existingEmpId)
-                        if (empCode) codeToId.set(empCode.toLowerCase(), existingEmpId)
+                        emailToId.set(normalizeKey(email), existingEmpId)
+                        if (empCode) codeToId.set(normalizeKey(empCode), existingEmpId)
+                        nameToId.set(normalizeKey(buildFullName(firstName, lastName)), existingEmpId)
                         inserted.push(i)
 
-                        if (mgrEmail && !djangoPayload.reporting_to) {
+                        if (mgrRef && !djangoPayload.reporting_to) {
                             pendingManagerLinks.push({
                                 employeeId: existingEmpId,
-                                managerEmail: mgrEmail,
+                                managerReference: mgrRef,
                                 rowIndex: i,
                             })
                         }
@@ -258,29 +304,33 @@ export async function POST(req: Request) {
                 const tempPassword = generateTempPassword()
 
                 // Step 1: Create Django User
-                let userId: string | null = null
                 try {
-                    const userRes = await fetch(`${base}/api/v1/users/`, {
-                        method: "POST",
-                        headers,
-                        body: JSON.stringify({
-                            email,
-                            password: tempPassword,
-                            first_name: firstName,
-                            last_name: lastName,
-                            is_tenant_admin: false,
-                        }),
-                        signal: AbortSignal.timeout(15_000),
-                    })
-                    if (userRes.ok) {
-                        const userJson = await userRes.json()
-                        const userData = userJson.data || userJson
-                        userId = (userData.id as string) || null
-                    } else {
-                        const userErr = await userRes.json().catch(() => ({}))
-                        const errDetail = JSON.stringify(userErr)
-                        if (!errDetail.toLowerCase().includes("already exists")) {
-                            console.error(`User creation failed for row ${i + 1} (${email}):`, errDetail)
+                    if (!userId) {
+                        const userRes = await fetch(`${base}/api/v1/users/`, {
+                            method: "POST",
+                            headers,
+                            body: JSON.stringify({
+                                email,
+                                password: tempPassword,
+                                first_name: firstName,
+                                last_name: lastName,
+                                is_tenant_admin: false,
+                            }),
+                            signal: AbortSignal.timeout(15_000),
+                        })
+                        if (userRes.ok) {
+                            const userJson = await userRes.json()
+                            const userData = userJson.data || userJson
+                            userId = (userData.id as string) || null
+                            if (userId) {
+                                emailToUserId.set(normalizeKey(email), userId)
+                            }
+                        } else {
+                            const userErr = await userRes.json().catch(() => ({}))
+                            const errDetail = JSON.stringify(userErr)
+                            if (!errDetail.toLowerCase().includes("already exists")) {
+                                console.error(`User creation failed for row ${i + 1} (${email}):`, errDetail)
+                            }
                         }
                     }
                 } catch {
@@ -303,8 +353,9 @@ export async function POST(req: Request) {
                     const empId = emp.id as string
                     const resultCode = emp.employee_code || empCode || ""
 
-                    emailToId.set(email.toLowerCase(), empId)
-                    if (resultCode) codeToId.set(resultCode.toLowerCase(), empId)
+                    emailToId.set(normalizeKey(email), empId)
+                    if (resultCode) codeToId.set(normalizeKey(resultCode), empId)
+                    nameToId.set(normalizeKey(buildFullName(firstName, lastName)), empId)
 
                     inserted.push(i)
                     credentials.push({
@@ -314,10 +365,10 @@ export async function POST(req: Request) {
                         name: `${firstName} ${lastName}`.trim(),
                     })
 
-                    if (mgrEmail && !djangoPayload.reporting_to) {
+                    if (mgrRef && !djangoPayload.reporting_to) {
                         pendingManagerLinks.push({
                             employeeId: empId,
-                            managerEmail: mgrEmail,
+                            managerReference: mgrRef,
                             rowIndex: i,
                         })
                     }
@@ -338,8 +389,8 @@ export async function POST(req: Request) {
                                 const searchJson = await searchRes.json()
                                 const results = searchJson.data?.results || searchJson.results || (Array.isArray(searchJson.data) ? searchJson.data : [])
                                 const match = results.find((e: Record<string, unknown>) =>
-                                    (empCode && (e.employee_code as string)?.toLowerCase() === empCode.toLowerCase()) ||
-                                    (e.email as string)?.toLowerCase() === email.toLowerCase()
+                                    (empCode && normalizeKey(e.employee_code as string) === normalizeKey(empCode)) ||
+                                    normalizeKey(e.email as string) === normalizeKey(email)
                                 )
                                 if (match) foundId = match.id as string
                             }
@@ -349,6 +400,7 @@ export async function POST(req: Request) {
                             // Remove fields that cause conflict on update
                             const updatePayload = { ...djangoPayload }
                             delete updatePayload.employee_code
+                            if (userId) updatePayload.user = userId
                             const updateRes = await fetch(`${base}/api/v1/employees/${foundId}/`, {
                                 method: "PUT",
                                 headers,
@@ -356,7 +408,9 @@ export async function POST(req: Request) {
                                 signal: AbortSignal.timeout(15_000),
                             })
                             if (updateRes.ok) {
-                                emailToId.set(email.toLowerCase(), foundId)
+                                emailToId.set(normalizeKey(email), foundId)
+                                if (empCode) codeToId.set(normalizeKey(empCode), foundId)
+                                nameToId.set(normalizeKey(buildFullName(firstName, lastName)), foundId)
                                 inserted.push(i)
                             } else {
                                 const upErr = await updateRes.json().catch(() => ({}))
@@ -379,7 +433,7 @@ export async function POST(req: Request) {
         //         in the same batch (now created and in emailToId)
         // ──────────────────────────────────────────────────────────
         for (const link of pendingManagerLinks) {
-            const managerId = emailToId.get(link.managerEmail)
+            const managerId = resolveManagerId(link.managerReference)
             if (!managerId) continue // Manager wasn't created (maybe had errors)
 
             try {
@@ -423,7 +477,7 @@ export async function POST(req: Request) {
                 skipped: skipped.length,
                 errors,
                 credentials,
-                managersLinked: pendingManagerLinks.filter(l => emailToId.has(l.managerEmail)).length,
+                managersLinked: pendingManagerLinks.filter(l => !!resolveManagerId(l.managerReference)).length,
                 teamsSynced,
             },
         })
@@ -434,3 +488,5 @@ export async function POST(req: Request) {
         )
     }
 }
+
+export const POST = withAuth({ module: Module.EMPLOYEES, action: Action.CREATE }, handlePOST)

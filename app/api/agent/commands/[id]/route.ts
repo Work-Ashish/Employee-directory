@@ -3,6 +3,8 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 function extractId(req: Request): string {
     const url = new URL(req.url)
@@ -10,14 +12,17 @@ function extractId(req: Request): string {
     return segments[segments.length - 1]
 }
 
-export async function GET(req: Request) {
+async function handleGET(req: Request) {
     const id = extractId(req)
     deprecatedRoute("/api/agent/commands/[id] GET", "Django /api/v1/agent/commands/{id}/")
     return proxyToDjango(req, `/agent/commands/${id}/`)
 }
 
-export async function PUT(req: Request) {
+async function handlePUT(req: Request) {
     const id = extractId(req)
     deprecatedRoute("/api/agent/commands/[id] PUT", "Django /api/v1/agent/commands/{id}/")
     return proxyToDjango(req, `/agent/commands/${id}/`)
 }
+
+export const GET = withAuth({ module: Module.AGENT_TRACKING, action: Action.VIEW }, handleGET)
+export const PUT = withAuth({ module: Module.AGENT_TRACKING, action: Action.UPDATE }, handlePUT)

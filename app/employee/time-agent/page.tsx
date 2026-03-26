@@ -79,16 +79,15 @@ export default function EmployeeTimeAgentPage() {
                 console.warn("[TimeAgent] Could not fetch device info:", err)
             }
 
-            // Fetch last 7 days of daily reports from the new endpoint
-            const fetchedReports: DailyReport[] = []
-            for (let i = 1; i <= 7; i++) {
+            // Fetch last 7 days of daily reports in parallel
+            const dayPromises = Array.from({ length: 7 }, (_, i) => {
                 const d = new Date()
-                d.setDate(d.getDate() - i)
+                d.setDate(d.getDate() - (i + 1))
                 const dateStr = d.toISOString().split("T")[0]
-                try {
-                    const { data } = await api.get<any>(`/agent/daily-report/?date=${dateStr}`)
-                    if (data) {
-                        fetchedReports.push({
+                return api.get<any>(`/agent/daily-report/?date=${dateStr}`)
+                    .then(({ data }) => {
+                        if (!data) return null
+                        return {
                             date: data.date || dateStr,
                             activeSeconds: data.activeSeconds ?? data.active_seconds ?? 0,
                             idleSeconds: data.idleSeconds ?? data.idle_seconds ?? 0,
@@ -113,12 +112,12 @@ export default function EmployeeTimeAgentPage() {
                             productivity: Math.round(data.productivityScore ?? data.productivity_score ?? 0),
                             clockIn: data.clockIn || data.clock_in || null,
                             clockOut: data.clockOut || data.clock_out || null,
-                        })
-                    }
-                } catch {
-                    // No data for this day — skip
-                }
-            }
+                        } as DailyReport
+                    })
+                    .catch(() => null)
+            })
+            const dayResults = await Promise.all(dayPromises)
+            const fetchedReports: DailyReport[] = dayResults.filter((r): r is DailyReport => r !== null)
 
             // Also try today's report (will fail with 400 if before 8 PM, which is fine)
             try {

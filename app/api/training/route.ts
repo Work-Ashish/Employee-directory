@@ -3,23 +3,30 @@
  */
 import { proxyToDjango } from "@/lib/django-proxy"
 import { deprecatedRoute } from "@/lib/route-deprecation"
+import { withAuth } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
-export async function GET(req: Request) {
+async function handleGET(req: Request) {
     deprecatedRoute("/api/training GET", "Django /api/v1/training/")
     return proxyToDjango(req, "/training/")
 }
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
     deprecatedRoute("/api/training POST", "Django /api/v1/training/")
     return proxyToDjango(req, "/training/")
 }
 
-export async function PUT(req: Request) {
+async function handlePUT(req: Request) {
     deprecatedRoute("/api/training PUT", "Django /api/v1/training/")
     return proxyToDjango(req, "/training/")
 }
 
-export async function DELETE(req: Request) {
+async function handleDELETE(req: Request) {
     deprecatedRoute("/api/training DELETE", "Django /api/v1/training/")
     return proxyToDjango(req, "/training/")
 }
+
+export const GET = withAuth({ module: Module.TRAINING, action: Action.VIEW }, handleGET)
+export const POST = withAuth({ module: Module.TRAINING, action: Action.CREATE }, handlePOST)
+export const PUT = withAuth({ module: Module.TRAINING, action: Action.UPDATE }, handlePUT)
+export const DELETE = withAuth({ module: Module.TRAINING, action: Action.DELETE }, handleDELETE)

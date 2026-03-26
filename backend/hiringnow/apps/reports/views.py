@@ -209,7 +209,7 @@ class ReportGenerateView(APIView):
 
         return list(qs.values(
             'id', 'employee__first_name', 'employee__last_name',
-            'month', 'year', 'gross_salary', 'net_salary', 'status',
+            'month', 'basic_salary', 'net_salary', 'status',
         ))
 
     def _generate_leave_report(self, config):

@@ -264,10 +264,10 @@ export function NavContent({
                 : "cursor-default"
             )}
           >
-            <Avatar name={user.name || "User"} size="sm" />
+            <Avatar name={user?.name || "User"} size="sm" />
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-semibold text-text truncate">{user.name}</span>
-              <span className="text-xs text-text-3 truncate">{user.email}</span>
+              <span className="text-sm font-semibold text-text truncate">{user?.name || "User"}</span>
+              <span className="text-xs text-text-3 truncate">{user?.email || ""}</span>
             </div>
           </Link>
           <button

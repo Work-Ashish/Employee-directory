@@ -6,6 +6,8 @@
  * Returns the saved config regardless of Django sync outcome.
  */
 import { NextResponse } from "next/server"
+import { withAuth, AuthContext } from "@/lib/security"
+import { Module, Action } from "@/lib/permissions"
 
 const DJANGO_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
 
@@ -63,7 +65,7 @@ async function syncFeatureToDjango(
   }
 }
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
   try {
     const body = (await req.json()) as ConfigureRequest
     const { enabledModules, tenantSlug } = body
@@ -115,3 +117,5 @@ export async function POST(req: Request) {
     )
   }
 }
+
+export const POST = withAuth({ module: Module.SETTINGS, action: Action.UPDATE }, handlePOST)

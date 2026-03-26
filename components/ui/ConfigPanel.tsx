@@ -214,9 +214,10 @@ export function ConfigPanel({ isOpen, onClose, screenName, onFieldsChange }: Con
     }, [isOpen, fetchFields])
 
     // Notify parent on field changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     React.useEffect(() => {
         onFieldsChange?.(fields)
-    }, [fields, onFieldsChange])
+    }, [fields])
 
     // ── Drag reorder ──
     const handleDragEnd = async (event: DragEndEvent) => {

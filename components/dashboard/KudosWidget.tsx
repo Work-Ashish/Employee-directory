@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { cn } from "@/lib/utils"
-import { PaperPlaneIcon, HeartFilledIcon, ReloadIcon } from "@radix-ui/react-icons"
+import { PaperPlaneIcon, HeartFilledIcon } from "@radix-ui/react-icons"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/Button"
 import { Card } from "@/components/ui/Card"
@@ -10,7 +9,7 @@ import { Input } from "@/components/ui/Input"
 import { Avatar } from "@/components/ui/Avatar"
 import { Spinner } from "@/components/ui/Spinner"
 import { AnnouncementAPI } from "@/features/announcements/api/client"
-import { EmployeeAPI } from "@/features/employees/api/client"
+import { api } from "@/lib/api-client"
 
 interface KudosData {
     id: string
@@ -33,9 +32,18 @@ export function KudosWidget() {
         try {
             const data = await AnnouncementAPI.listKudos()
             const list = Array.isArray(data) ? data : data.results || (data as any).data || []
-            setKudos(list as unknown as KudosData[])
-        } catch (error) {
-            console.error("Failed to fetch kudos:", error)
+            setKudos(list.map((item: any) => ({
+                id: item.id,
+                from: item.fromEmployeeName || item.from || "Someone",
+                to: item.toEmployeeName || item.to || "A teammate",
+                message: item.message,
+                time: item.createdAt
+                    ? new Date(item.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+                    : "Now",
+                color: item.category || "teamwork",
+            })))
+        } catch {
+            setKudos([])
         } finally {
             setLoading(false)
         }
@@ -43,14 +51,39 @@ export function KudosWidget() {
 
     const fetchColleagues = useCallback(async () => {
         try {
-            const data = await EmployeeAPI.fetchEmployees(1, 100)
-            const list = data.results || (data as any).data || []
-            setColleagues(list.map((e: any) => ({
-                id: e.id,
-                name: `${e.firstName} ${e.lastName}`
-            })))
-        } catch (error) {
-            console.error("Failed to fetch colleagues:", error)
+            const [{ data: profile }, { data: orgChartData }] = await Promise.all([
+                api.get<{ id: string }>("/employees/profile/"),
+                api.get<{ orgChart: Array<Record<string, unknown>> }>("/teams/org-chart/"),
+            ])
+
+            const allPeople: Array<{ id: string; name: string }> = []
+
+            const visit = (nodes: Array<Record<string, unknown>>) => {
+                for (const node of nodes) {
+                    const id = String(node.id || "")
+                    const name = String(node.name || "").trim()
+                    if (id && name) {
+                        allPeople.push({ id, name })
+                    }
+                    const children = Array.isArray(node.children) ? (node.children as Array<Record<string, unknown>>) : []
+                    if (children.length > 0) {
+                        visit(children)
+                    }
+                }
+            }
+
+            visit(orgChartData.orgChart || [])
+
+            const unique = new Map<string, { id: string; name: string }>()
+            for (const person of allPeople) {
+                if (person.id !== profile.id) {
+                    unique.set(person.id, person)
+                }
+            }
+
+            setColleagues(Array.from(unique.values()).sort((a, b) => a.name.localeCompare(b.name)))
+        } catch {
+            setColleagues([])
         }
     }, [])
 
@@ -66,7 +99,7 @@ export function KudosWidget() {
 
         setSending(true)
         try {
-            await AnnouncementAPI.createKudos({ toId: selectedRecipient, message })
+            await AnnouncementAPI.createKudos({ toEmployeeId: selectedRecipient, message })
             toast.success("Shoutout sent! 🎉")
             setMessage("")
             setSelectedRecipient("")
@@ -148,8 +181,8 @@ export function KudosWidget() {
                 )}
             </div>
 
-            <div className="absolute -right-6 -bottom-6 text-[100px] opacity-[0.03] rotate-[-15deg] pointer-events-none">
-                <HeartFilledIcon />
+            <div className="absolute -right-6 -bottom-6 opacity-[0.03] rotate-[-15deg] pointer-events-none">
+                <HeartFilledIcon style={{ width: 100, height: 100 }} />
             </div>
         </Card>
     )

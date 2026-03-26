@@ -8,6 +8,7 @@ import { redis } from "@/lib/redis"
 import { Module, getModulesForRole, type Role } from "@/lib/permissions"
 
 const DJANGO_BASE = process.env.DJANGO_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
+const DJANGO_SERVICE_TOKEN = process.env.DJANGO_SERVICE_TOKEN || ""
 const CACHE_TTL = 300 // 5 minutes
 
 /** Convert Map<string, Set<string>> to plain object for caching/API */
@@ -43,7 +44,7 @@ export async function resolveEmployeeCapabilities(employeeId: string): Promise<M
     try {
         const response = await fetch(`${DJANGO_BASE}/api/v1/rbac/capabilities/`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "Authorization": `Token ${DJANGO_SERVICE_TOKEN}` },
             body: JSON.stringify({ employee_id: employeeId }),
             signal: AbortSignal.timeout(5000),
         })
@@ -87,7 +88,7 @@ export async function hasFunctionalPermission(employeeId: string, module: string
     try {
         const response = await fetch(`${DJANGO_BASE}/api/v1/rbac/check-permission/`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "Authorization": `Token ${DJANGO_SERVICE_TOKEN}` },
             body: JSON.stringify({ employee_id: employeeId, module, action }),
             signal: AbortSignal.timeout(5000),
         })
