@@ -4,8 +4,6 @@ import * as React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { canAccessModule, hasPermission, Module, Action } from "@/lib/permissions"
-import { PageHeader } from "@/components/ui/PageHeader"
-import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { Avatar } from "@/components/ui/Avatar"
@@ -13,7 +11,6 @@ import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
 import { TeamFormModal } from "@/components/teams/TeamFormModal"
 import { TeamDetailModal } from "@/components/teams/TeamDetailModal"
-import { StatCard } from "@/components/ui/StatCard"
 import { PlusIcon, Pencil1Icon, TrashIcon, PersonIcon, UpdateIcon, MagnifyingGlassIcon, GroupIcon } from "@radix-ui/react-icons"
 import { TeamAPI } from "@/features/teams/api/client"
 import { confirmDanger, showSuccess } from "@/lib/swal"
@@ -175,57 +172,85 @@ export default function TeamsPage() {
         return <div className="p-6 text-text-3 flex items-center gap-2"><Spinner /> Loading...</div>
     }
 
+    const STAT_ICONS: Record<string, { bg: string; text: string }> = {
+        teams: { bg: "bg-accent/10", text: "text-accent" },
+        members: { bg: "bg-success/10", text: "text-success" },
+        avg: { bg: "bg-purple/10", text: "text-purple" },
+        yours: { bg: "bg-warning/10", text: "text-warning" },
+    }
+
     return (
-        <div className="p-6 max-w-6xl mx-auto">
-            <PageHeader
-                title="Teams"
-                description="Manage teams and their members"
-                actions={canCreate ? (
-                    <div className="flex gap-2">
+        <div className="p-6 max-w-7xl mx-auto space-y-6">
+            {/* Hero Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-extrabold text-text tracking-tight">Teams</h1>
+                    <p className="text-sm text-text-3 mt-1">Manage teams, view members, and track collaboration</p>
+                </div>
+                {canCreate && (
+                    <div className="flex items-center gap-2">
                         <Button
                             variant="secondary"
+                            size="sm"
                             leftIcon={<UpdateIcon />}
                             loading={syncing}
                             onClick={async () => { await handleSync(); fetchTeams() }}
                         >
-                            Sync from Org Chart
+                            Sync Org Chart
                         </Button>
-                        <Button leftIcon={<PlusIcon />} onClick={() => { setEditingTeam(null); setFormOpen(true) }}>
-                            Create Team
+                        <Button size="sm" leftIcon={<PlusIcon />} onClick={() => { setEditingTeam(null); setFormOpen(true) }}>
+                            New Team
                         </Button>
                     </div>
-                ) : undefined}
-            />
+                )}
+            </div>
 
-            {/* Stats Row */}
+            {/* Stats Row — Compact inline pills */}
             {teams.length > 0 && (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-                    <StatCard label="Total Teams" value={teams.length} icon={<GroupIcon className="w-4 h-4" />} />
-                    <StatCard label="Total Members" value={totalMembers} icon={<PersonIcon className="w-4 h-4" />} />
-                    <StatCard label="Avg Team Size" value={avgSize} />
-                    <StatCard label="Your Team" value={myTeam?.name || "—"} />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    {[
+                        { key: "teams", label: "Teams", val: teams.length, icon: <GroupIcon className="w-4 h-4" /> },
+                        { key: "members", label: "Members", val: totalMembers, icon: <PersonIcon className="w-4 h-4" /> },
+                        { key: "avg", label: "Avg Size", val: avgSize, icon: <PersonIcon className="w-4 h-4" /> },
+                        { key: "yours", label: "Your Team", val: myTeam?.name || "—", icon: <PersonIcon className="w-4 h-4" /> },
+                    ].map(s => (
+                        <div key={s.key} className="flex items-center gap-3 bg-surface border border-border rounded-xl px-4 py-3.5 hover:border-border-2 transition-colors">
+                            <span className={`flex items-center justify-center w-9 h-9 rounded-lg ${STAT_ICONS[s.key].bg} ${STAT_ICONS[s.key].text}`}>
+                                {s.icon}
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-[11px] uppercase tracking-wider font-semibold text-text-4">{s.label}</p>
+                                <p className="text-lg font-extrabold text-text truncate leading-tight">{s.val}</p>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
 
-            {/* Search Bar */}
+            {/* Search + Count bar */}
             {teams.length > 0 && (
-                <div className="relative mt-4">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-4" />
-                    <input
-                        type="text"
-                        placeholder="Search teams or team leads..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-bg-2 border border-border rounded-xl text-sm text-text placeholder:text-text-4 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-colors"
-                    />
+                <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
+                        <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-4" />
+                        <input
+                            type="text"
+                            placeholder="Search teams or team leads..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text placeholder:text-text-4 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition-all"
+                        />
+                    </div>
+                    <span className="text-xs text-text-4 whitespace-nowrap font-medium">
+                        {filteredTeams.length} of {teams.length} team{teams.length !== 1 ? "s" : ""}
+                    </span>
                 </div>
             )}
 
             {teams.length === 0 ? (
                 <EmptyState
                     icon={<PersonIcon className="w-6 h-6" />}
-                    title="No teams found."
-                    description={canCreate ? "Create a team to get started." : "No teams have been created yet."}
+                    title="No teams yet"
+                    description={canCreate ? "Create your first team to get started." : "No teams have been created yet."}
                     action={canCreate ? (
                         <Button leftIcon={<PlusIcon />} onClick={() => { setEditingTeam(null); setFormOpen(true) }}>
                             Create Team
@@ -237,102 +262,108 @@ export default function TeamsPage() {
                     icon={<MagnifyingGlassIcon className="w-6 h-6" />}
                     title="No teams match your search"
                     description={`No results for "${search}". Try a different keyword.`}
-                    className="mt-6"
                 />
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                    {filteredTeams.map((team, idx) => (
-                        <Card
-                            key={team.id}
-                            variant="glass-premium"
-                            className={`p-5 hover:shadow-lg transition-all cursor-pointer group border-l-4 ${ACCENT_COLORS[idx % ACCENT_COLORS.length]}`}
-                            onClick={async () => {
-                                try {
-                                    const full = await TeamAPI.get(team.id)
-                                    setDetailTeam(normalizeTeam(full))
-                                } catch {
-                                    setDetailTeam(team)
-                                }
-                            }}
-                        >
-                            <div className="flex items-start justify-between mb-3">
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold text-text truncate text-base">{team.name}</h3>
-                                    {team.description && (
-                                        <p className="text-xs text-text-3 mt-0.5 line-clamp-2">{team.description}</p>
-                                    )}
-                                </div>
-                                <Badge variant="neutral" size="sm">
-                                    {team._count.members} member{team._count.members !== 1 ? "s" : ""}
-                                </Badge>
-                            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {filteredTeams.map((team, idx) => {
+                        const accentColor = ACCENT_COLORS[idx % ACCENT_COLORS.length]
+                        return (
+                            <div
+                                key={team.id}
+                                className="group relative bg-surface border border-border rounded-2xl overflow-hidden hover:border-border-2 hover:shadow-md transition-all duration-200 cursor-pointer"
+                                onClick={async () => {
+                                    try {
+                                        const full = await TeamAPI.get(team.id)
+                                        setDetailTeam(normalizeTeam(full))
+                                    } catch {
+                                        setDetailTeam(team)
+                                    }
+                                }}
+                            >
+                                {/* Color accent bar */}
+                                <div className={`h-1 w-full ${accentColor.replace("border-l-", "bg-")}`} />
 
-                            {/* Team Lead */}
-                            <div className="flex items-center gap-2 text-sm mb-3">
-                                <Avatar
-                                    src={team.lead.avatarUrl}
-                                    name={`${team.lead.firstName} ${team.lead.lastName}`}
-                                    size="xs"
-                                />
-                                <div className="flex-1 min-w-0">
-                                    <span className="text-text-2 truncate block">
-                                        {team.lead.firstName} {team.lead.lastName}
-                                    </span>
-                                    {team.lead.designation && (
-                                        <span className="text-xs text-text-4 truncate block">{team.lead.designation}</span>
-                                    )}
-                                </div>
-                                <Badge variant="default" size="sm">Lead</Badge>
-                            </div>
+                                <div className="p-5">
+                                    {/* Header: name + member count */}
+                                    <div className="flex items-start justify-between gap-2 mb-4">
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="font-bold text-text text-[15px] truncate leading-snug">{team.name}</h3>
+                                            {team.description && (
+                                                <p className="text-xs text-text-4 mt-1 line-clamp-1">{team.description}</p>
+                                            )}
+                                        </div>
+                                        <Badge variant="neutral" size="sm" className="flex-shrink-0">
+                                            {team._count.members} member{team._count.members !== 1 ? "s" : ""}
+                                        </Badge>
+                                    </div>
 
-                            {/* Member avatars preview */}
-                            {team.members.length > 0 && (
-                                <div className="flex items-center -space-x-2.5 mb-3">
-                                    {team.members.slice(0, 5).map(m => (
+                                    {/* Team Lead — prominent row */}
+                                    <div className="flex items-center gap-3 bg-bg-2 rounded-xl px-3.5 py-3 mb-4">
                                         <Avatar
-                                            key={m.employee.id}
-                                            src={m.employee.avatarUrl}
-                                            name={`${m.employee.firstName} ${m.employee.lastName}`}
-                                            size="xs"
-                                            className="ring-2 ring-surface"
+                                            src={team.lead.avatarUrl}
+                                            name={`${team.lead.firstName} ${team.lead.lastName}`}
+                                            size="sm"
                                         />
-                                    ))}
-                                    {team.members.length > 5 && (
-                                        <span className="text-xs text-text-3 ml-3 font-medium">
-                                            +{team.members.length - 5} more
-                                        </span>
-                                    )}
-                                </div>
-                            )}
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-sm font-semibold text-text truncate block leading-tight">
+                                                {team.lead.firstName} {team.lead.lastName}
+                                            </span>
+                                            <span className="text-[11px] text-text-4 truncate block">
+                                                {team.lead.designation || "Team Lead"}
+                                            </span>
+                                        </div>
+                                        <Badge variant="default" size="sm">Lead</Badge>
+                                    </div>
 
-                            {/* Action buttons */}
-                            {(canEditPerm || canDelete) && (
-                                <div className="flex gap-2 pt-2 border-t border-border opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {canEditPerm && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            leftIcon={<Pencil1Icon />}
-                                            onClick={(e) => { e.stopPropagation(); setEditingTeam(team); setFormOpen(true) }}
-                                        >
-                                            Edit
-                                        </Button>
-                                    )}
-                                    {canDelete && (
-                                        <Button
-                                            variant="danger"
-                                            size="sm"
-                                            leftIcon={<TrashIcon />}
-                                            loading={deleting === team.id}
-                                            onClick={(e) => { e.stopPropagation(); handleDelete(team.id) }}
-                                        >
-                                            Delete
-                                        </Button>
-                                    )}
+                                    {/* Member avatars row */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center">
+                                            <div className="flex -space-x-2">
+                                                {team.members.slice(0, 6).map(m => (
+                                                    <Avatar
+                                                        key={m.employee.id}
+                                                        src={m.employee.avatarUrl}
+                                                        name={`${m.employee.firstName} ${m.employee.lastName}`}
+                                                        size="xs"
+                                                        className="ring-2 ring-surface"
+                                                    />
+                                                ))}
+                                            </div>
+                                            {team.members.length > 6 && (
+                                                <span className="text-[11px] text-text-4 ml-2 font-medium">
+                                                    +{team.members.length - 6}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Hover actions */}
+                                        {(canEditPerm || canDelete) && (
+                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                                {canEditPerm && (
+                                                    <button
+                                                        className="p-1.5 rounded-lg text-text-3 hover:text-accent hover:bg-accent/10 transition-colors"
+                                                        onClick={(e) => { e.stopPropagation(); setEditingTeam(team); setFormOpen(true) }}
+                                                        title="Edit team"
+                                                    >
+                                                        <Pencil1Icon className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                                {canDelete && (
+                                                    <button
+                                                        className="p-1.5 rounded-lg text-text-3 hover:text-danger hover:bg-danger/10 transition-colors"
+                                                        onClick={(e) => { e.stopPropagation(); handleDelete(team.id) }}
+                                                        title="Delete team"
+                                                    >
+                                                        <TrashIcon className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
-                        </Card>
-                    ))}
+                            </div>
+                        )
+                    })}
                 </div>
             )}
 

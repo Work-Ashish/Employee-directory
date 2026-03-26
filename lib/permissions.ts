@@ -131,10 +131,10 @@ export const PERMISSIONS: PermissionMatrix = {
     [Module.REPORTS]:       [...FULL_CRUD, EXPORT],
     [Module.WORKFLOWS]:     FULL_CRUD,
     [Module.AGENT_TRACKING]: FULL_CRUD,
-    // 2) View-only: attendance, payroll (all employees' data)
+    // 2) Payroll: CEO can create, update, view, export
     [Module.ATTENDANCE]:    [VIEW],
     [Module.FEEDBACK]:      [VIEW, CREATE],
-    [Module.PAYROLL]:       [VIEW],
+    [Module.PAYROLL]:       [VIEW, CREATE, UPDATE, EXPORT],
     // 3) View + approve: leaves, resignation
     [Module.LEAVES]:        [VIEW, UPDATE],
     [Module.RESIGNATION]:   [VIEW, UPDATE],
@@ -146,7 +146,7 @@ export const PERMISSIONS: PermissionMatrix = {
     [Module.TICKETS]:       [VIEW, UPDATE],
     [Module.RECRUITMENT]:   FULL_CRUD,
     [Module.SETTINGS]:      [VIEW, UPDATE],
-    [Module.REIMBURSEMENT]: [VIEW, CREATE],
+    [Module.REIMBURSEMENT]: [VIEW, CREATE, UPDATE],
   },
 
   HR: {
@@ -160,10 +160,10 @@ export const PERMISSIONS: PermissionMatrix = {
     [Module.REPORTS]:       [...FULL_CRUD, EXPORT],
     [Module.WORKFLOWS]:     FULL_CRUD,
     [Module.AGENT_TRACKING]: FULL_CRUD,
-    // 2) View-only: attendance, payroll (all employees' data)
+    // 2) Payroll: HR can create, update, view, export
     [Module.ATTENDANCE]:    [VIEW],
     [Module.FEEDBACK]:      [VIEW, CREATE],
-    [Module.PAYROLL]:       [VIEW],
+    [Module.PAYROLL]:       [VIEW, CREATE, UPDATE, EXPORT],
     // 3) View + approve: leaves, resignation
     [Module.LEAVES]:        [VIEW, UPDATE],
     [Module.RESIGNATION]:   [VIEW, UPDATE],
@@ -175,7 +175,7 @@ export const PERMISSIONS: PermissionMatrix = {
     [Module.TICKETS]:       [VIEW, UPDATE],
     [Module.RECRUITMENT]:   FULL_CRUD,
     [Module.SETTINGS]:      [VIEW],
-    [Module.REIMBURSEMENT]: [VIEW, CREATE],
+    [Module.REIMBURSEMENT]: [VIEW, CREATE, UPDATE],
   },
 
   PAYROLL: {
@@ -215,14 +215,14 @@ export const PERMISSIONS: PermissionMatrix = {
     [Module.TRAINING]:      [VIEW],
     [Module.ANNOUNCEMENTS]: [VIEW],
     [Module.ASSETS]:        [VIEW],
-    [Module.DOCUMENTS]:     [VIEW],
+    [Module.DOCUMENTS]:     [VIEW, CREATE],
     [Module.TICKETS]:       [VIEW, CREATE, UPDATE],
     [Module.RECRUITMENT]:   [],
     [Module.RESIGNATION]:   [VIEW],
     [Module.ORGANIZATION]:  [],
     [Module.SETTINGS]:      [],
     [Module.WORKFLOWS]:     [],
-    [Module.AGENT_TRACKING]: [VIEW],
+    [Module.AGENT_TRACKING]: [],
     [Module.REIMBURSEMENT]: [VIEW, CREATE],
   },
 
@@ -239,14 +239,14 @@ export const PERMISSIONS: PermissionMatrix = {
     [Module.TRAINING]:      [VIEW],
     [Module.ANNOUNCEMENTS]: [VIEW],
     [Module.ASSETS]:        [VIEW],
-    [Module.DOCUMENTS]:     [VIEW],
+    [Module.DOCUMENTS]:     [VIEW, CREATE],
     [Module.TICKETS]:       [VIEW, CREATE, UPDATE],
     [Module.RECRUITMENT]:   [],
     [Module.RESIGNATION]:   [VIEW, CREATE],
     [Module.ORGANIZATION]:  [],
     [Module.SETTINGS]:      [],
     [Module.WORKFLOWS]:     [],
-    [Module.AGENT_TRACKING]: [VIEW],
+    [Module.AGENT_TRACKING]: [],
     [Module.REIMBURSEMENT]: [VIEW, CREATE],
   },
 }

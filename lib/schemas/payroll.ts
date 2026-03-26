@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const taxSlabSchema = z.object({
     minIncome: z.number().min(0),
     maxIncome: z.number().nullable().optional(),
-    taxRate: z.number().min(0).max(1), // e.g., 0.05
+    taxRate: z.number().min(0).max(100), // whole percentage e.g. 5 for 5%
     baseTax: z.number().min(0)
 })
 
@@ -24,7 +24,7 @@ export const payrollRunSchema = z.object({
     arrears: z.number().min(0),
     reimbursements: z.number().min(0),
     loansAdvances: z.number().min(0),
-    otherDed: z.number().min(0)
+    otherDeductions: z.number().min(0)
 })
 
 export const esiSchema = z.object({

@@ -1,22 +1,17 @@
 "use client"
 
 import * as React from "react"
-import { cn, extractArray } from "@/lib/utils"
+import { extractArray } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 import { hasPermission, Module, Action } from "@/lib/permissions"
-import { useForm, SubmitHandler } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
 import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
 import { Avatar } from "@/components/ui/Avatar"
-import { Dialog, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/Dialog"
 import { StatCard } from "@/components/ui/StatCard"
 import { PageHeader } from "@/components/ui/PageHeader"
 import { EmptyState } from "@/components/ui/EmptyState"
@@ -26,34 +21,24 @@ import { ReimbursementAPI } from "@/features/reimbursements/api/client"
 type Reimbursement = {
     id: string
     category: string
+    categoryDisplay: string
     amount: number
     description: string
     receiptUrl: string | null
-    expenseDate: string
     status: string
-    rejectionNote: string | null
+    statusDisplay: string
     approvedBy: string | null
-    approvedAt: string | null
-    paidInMonth: string | null
+    approvedByName: string | null
     createdAt: string
-    employee: {
-        id: string
-        firstName: string
-        lastName: string
-        employeeCode: string
-        designation: string
-        department: { name: string }
-    }
+    updatedAt: string
+    employeeName: string
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
     TRAVEL: "Travel",
-    MEALS: "Meals",
-    OFFICE_SUPPLIES: "Office Supplies",
+    FOOD: "Food",
+    EQUIPMENT: "Equipment",
     MEDICAL: "Medical",
-    TRAINING_EXPENSE: "Training",
-    CONFERENCE: "Conference",
-    RELOCATION: "Relocation",
     OTHER: "Other",
 }
 
@@ -66,11 +51,11 @@ function getStatusBadge(status: string) {
     }
 }
 
-function getCategoryBadge(category: string) {
-    const label = CATEGORY_LABELS[category] || category
+function getCategoryBadge(category: string, categoryDisplay?: string) {
+    const label = categoryDisplay || CATEGORY_LABELS[category] || category
     const variant = category === "MEDICAL" ? "danger"
         : category === "TRAVEL" ? "info"
-            : category === "TRAINING_EXPENSE" || category === "CONFERENCE" ? "purple"
+            : category === "EQUIPMENT" ? "purple"
                 : "neutral"
     return <Badge variant={variant} size="sm">{label}</Badge>
 }
@@ -92,7 +77,22 @@ export function AdminReimbursementView() {
             if (filterStatus) params.set("status", filterStatus)
             const filterStr = params.toString()
             const data = await ReimbursementAPI.list(filterStr || undefined)
-            setRecords((data as any)?.results || extractArray<Reimbursement>(data))
+            const raw = (data as any)?.results || extractArray(data)
+            setRecords(raw.map((r: any): Reimbursement => ({
+                id: r.id,
+                category: r.category || "",
+                categoryDisplay: r.categoryDisplay || "",
+                amount: Number(r.amount) || 0,
+                description: r.description || "",
+                receiptUrl: r.receiptUrl || null,
+                status: r.status || "PENDING",
+                statusDisplay: r.statusDisplay || "",
+                approvedBy: r.approvedBy || null,
+                approvedByName: r.approvedByName || null,
+                createdAt: r.createdAt || "",
+                updatedAt: r.updatedAt || "",
+                employeeName: r.employeeName || "—",
+            })))
         } catch {
             toast.error("Failed to load reimbursement requests")
         } finally {
@@ -105,7 +105,7 @@ export function AdminReimbursementView() {
     const handleAction = async (id: string, status: "APPROVED" | "REJECTED", note?: string) => {
         setProcessing(id)
         try {
-            await ReimbursementAPI.update(id, { status, rejectionNote: note })
+            await ReimbursementAPI.update(id, { status, ...(note ? { notes: note } : {}) })
             toast.success(`Request ${status.toLowerCase()}`)
             setRejectId(null)
             setRejectionNote("")
@@ -122,10 +122,9 @@ export function AdminReimbursementView() {
         const approved = records.filter(r => r.status === "APPROVED")
         const totalPending = pending.reduce((s, r) => s + r.amount, 0)
         const totalApproved = approved.reduce((s, r) => s + r.amount, 0)
-        return { pendingCount: pending.length, approvedCount: approved.length, totalPending, totalApproved, total: records.length }
+        const totalAll = records.reduce((s, r) => s + r.amount, 0)
+        return { pendingCount: pending.length, approvedCount: approved.length, totalPending, totalApproved, total: records.length, totalAll }
     }, [records])
-
-    const filteredRecords = records
 
     return (
         <div className="space-y-6 animate-page-in">
@@ -168,7 +167,7 @@ export function AdminReimbursementView() {
                 />
                 <StatCard
                     label="Total Value"
-                    value={`₹${(totals.totalPending + totals.totalApproved).toLocaleString()}`}
+                    value={`₹${totals.totalAll.toLocaleString()}`}
                     icon={<span className="text-lg">💰</span>}
                 />
             </div>
@@ -182,7 +181,7 @@ export function AdminReimbursementView() {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="border-b border-border bg-bg-2">
-                                    {["Employee", "Category", "Amount", "Expense Date", "Description", "Status", ...(canApprove ? ["Actions"] : [])].map((h) => (
+                                    {["Employee", "Category", "Amount", "Submitted", "Description", "Status", ...(canApprove ? ["Actions"] : [])].map((h) => (
                                         <th key={h} className="px-4 py-3 text-xs font-bold text-text-3 text-left uppercase tracking-wide">{h}</th>
                                     ))}
                                 </tr>
@@ -192,20 +191,17 @@ export function AdminReimbursementView() {
                                     <tr>
                                         <td colSpan={7} className="p-8 text-center text-text-3 animate-pulse">Loading requests...</td>
                                     </tr>
-                                ) : filteredRecords.length > 0 ? filteredRecords.map((rec) => (
+                                ) : records.length > 0 ? records.map((rec) => (
                                     <tr key={rec.id} className="group hover:bg-accent/[0.03] transition-colors border-b border-border/40 last:border-0">
                                         <td className="px-4 py-3 text-sm text-text">
                                             <div className="flex items-center gap-3">
-                                                <Avatar name={`${rec.employee.firstName} ${rec.employee.lastName}`} size="sm" />
-                                                <div>
-                                                    <div className="font-semibold tracking-tight">{rec.employee.firstName} {rec.employee.lastName}</div>
-                                                    <div className="text-[11px] text-text-3">{rec.employee.designation} · {rec.employee.department.name}</div>
-                                                </div>
+                                                <Avatar name={rec.employeeName} size="sm" />
+                                                <span className="font-semibold tracking-tight">{rec.employeeName}</span>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3">{getCategoryBadge(rec.category)}</td>
+                                        <td className="px-4 py-3">{getCategoryBadge(rec.category, rec.categoryDisplay)}</td>
                                         <td className="px-4 py-3 text-sm font-bold text-accent font-mono">₹{rec.amount.toLocaleString()}</td>
-                                        <td className="px-4 py-3 text-sm text-text-2 font-mono">{format(new Date(rec.expenseDate), "dd MMM yyyy")}</td>
+                                        <td className="px-4 py-3 text-sm text-text-2 font-mono">{rec.createdAt ? format(new Date(rec.createdAt), "dd MMM yyyy") : "—"}</td>
                                         <td className="px-4 py-3 text-sm text-text-2 max-w-[200px] truncate" title={rec.description}>{rec.description}</td>
                                         <td className="px-4 py-3">{getStatusBadge(rec.status)}</td>
                                         {canApprove && (

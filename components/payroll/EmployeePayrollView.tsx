@@ -17,12 +17,55 @@ type Payslip = {
     month: string
     basicSalary: number
     allowances: number
+    arrears: number
+    reimbursements: number
     pfDeduction: number
     tax: number
-    otherDed: number
+    otherDeductions: number
+    loansAdvances: number
     netSalary: number
     status: string
+    isFinalized: boolean
     createdAt: string
+}
+
+/** Parse string numbers from Django DecimalField into JS numbers */
+function parseNum(v: unknown): number {
+    if (typeof v === "number") return v
+    const n = Number(v)
+    return isNaN(n) ? 0 : n
+}
+
+function normalizePayslip(raw: any): Payslip {
+    return {
+        id: raw.id,
+        month: raw.month,
+        basicSalary: parseNum(raw.basicSalary),
+        allowances: parseNum(raw.allowances),
+        arrears: parseNum(raw.arrears),
+        reimbursements: parseNum(raw.reimbursements),
+        pfDeduction: parseNum(raw.pfDeduction),
+        tax: parseNum(raw.tax),
+        otherDeductions: parseNum(raw.otherDeductions ?? raw.otherDed),
+        loansAdvances: parseNum(raw.loansAdvances),
+        netSalary: parseNum(raw.netSalary),
+        status: raw.status || "PENDING",
+        isFinalized: !!raw.isFinalized,
+        createdAt: raw.createdAt || "",
+    }
+}
+
+function normalizePFRecord(raw: any): PFRecord {
+    return {
+        id: raw.id,
+        month: raw.month,
+        accountNumber: raw.accountNumber || "",
+        basicSalary: parseNum(raw.basicSalary),
+        employeeContribution: parseNum(raw.employeeContribution),
+        employerContribution: parseNum(raw.employerContribution),
+        totalContribution: parseNum(raw.totalContribution),
+        status: raw.status || "Pending",
+    }
 }
 
 type PFRecord = {
@@ -54,17 +97,26 @@ export function EmployeePayrollView() {
     const [pfRecords, setPfRecords] = React.useState<PFRecord[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
 
+    const toastShown = React.useRef(false)
     const fetchData = React.useCallback(async () => {
         try {
             setIsLoading(true)
-            const [payData, pfData] = await Promise.all([
+            const [payData, pfData] = await Promise.allSettled([
                 PayrollAPI.list(),
                 PayrollAPI.listPF(),
             ])
-            setPayslips(payData.results as unknown as Payslip[])
-            setPfRecords(pfData.results as unknown as PFRecord[])
-        } catch (error) {
-            toast.error("Failed to load your financial data")
+            if (payData.status === "fulfilled") {
+                const payArr = payData.value.results || extractArray(payData.value)
+                setPayslips(payArr.map(normalizePayslip))
+            }
+            if (pfData.status === "fulfilled") {
+                const pfArr = pfData.value.results || extractArray(pfData.value)
+                setPfRecords(pfArr.map(normalizePFRecord))
+            }
+            if (payData.status === "rejected" && pfData.status === "rejected" && !toastShown.current) {
+                toastShown.current = true
+                toast.error("Failed to load your financial data")
+            }
         } finally {
             setIsLoading(false)
         }
@@ -73,6 +125,27 @@ export function EmployeePayrollView() {
     React.useEffect(() => {
         fetchData()
     }, [fetchData])
+
+    const handleDownloadPDF = async (id: string) => {
+        try {
+            const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+            const tenantSlug = typeof window !== "undefined" ? localStorage.getItem("tenant_slug") : null
+            const headers: Record<string, string> = {}
+            if (token) headers["Authorization"] = `Bearer ${token}`
+            if (tenantSlug) headers["X-Tenant-Slug"] = tenantSlug
+            const res = await fetch(`/api/payroll/${id}/payslip`, { headers })
+            if (!res.ok) throw new Error("Download failed")
+            const blob = await res.blob()
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `payslip-${id}.pdf`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch {
+            toast.error("Failed to download payslip")
+        }
+    }
 
     const latest = payslips[0]
     const totalPF = pfRecords.reduce((acc, curr) => acc + curr.totalContribution, 0)
@@ -114,16 +187,16 @@ export function EmployeePayrollView() {
                                 <div>
                                     <div className="text-sm font-medium text-white/80 uppercase tracking-wider mb-2">Last Disbursed Salary ({latest.month})</div>
                                     <div className="text-3xl md:text-[48px] font-extrabold leading-none mb-1">₹{latest.netSalary.toLocaleString()}</div>
-                                    <div className="text-md text-white/90 font-medium">Credited on {format(new Date(latest.createdAt), "MMM dd, yyyy")}</div>
+                                    <div className="text-md text-white/90 font-medium">Credited on {latest.createdAt ? format(new Date(latest.createdAt), "MMM dd, yyyy") : "—"}</div>
                                 </div>
                                 <div className="text-left md:text-right flex flex-row md:flex-col gap-6 md:gap-0">
                                     <div>
                                         <div className="text-xs md:text-sm text-white/80 mb-1">Gross Earnings</div>
-                                        <div className="text-lg md:text-xl font-bold md:mb-3">₹{(latest.basicSalary + latest.allowances).toLocaleString()}</div>
+                                        <div className="text-lg md:text-xl font-bold md:mb-3">₹{(latest.basicSalary + latest.allowances + latest.arrears + latest.reimbursements).toLocaleString()}</div>
                                     </div>
                                     <div>
                                         <div className="text-xs md:text-sm text-white/80 mb-1">Total Deductions</div>
-                                        <div className="text-lg md:text-xl font-bold">-₹{(latest.pfDeduction + latest.tax + latest.otherDed).toLocaleString()}</div>
+                                        <div className="text-lg md:text-xl font-bold">-₹{(latest.pfDeduction + latest.tax + latest.otherDeductions + latest.loansAdvances).toLocaleString()}</div>
                                     </div>
                                 </div>
                             </div>
@@ -173,14 +246,14 @@ export function EmployeePayrollView() {
                                             <tr key={slip.id} className="group hover:bg-accent/[0.03] transition-colors duration-200 border-b border-border/40 last:border-0">
                                                 <td className="px-4 py-3 font-mono text-base text-text">{slip.month}</td>
                                                 <td className="px-4 py-3 text-base text-text-2 font-mono">₹{slip.basicSalary.toLocaleString()}</td>
-                                                <td className="px-4 py-3 font-mono text-base text-success">+₹{slip.allowances.toLocaleString()}</td>
-                                                <td className="px-4 py-3 font-mono text-base text-danger">-₹{(slip.pfDeduction + slip.tax + slip.otherDed).toLocaleString()}</td>
+                                                <td className="px-4 py-3 font-mono text-base text-success">+₹{(slip.allowances + slip.arrears + slip.reimbursements).toLocaleString()}</td>
+                                                <td className="px-4 py-3 font-mono text-base text-danger">-₹{(slip.pfDeduction + slip.tax + slip.otherDeductions + slip.loansAdvances).toLocaleString()}</td>
                                                 <td className="px-4 py-3 font-mono text-md font-bold text-accent">₹{slip.netSalary.toLocaleString()}</td>
                                                 <td className="px-4 py-3">
                                                     {getPayslipStatusBadge(slip.status)}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <Button variant="secondary" size="sm" leftIcon={<DownloadIcon className="w-3.5 h-3.5" />}>
+                                                    <Button variant="secondary" size="sm" leftIcon={<DownloadIcon className="w-3.5 h-3.5" />} onClick={() => handleDownloadPDF(slip.id)}>
                                                         PDF
                                                     </Button>
                                                 </td>
@@ -215,14 +288,14 @@ export function EmployeePayrollView() {
                                             <div className="flex gap-4">
                                                 <div className="flex flex-col">
                                                     <span className="text-text-4 text-xs uppercase">G. Earnings</span>
-                                                    <span className="font-mono text-text-2">₹{(slip.basicSalary + slip.allowances).toLocaleString()}</span>
+                                                    <span className="font-mono text-text-2">₹{(slip.basicSalary + slip.allowances + slip.arrears + slip.reimbursements).toLocaleString()}</span>
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-text-4 text-xs uppercase">Deductions</span>
-                                                    <span className="font-mono text-danger">₹{(slip.pfDeduction + slip.tax + slip.otherDed).toLocaleString()}</span>
+                                                    <span className="font-mono text-danger">₹{(slip.pfDeduction + slip.tax + slip.otherDeductions + slip.loansAdvances).toLocaleString()}</span>
                                                 </div>
                                             </div>
-                                            <Button variant="ghost" size="sm">
+                                            <Button variant="ghost" size="sm" onClick={() => handleDownloadPDF(slip.id)}>
                                                 <DownloadIcon className="w-4 h-4" />
                                             </Button>
                                         </div>

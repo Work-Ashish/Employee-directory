@@ -1,5 +1,5 @@
 import * as React from "react"
-import { cn, extractArray } from "@/lib/utils"
+import { extractArray } from "@/lib/utils"
 import { PlusIcon, DownloadIcon, UploadIcon, ReaderIcon, ArchiveIcon, GearIcon } from "@radix-ui/react-icons"
 import { useAuth } from "@/context/AuthContext"
 import { hasPermission, Module, Action } from "@/lib/permissions"
@@ -38,7 +38,7 @@ const payrollSchema = z.object({
     arrears: z.number().min(0),
     reimbursements: z.number().min(0),
     loansAdvances: z.number().min(0),
-    otherDed: z.number().min(0),
+    otherDeductions: z.number().min(0),
     pfDeduction: z.number().optional(),
     tax: z.number().optional(),
     netSalary: z.number().optional(),
@@ -77,10 +77,7 @@ type PFRecord = {
     totalContribution: number
     status: string
     employeeId: string
-    employee: {
-        firstName: string
-        lastName: string
-    }
+    employeeName: string
 }
 
 type PayrollRecord = {
@@ -92,17 +89,59 @@ type PayrollRecord = {
     reimbursements: number
     pfDeduction: number
     tax: number
-    otherDed: number
+    otherDeductions: number
     loansAdvances: number
     netSalary: number
     status: string
     isFinalized: boolean
     employeeId: string
-    employee: {
-        firstName: string
-        lastName: string
-    }
+    employeeName: string
     createdAt: string
+}
+
+/** Parse string numbers from Django DecimalField into JS numbers */
+function parseNum(v: unknown): number {
+    if (typeof v === "number") return v
+    const n = Number(v)
+    return isNaN(n) ? 0 : n
+}
+
+/** Normalize a raw Django payroll record into typed PayrollRecord */
+function normalizePayroll(raw: any): PayrollRecord {
+    return {
+        id: raw.id,
+        month: raw.month,
+        basicSalary: parseNum(raw.basicSalary),
+        allowances: parseNum(raw.allowances),
+        arrears: parseNum(raw.arrears),
+        reimbursements: parseNum(raw.reimbursements),
+        pfDeduction: parseNum(raw.pfDeduction),
+        tax: parseNum(raw.tax),
+        otherDeductions: parseNum(raw.otherDeductions),
+        loansAdvances: parseNum(raw.loansAdvances),
+        netSalary: parseNum(raw.netSalary),
+        status: raw.status || "PENDING",
+        isFinalized: !!raw.isFinalized,
+        employeeId: raw.employeeId || raw.employee || "",
+        employeeName: raw.employeeName || "—",
+        createdAt: raw.createdAt || "",
+    }
+}
+
+/** Normalize a raw Django PF record */
+function normalizePF(raw: any): PFRecord {
+    return {
+        id: raw.id,
+        month: raw.month,
+        accountNumber: raw.accountNumber || "",
+        basicSalary: parseNum(raw.basicSalary),
+        employeeContribution: parseNum(raw.employeeContribution),
+        employerContribution: parseNum(raw.employerContribution),
+        totalContribution: parseNum(raw.totalContribution),
+        status: raw.status || "Pending",
+        employeeId: raw.employeeId || raw.employee || "",
+        employeeName: raw.employeeName || [raw.employee?.firstName, raw.employee?.lastName].filter(Boolean).join(" ") || "—",
+    }
 }
 
 function getPayrollStatusBadge(status: string, isFinalized: boolean) {
@@ -142,7 +181,7 @@ export function AdminPayrollView() {
             arrears: 0,
             reimbursements: 0,
             loansAdvances: 0,
-            otherDed: 0,
+            otherDeductions: 0,
             status: "PENDING",
         }
     })
@@ -169,8 +208,10 @@ export function AdminPayrollView() {
                 PayrollAPI.listPF(),
                 EmployeeAPI.fetchEmployees(1, 100)
             ])
-            setRecords(payData.results as unknown as PayrollRecord[])
-            setPfRecords(pfData.results as unknown as PFRecord[])
+            const payArr = payData.results || extractArray(payData)
+            setRecords(payArr.map(normalizePayroll))
+            const pfArr = pfData.results || extractArray(pfData)
+            setPfRecords(pfArr.map(normalizePF))
             setEmployees(empData.results as unknown as Employee[])
         } catch (error) {
             toast.error("Failed to load data")
@@ -211,7 +252,7 @@ export function AdminPayrollView() {
     const arrears = form.watch("arrears")
     const reimb = form.watch("reimbursements")
     const loans = form.watch("loansAdvances")
-    const other = form.watch("otherDed")
+    const other = form.watch("otherDeductions")
 
     React.useEffect(() => {
         const net = (Number(basic) || 0) + (Number(allow) || 0) + (Number(arrears) || 0) + (Number(reimb) || 0) - (Number(loans) || 0) - (Number(other) || 0)
@@ -252,8 +293,25 @@ export function AdminPayrollView() {
         }
     }
 
-    const handleDownloadPDF = (id: string) => {
-        window.open(`/api/payroll/${id}/payslip`, '_blank')
+    const handleDownloadPDF = async (id: string) => {
+        try {
+            const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+            const tenantSlug = typeof window !== "undefined" ? localStorage.getItem("tenant_slug") : null
+            const headers: Record<string, string> = {}
+            if (token) headers["Authorization"] = `Bearer ${token}`
+            if (tenantSlug) headers["X-Tenant-Slug"] = tenantSlug
+            const res = await fetch(`/api/payroll/${id}/payslip`, { headers })
+            if (!res.ok) throw new Error("Download failed")
+            const blob = await res.blob()
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `payslip-${id}.pdf`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch {
+            toast.error("Failed to download payslip")
+        }
     }
 
     const onPFSubmit: SubmitHandler<PFFormData> = async (data) => {
@@ -273,7 +331,7 @@ export function AdminPayrollView() {
             const results = records.reduce((acc, curr) => ({
                 net: acc.net + curr.netSalary,
                 allow: acc.allow + curr.allowances,
-                ded: acc.ded + (curr.pfDeduction + curr.tax + curr.otherDed)
+                ded: acc.ded + curr.pfDeduction + curr.tax + curr.otherDeductions
             }), { net: 0, allow: 0, ded: 0 })
             return { ...results, count: records.length, label1: "Net Payout", label2: "Total Allowances", label3: "Total Deductions" }
         } else {
@@ -404,22 +462,22 @@ export function AdminPayrollView() {
                                     <tbody>
                                         {isLoading ? (
                                             <tr>
-                                                <td colSpan={8} className="p-8 text-center text-text-3 animate-pulse">Loading records...</td>
+                                                <td colSpan={canEdit ? 8 : 7} className="p-8 text-center text-text-3 animate-pulse">Loading records...</td>
                                             </tr>
                                         ) : records.length > 0 ? records.map((rec) => (
                                             <tr key={rec.id} className="group hover:bg-accent/[0.03] transition-colors border-b border-border/40 last:border-0">
                                                 <td className="px-4 py-3 text-sm text-text">
                                                     <div className="flex items-center gap-3">
-                                                        <Avatar name={`${rec.employee.firstName} ${rec.employee.lastName}`} size="sm" />
+                                                        <Avatar name={rec.employeeName} size="sm" />
                                                         <span className="font-semibold tracking-tight truncate max-w-[120px]">
-                                                            {rec.employee.firstName} {rec.employee.lastName}
+                                                            {rec.employeeName}
                                                         </span>
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-text-2 font-mono">{rec.month}</td>
                                                 <td className="px-4 py-3 text-sm text-text-2 font-mono">₹{rec.basicSalary.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-sm font-bold text-success">₹{(rec.allowances + (rec.arrears || 0) + (rec.reimbursements || 0)).toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-sm font-bold text-danger">₹{(rec.pfDeduction + rec.tax + rec.otherDed + (rec.loansAdvances || 0)).toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-sm font-bold text-success">₹{(rec.allowances + rec.arrears + rec.reimbursements).toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-sm font-bold text-danger">₹{(rec.pfDeduction + rec.tax + rec.otherDeductions + rec.loansAdvances).toLocaleString()}</td>
                                                 <td className="px-4 py-3 text-sm font-extrabold text-accent">₹{rec.netSalary.toLocaleString()}</td>
                                                 <td className="px-4 py-3">
                                                     {getPayrollStatusBadge(rec.status, rec.isFinalized)}
@@ -438,7 +496,7 @@ export function AdminPayrollView() {
                                             </tr>
                                         )) : (
                                             <tr>
-                                                <td colSpan={8}>
+                                                <td colSpan={canEdit ? 8 : 7}>
                                                     <EmptyState
                                                         icon={<ReaderIcon className="w-5 h-5" />}
                                                         title="No payroll records found"
@@ -506,9 +564,9 @@ export function AdminPayrollView() {
                                             <tr key={rec.id} className="group hover:bg-accent/[0.03] transition-colors border-b border-border/40 last:border-0">
                                                 <td className="px-4 py-3 text-sm text-text">
                                                     <div className="flex items-center gap-3">
-                                                        <Avatar name={`${rec.employee.firstName} ${rec.employee.lastName}`} size="sm" />
+                                                        <Avatar name={rec.employeeName} size="sm" />
                                                         <span className="font-semibold tracking-tight truncate max-w-[120px]">
-                                                            {rec.employee.firstName} {rec.employee.lastName}
+                                                            {rec.employeeName}
                                                         </span>
                                                     </div>
                                                 </td>
@@ -611,7 +669,7 @@ export function AdminPayrollView() {
                             <Input
                                 label="Other Ded."
                                 type="number"
-                                {...form.register("otherDed", { valueAsNumber: true })}
+                                {...form.register("otherDeductions", { valueAsNumber: true })}
                             />
                         </div>
 
@@ -682,13 +740,13 @@ export function AdminPayrollView() {
                                 label="Employee Contrib. (12%)"
                                 type="number"
                                 disabled
-                                {...pfForm.register("employeeContribution")}
+                                {...pfForm.register("employeeContribution", { valueAsNumber: true })}
                             />
                             <Input
                                 label="Employer Contrib. (12%)"
                                 type="number"
                                 disabled
-                                {...pfForm.register("employerContribution")}
+                                {...pfForm.register("employerContribution", { valueAsNumber: true })}
                             />
                         </div>
 
@@ -716,14 +774,14 @@ export function AdminPayrollView() {
                 onSuccess={fetchAll}
                 apiEndpoint="/api/payroll/import"
                 title="Import Payroll CSV"
-                templateHeaders={["employeeId", "month", "basicSalary", "allowances", "pfDeduction", "tax", "otherDed", "netSalary", "status"]}
+                templateHeaders={["employeeId", "month", "basicSalary", "allowances", "pfDeduction", "tax", "otherDeductions", "netSalary", "status"]}
             />
 
             <CsvImportModal
                 isOpen={isPFImportOpen}
                 onClose={() => setIsPFImportOpen(false)}
                 onSuccess={fetchAll}
-                apiEndpoint="/api/pf/import"
+                apiEndpoint="/api/payroll/import"
                 title="Import PF CSV"
                 templateHeaders={["employeeId", "month", "accountNumber", "basicSalary", "employeeContribution", "employerContribution", "totalContribution", "status"]}
             />

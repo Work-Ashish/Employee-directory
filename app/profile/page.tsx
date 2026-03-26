@@ -3,17 +3,13 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api-client"
-import { useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
 import {
     PersonIcon, IdCardIcon, HomeIcon, BackpackIcon, LaptopIcon,
     EyeOpenIcon, EyeClosedIcon, Pencil1Icon, CheckIcon, Cross2Icon,
-    ReaderIcon, PlusIcon, TrashIcon
+    PlusIcon, TrashIcon
 } from "@radix-ui/react-icons"
 import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
-import { Select } from "@/components/ui/Select"
-import { Textarea } from "@/components/ui/Textarea"
 import { Card, CardContent } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
 import { Avatar } from "@/components/ui/Avatar"
@@ -40,6 +36,7 @@ interface Profile {
     fatherDob?: string; fatherBloodGroup?: string; fatherGender?: string; fatherNationality?: string
     emergencyContactName?: string; emergencyContactPhone?: string; emergencyContactRelation?: string
     category?: string; costCenter?: string; division?: string; grade?: string; location?: string; previousEmployment?: string; previousCtc?: number
+    previousExperienceYears?: number; totalExperienceYears?: number
     passportNumber?: string; passportExpiry?: string; visaNumber?: string; visaExpiry?: string
 }
 
@@ -135,7 +132,6 @@ const TABS = [
 
 /* ─────────────────── Main Page ─────────────────── */
 export default function ProfilePage() {
-    const { user } = useAuth()
     const [profile, setProfile] = React.useState<Profile | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [activeTab, setActiveTab] = React.useState("personal")
@@ -154,10 +150,32 @@ export default function ProfilePage() {
         setFormData(prev => ({ ...prev, [name]: value }))
     }
 
+    const EDITABLE_FIELDS = new Set([
+        // Personal
+        "phone", "dateOfBirth", "gender", "bloodGroup", "nationality", "maritalStatus",
+        "religion", "caste", "fatherName", "spouse",
+        // Emergency
+        "emergencyContactName", "emergencyContactPhone", "emergencyContactRelation",
+        // Passport & visa
+        "passportNumber", "passportExpiry", "visaNumber", "visaExpiry",
+        // Address
+        "contactAddress", "contactCity", "contactState", "contactPincode",
+        "permanentAddress", "permanentCity", "permanentState", "permanentPincode",
+        // Banking & statutory
+        "bankName", "bankAccountNumber", "bankBranch", "ifscCode",
+        "pfAccountNumber", "aadhaarNumber", "panNumber",
+        // Employment
+        "previousEmployment", "previousExperienceYears", "totalExperienceYears",
+    ])
+
     const handleSave = async () => {
         setSaving(true)
         try {
-            const { data: updated } = await api.put('/employees/profile/', formData) as any
+            const payload: Record<string, unknown> = {}
+            for (const key of EDITABLE_FIELDS) {
+                if (formData[key] !== undefined) payload[key] = formData[key]
+            }
+            const { data: updated } = await api.put('/employees/profile/', payload) as any
             setProfile({ ...profile!, ...updated })
             setFormData({ ...profile!, ...updated })
             setEditing(false)
@@ -306,18 +324,18 @@ function TabPersonal({ profile, formData, editing, onChange }: { profile: Profil
                 <FormField label="Blood Group" name="bloodGroup" value={editing ? formData.bloodGroup : profile.bloodGroup} editing={editing} onChange={onChange} type="select" options={BLOOD_GROUPS} />
                 <FormField label="Nationality" name="nationality" value={editing ? formData.nationality : profile.nationality} editing={editing} onChange={onChange} placeholder="e.g. Indian" />
                 <FormField label="Marital Status" name="maritalStatus" value={editing ? formData.maritalStatus : profile.maritalStatus} editing={editing} onChange={onChange} type="select" options={MARITAL_STATUS} />
-                <FormField label="Marriage Date" name="marriageDate" value={editing ? formData.marriageDate : profile.marriageDate} editing={editing} onChange={onChange} type="date" />
+                <FormField label="Marriage Date" name="marriageDate" value={profile.marriageDate} editing={false} readOnly type="date" />
                 <FormField label="Spouse" name="spouse" value={editing ? formData.spouse : profile.spouse} editing={editing} onChange={onChange} placeholder="Spouse name" />
                 <FormField label="Father Name" name="fatherName" value={editing ? formData.fatherName : profile.fatherName} editing={editing} onChange={onChange} />
                 <FormField label="Religion" name="religion" value={editing ? formData.religion : profile.religion} editing={editing} onChange={onChange} />
-                <FormField label="Place of Birth" name="placeOfBirth" value={editing ? formData.placeOfBirth : profile.placeOfBirth} editing={editing} onChange={onChange} />
-                <FormField label="Residential Status" name="residentialStatus" value={editing ? formData.residentialStatus : profile.residentialStatus} editing={editing} onChange={onChange} />
-                <FormField label="Hobby" name="hobby" value={editing ? formData.hobby : profile.hobby} editing={editing} onChange={onChange} />
-                <FormField label="Height" name="height" value={editing ? formData.height : profile.height} editing={editing} onChange={onChange} placeholder="e.g. 5'10&quot;" />
-                <FormField label="Weight" name="weight" value={editing ? formData.weight : profile.weight} editing={editing} onChange={onChange} placeholder="e.g. 70kg" />
-                <FormField label="Identification Mark" name="identificationMark" value={editing ? formData.identificationMark : profile.identificationMark} editing={editing} onChange={onChange} />
-                <FormField label="Physically Challenged" name="physicallyChallenged" value={editing ? formData.physicallyChallenged : profile.physicallyChallenged} editing={editing} onChange={onChange} type="toggle" />
-                <FormField label="International Employee" name="internationalEmployee" value={editing ? formData.internationalEmployee : profile.internationalEmployee} editing={editing} onChange={onChange} type="toggle" />
+                <FormField label="Place of Birth" name="placeOfBirth" value={profile.placeOfBirth} editing={false} readOnly />
+                <FormField label="Residential Status" name="residentialStatus" value={profile.residentialStatus} editing={false} readOnly />
+                <FormField label="Hobby" name="hobby" value={profile.hobby} editing={false} readOnly />
+                <FormField label="Height" name="height" value={profile.height} editing={false} readOnly />
+                <FormField label="Weight" name="weight" value={profile.weight} editing={false} readOnly />
+                <FormField label="Identification Mark" name="identificationMark" value={profile.identificationMark} editing={false} readOnly />
+                <FormField label="Physically Challenged" name="physicallyChallenged" value={profile.physicallyChallenged} editing={false} readOnly type="toggle" />
+                <FormField label="International Employee" name="internationalEmployee" value={profile.internationalEmployee} editing={false} readOnly type="toggle" />
             </FormSection>
 
             <FormSection title="Contact Address">
@@ -445,25 +463,66 @@ function TabAccounts({ profile, formData, editing, onChange }: { profile: Profil
     const [docs, setDocs] = React.useState<Record<string, any>>({})
 
     React.useEffect(() => {
-        api.get('/documents/?scope=mine')
-            .then(({ data }) => setDocs(data as any))
+        api.get('/documents/')
+            .then(({ data }) => {
+                const items = (data as any)?.results || (Array.isArray(data) ? data : [])
+                const grouped: Record<string, any> = {}
+                for (const doc of items) {
+                    // Match KYC docs by title prefix (e.g. "aadhaar - file.pdf" → key "aadhaar")
+                    const titleKey = (doc.title || "").split(" - ")[0].toLowerCase().trim()
+                    const key = titleKey && ["aadhaar", "pan", "bank_proof"].includes(titleKey)
+                        ? titleKey
+                        : doc.category || doc.title || ""
+                    if (key) grouped[key] = { ...doc, url: doc.url || doc.fileUrl }
+                }
+                setDocs(grouped)
+            })
             .catch(() => { })
     }, [])
 
     const handleUpload = async (docType: string, file: File) => {
         const fd = new FormData()
         fd.append("file", file)
-        fd.append("docType", docType)
+        fd.append("bucket", "documents")
         try {
+            // Step 1: Upload file to storage
             const res = await fetch("/api/upload", { method: "POST", body: fd })
             if (!res.ok) {
                 const err = await res.json()
                 toast.error(err.error || "Upload failed")
                 return
             }
-            const doc = await res.json()
-            setDocs(prev => ({ ...prev, [docType]: doc }))
-            toast.success(`${doc.title} uploaded successfully`)
+            const uploaded = await res.json()
+
+            // Step 2: Create document record in Django
+            const categoryMap: Record<string, string> = {
+                aadhaar: "ID_PROOF", pan: "ID_PROOF", bank_proof: "OTHER",
+            }
+            const doc = {
+                title: `${docType} - ${file.name}`,
+                fileUrl: uploaded.url,
+                fileType: file.type,
+                size: file.size,
+                category: categoryMap[docType] || "OTHER",
+                isPublic: false,
+            }
+            try {
+                const { data: saved } = await api.post('/documents/', doc) as any
+                const displayDoc = {
+                    id: saved?.id || `temp-${Date.now()}`,
+                    title: file.name,
+                    url: uploaded.url,
+                    size: `${(file.size / 1024).toFixed(1)} KB`,
+                    uploadDate: new Date().toISOString(),
+                }
+                setDocs(prev => ({ ...prev, [docType]: displayDoc }))
+            } catch {
+                setDocs(prev => ({ ...prev, [docType]: {
+                    id: `temp-${Date.now()}`, title: file.name, url: uploaded.url,
+                    size: `${(file.size / 1024).toFixed(1)} KB`, uploadDate: new Date().toISOString(),
+                } }))
+            }
+            toast.success(`${file.name} uploaded successfully`)
         } catch {
             toast.error("Upload failed")
         }
@@ -523,10 +582,10 @@ function TabFamily({ profile, formData, editing, onChange }: { profile: Profile;
         <>
             <FormSection title="Father Details">
                 <FormField label="Name" name="fatherName" value={editing ? formData.fatherName : profile.fatherName} editing={editing} onChange={onChange} />
-                <FormField label="Date of Birth" name="fatherDob" value={editing ? formData.fatherDob : profile.fatherDob} editing={editing} onChange={onChange} type="date" />
-                <FormField label="Blood Group" name="fatherBloodGroup" value={editing ? formData.fatherBloodGroup : profile.fatherBloodGroup} editing={editing} onChange={onChange} type="select" options={BLOOD_GROUPS} />
-                <FormField label="Gender" name="fatherGender" value={editing ? formData.fatherGender : profile.fatherGender} editing={editing} onChange={onChange} type="select" options={GENDERS} />
-                <FormField label="Nationality" name="fatherNationality" value={editing ? formData.fatherNationality : profile.fatherNationality} editing={editing} onChange={onChange} />
+                <FormField label="Date of Birth" name="fatherDob" value={profile.fatherDob} editing={false} readOnly type="date" />
+                <FormField label="Blood Group" name="fatherBloodGroup" value={profile.fatherBloodGroup} editing={false} readOnly />
+                <FormField label="Gender" name="fatherGender" value={profile.fatherGender} editing={false} readOnly />
+                <FormField label="Nationality" name="fatherNationality" value={profile.fatherNationality} editing={false} readOnly />
             </FormSection>
 
             <FormSection title="Emergency Contact">
@@ -541,7 +600,7 @@ function TabFamily({ profile, formData, editing, onChange }: { profile: Profile;
             </FormSection>
 
             <FormSection title="Visa">
-                <FormField label="Visa Number" name="visaNumber" value={editing ? formData.visaNumber : profile.visaNumber} editing={editing} onChange={onChange} masked={!editing} />
+                <FormField label="Visa Type" name="visaNumber" value={editing ? formData.visaNumber : profile.visaNumber} editing={editing} onChange={onChange} placeholder="e.g. H1B, Work Permit" />
                 <FormField label="Expiry Date" name="visaExpiry" value={editing ? formData.visaExpiry : profile.visaExpiry} editing={editing} onChange={onChange} type="date" />
             </FormSection>
         </>
@@ -582,7 +641,8 @@ function TabEmployment({ profile, formData, editing, onChange }: { profile: Prof
 
             <FormSection title="Previous Employment">
                 <FormField label="Previous Employer" name="previousEmployment" value={editing ? formData.previousEmployment : profile.previousEmployment} editing={editing} onChange={onChange} placeholder="e.g. Infosys Ltd" />
-                <FormField label="Previous CTC (Annual)" name="previousCtc" value={editing ? formData.previousCtc : (profile.previousCtc != null ? `₹${Number(profile.previousCtc).toLocaleString("en-IN")}` : null)} editing={editing} onChange={onChange} placeholder="e.g. 600000" />
+                <FormField label="Previous Experience (Years)" name="previousExperienceYears" value={editing ? formData.previousExperienceYears : profile.previousExperienceYears} editing={editing} onChange={onChange} placeholder="e.g. 3.5" />
+                <FormField label="Total Experience (Years)" name="totalExperienceYears" value={editing ? formData.totalExperienceYears : profile.totalExperienceYears} editing={editing} onChange={onChange} placeholder="e.g. 5.0" />
             </FormSection>
         </>
     )

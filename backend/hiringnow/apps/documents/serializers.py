@@ -8,6 +8,8 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     uploaded_by_name = serializers.SerializerMethodField()
     category_display = serializers.CharField(source='get_category_display', read_only=True)
+    url = serializers.CharField(source='file_url', read_only=True)
+    upload_date = serializers.DateTimeField(source='created_at', read_only=True)
 
     class Meta:
         model = Document
@@ -15,6 +17,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'file_url',
+            'url',
             'file_type',
             'size',
             'uploaded_by',
@@ -24,6 +27,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             'is_public',
             'created_at',
             'updated_at',
+            'upload_date',
         ]
         read_only_fields = fields
 

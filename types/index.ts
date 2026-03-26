@@ -22,21 +22,21 @@ export interface Asset {
     updatedAt: string
 }
 
-export type DocCategory = "POLICY" | "CONTRACT" | "PAYSLIP" | "TAX" | "IDENTIFICATION"
+export type DocCategory = "POLICY" | "CONTRACT" | "CERTIFICATE" | "ID_PROOF" | "OTHER"
 
 export interface Document {
     id: string
     title: string
     category: DocCategory
+    categoryDisplay?: string
+    fileUrl: string
     url: string
+    fileType?: string
     uploadDate: string
-    size?: string | null
+    createdAt: string
+    updatedAt: string
+    size?: number | string | null
     isPublic: boolean
-    employeeId?: string | null
-    employee?: {
-        id: string
-        firstName: string
-        lastName: string
-        employeeCode: string
-    } | null
+    uploadedBy?: string | null
+    uploadedByName?: string | null
 }

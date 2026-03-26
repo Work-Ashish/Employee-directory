@@ -245,6 +245,8 @@ class EmployeeProfileFlatSerializer(serializers.Serializer):
     visa_expiry = serializers.SerializerMethodField()
     previous_employment = serializers.SerializerMethodField()
     previous_ctc = serializers.SerializerMethodField()
+    previous_experience_years = serializers.SerializerMethodField()
+    total_experience_years = serializers.SerializerMethodField()
 
     # ── EmployeeAddress fields
     contact_address = serializers.SerializerMethodField()
@@ -293,10 +295,23 @@ class EmployeeProfileFlatSerializer(serializers.Serializer):
         return None
 
     def get_educations(self, obj):
+        # Education model not yet implemented — return empty list
         return []
 
     def get_assets(self, obj):
-        return []
+        assets = obj.assets.filter(deleted_at__isnull=True)
+        return [
+            {
+                'id': str(a.id),
+                'name': a.name,
+                'type': a.type,
+                'serial_number': a.serial_number,
+                'status': a.status,
+                'assigned_date': a.assigned_date.isoformat() if a.assigned_date else None,
+                'image': a.image or None,
+            }
+            for a in assets
+        ]
 
     def get_documents(self, obj):
         return []
@@ -371,7 +386,15 @@ class EmployeeProfileFlatSerializer(serializers.Serializer):
         return p.previous_company if p else None
 
     def get_previous_ctc(self, obj):
-        return None  # not stored in current model
+        return None  # CTC field not in model — use previous_experience_years instead
+
+    def get_previous_experience_years(self, obj):
+        p = self._profile(obj)
+        return float(p.previous_experience_years) if p and p.previous_experience_years else None
+
+    def get_total_experience_years(self, obj):
+        p = self._profile(obj)
+        return float(p.total_experience_years) if p and p.total_experience_years else None
 
     # ── Address field getters
     def get_contact_address(self, obj):
@@ -449,6 +472,8 @@ class EmployeeProfileFlatSerializer(serializers.Serializer):
             'emergency_contact_name', 'emergency_contact_phone',
             'emergency_contact_relation', 'passport_number', 'passport_expiry',
             'visa_type', 'visa_expiry',
+            'previous_company', 'previous_designation',
+            'previous_experience_years', 'total_experience_years',
         }
         # Map frontend keys to model fields
         profile_remap = {'spouse': 'spouse_name', 'visa_number': 'visa_type',

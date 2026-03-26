@@ -285,7 +285,7 @@ class EmployeeMyProfileView(APIView):
         try:
             return Employee.objects.select_related(
                 'employment_type', 'reporting_to', 'department_ref',
-            ).prefetch_related('profile', 'address_info', 'banking').get(
+            ).prefetch_related('profile', 'address_info', 'banking', 'assets').get(
                 user=user, deleted_at__isnull=True,
             )
         except Employee.DoesNotExist:

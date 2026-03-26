@@ -39,4 +39,8 @@ export const ReimbursementAPI = {
     const { data } = await api.put<Reimbursement>(`/reimbursements/${id}/`, payload)
     return data
   },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/reimbursements/${id}/`)
+  },
 }

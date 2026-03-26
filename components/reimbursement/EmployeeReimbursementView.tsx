@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { cn, extractArray } from "@/lib/utils"
-import { useAuth } from "@/context/AuthContext"
+import { extractArray } from "@/lib/utils"
 import { useForm, SubmitHandler } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -19,15 +18,13 @@ import { PageHeader } from "@/components/ui/PageHeader"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
 import { ReimbursementAPI } from "@/features/reimbursements/api/client"
-import { api } from "@/lib/api-client"
-import { confirmDanger, confirmAction, showSuccess } from "@/lib/swal"
+import { confirmDanger, showSuccess } from "@/lib/swal"
 
 const reimbursementSchema = z.object({
     category: z.string().min(1, "Category is required"),
     amount: z.number().positive("Amount must be positive"),
     description: z.string().min(5, "Description must be at least 5 characters"),
     receiptUrl: z.string().optional(),
-    expenseDate: z.string().min(1, "Expense date is required"),
 })
 
 type ReimbursementFormData = z.infer<typeof reimbursementSchema>
@@ -35,35 +32,28 @@ type ReimbursementFormData = z.infer<typeof reimbursementSchema>
 type Reimbursement = {
     id: string
     category: string
+    categoryDisplay: string
     amount: number
     description: string
     receiptUrl: string | null
-    expenseDate: string
     status: string
-    rejectionNote: string | null
     createdAt: string
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
     TRAVEL: "Travel",
-    MEALS: "Meals",
-    OFFICE_SUPPLIES: "Office Supplies",
+    FOOD: "Food",
+    EQUIPMENT: "Equipment",
     MEDICAL: "Medical",
-    TRAINING_EXPENSE: "Training",
-    CONFERENCE: "Conference",
-    RELOCATION: "Relocation",
     OTHER: "Other",
 }
 
 const CATEGORY_OPTIONS = [
     { value: "", label: "Select category..." },
     { value: "TRAVEL", label: "Travel" },
-    { value: "MEALS", label: "Meals & Food" },
-    { value: "OFFICE_SUPPLIES", label: "Office Supplies" },
+    { value: "FOOD", label: "Food & Meals" },
+    { value: "EQUIPMENT", label: "Equipment & Supplies" },
     { value: "MEDICAL", label: "Medical" },
-    { value: "TRAINING_EXPENSE", label: "Training / Certification" },
-    { value: "CONFERENCE", label: "Conference / Event" },
-    { value: "RELOCATION", label: "Relocation" },
     { value: "OTHER", label: "Other" },
 ]
 
@@ -77,7 +67,6 @@ function getStatusBadge(status: string) {
 }
 
 export function EmployeeReimbursementView() {
-    const { user } = useAuth()
     const [records, setRecords] = React.useState<Reimbursement[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
     const [isModalOpen, setIsModalOpen] = React.useState(false)
@@ -94,7 +83,6 @@ export function EmployeeReimbursementView() {
             amount: 0,
             description: "",
             receiptUrl: "",
-            expenseDate: format(new Date(), "yyyy-MM-dd"),
         },
     })
 
@@ -102,7 +90,17 @@ export function EmployeeReimbursementView() {
         try {
             setIsLoading(true)
             const data = await ReimbursementAPI.list()
-            setRecords((data as any)?.results || extractArray<Reimbursement>(data))
+            const raw = (data as any)?.results || extractArray(data)
+            setRecords(raw.map((r: any): Reimbursement => ({
+                id: r.id,
+                category: r.category || "",
+                categoryDisplay: r.categoryDisplay || "",
+                amount: Number(r.amount) || 0,
+                description: r.description || "",
+                receiptUrl: r.receiptUrl || null,
+                status: r.status || "PENDING",
+                createdAt: r.createdAt || "",
+            })))
         } catch {
             toast.error("Failed to load records")
         } finally {
@@ -165,7 +163,6 @@ export function EmployeeReimbursementView() {
             await ReimbursementAPI.create({
                 ...data,
                 receiptUrl,
-                expenseDate: new Date(data.expenseDate),
             })
             toast.success("Reimbursement request submitted")
             setIsModalOpen(false)
@@ -183,7 +180,7 @@ export function EmployeeReimbursementView() {
     const handleDelete = async (id: string) => {
         if (!await confirmDanger("Delete Request?", "This pending reimbursement request will be removed.")) return
         try {
-            await api.delete("/reimbursements/" + id + "/")
+            await ReimbursementAPI.delete(id)
             showSuccess("Deleted", "Reimbursement request removed")
             fetchRecords()
         } catch (error: any) {
@@ -256,14 +253,8 @@ export function EmployeeReimbursementView() {
                                     </div>
                                     <p className="text-sm text-text mt-1.5 font-medium">{rec.description}</p>
                                     <div className="text-xs text-text-3 mt-1">
-                                        Expense Date: {format(new Date(rec.expenseDate), "dd MMM yyyy")}
-                                        {rec.receiptUrl && <> · <a href={rec.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">View Receipt</a></>}
+                                        {rec.receiptUrl && <><a href={rec.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">View Receipt</a></>}
                                     </div>
-                                    {rec.status === "REJECTED" && rec.rejectionNote && (
-                                        <div className="mt-2 p-2 bg-danger/10 border border-danger/20 rounded-lg text-xs text-danger">
-                                            Rejection Reason: {rec.rejectionNote}
-                                        </div>
-                                    )}
                                 </div>
                                 <div className="text-right shrink-0">
                                     <div className="text-lg font-black text-accent font-mono">₹{rec.amount.toLocaleString()}</div>
@@ -301,14 +292,6 @@ export function EmployeeReimbursementView() {
                                 {...form.register("amount", { valueAsNumber: true })}
                             />
                         </div>
-
-                        <Input
-                            label="Expense Date *"
-                            type="date"
-                            max={format(new Date(), "yyyy-MM-dd")}
-                            error={form.formState.errors.expenseDate?.message}
-                            {...form.register("expenseDate")}
-                        />
 
                         <div className="flex flex-col gap-1.5">
                             <label className="text-sm font-semibold text-text">Description *</label>
