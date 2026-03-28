@@ -46,7 +46,7 @@ class DocumentCreateSerializer(serializers.Serializer):
     size = serializers.IntegerField(min_value=0, required=False, default=0)
     category = serializers.ChoiceField(choices=Document.Category.choices, required=False, default=Document.Category.OTHER)
     is_public = serializers.BooleanField(required=False, default=False)
-    uploaded_by_id = serializers.UUIDField(required=False)
+    uploaded_by_id = serializers.UUIDField(required=False, allow_null=True)
 
     def create(self, validated_data):
         return Document.objects.create(

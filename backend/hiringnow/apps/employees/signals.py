@@ -1,8 +1,9 @@
 """
-Auto-sync teams when an employee's reporting_to field changes.
+Auto-sync teams and RBAC roles when an employee's reporting_to field changes.
 
-When an employee is created or their manager changes, we ensure
-they are added to the correct team via sync_employee_team().
+When an employee is created or their manager changes:
+  1. Sync team membership via sync_employee_team()
+  2. If the manager has no RBAC role, assign team_lead (they manage people)
 """
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
@@ -34,3 +35,23 @@ def sync_team_on_reporting_to_change(sender, instance, created, **kwargs):
             sync_employee_team(instance)
         except Exception:
             pass  # Don't break employee save if team sync fails
+
+        # Auto-assign team_lead RBAC role to the manager if they have no role
+        if new_rt and instance.reporting_to:
+            try:
+                _ensure_manager_has_role(instance.reporting_to)
+            except Exception:
+                pass
+
+
+def _ensure_manager_has_role(manager_employee):
+    """If the manager's user has no RBAC role, assign team_lead."""
+    user = getattr(manager_employee, 'user', None)
+    if not user:
+        return
+    from apps.rbac.models import Role, UserRole
+    if UserRole.objects.filter(user=user).exists():
+        return  # already has a role, don't override
+    role = Role.objects.filter(slug='team_lead').first()
+    if role:
+        UserRole.objects.get_or_create(user=user, role=role)

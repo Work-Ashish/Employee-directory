@@ -12,6 +12,9 @@ export interface LeaveRecord {
   statusDisplay: string
   employee: string
   employeeName: string
+  actionedBy: string | null
+  actionedByName: string | null
+  workflowStatus: { instanceId: string; status: string; currentStep: number; totalSteps: number } | null
   createdAt: string
   updatedAt: string
 }

@@ -12,7 +12,7 @@ export interface CalendarEvent {
   typeDisplay: string
   createdBy: string | null
   createdByName: string | null
-  attendees: string[]
+  attendeeIds: string[]
   createdAt: string
   updatedAt: string
 }

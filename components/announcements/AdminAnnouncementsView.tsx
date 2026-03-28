@@ -68,9 +68,9 @@ export function AdminAnnouncementsView() {
                 title: a.title || "",
                 content: a.content || "",
                 author: a.createdByName || a.created_by_name || "Admin",
-                category: a.category || "GENERAL",
+                category: a.category || (a.priority === "URGENT" ? "ALERT" : "GENERAL"),
                 priority: a.priority || "NORMAL",
-                isPinned: a.isPinned ?? false,
+                isPinned: a.priority === "URGENT",
                 createdAt: a.createdAt || a.created_at || "",
                 updatedAt: a.updatedAt || a.updated_at || "",
             })))

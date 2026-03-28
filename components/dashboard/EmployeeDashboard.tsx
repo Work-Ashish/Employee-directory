@@ -90,13 +90,27 @@ export function EmployeeDashboard() {
     const fetchDashboardData = React.useCallback(async () => {
         try {
             if (isFirstLoad.current) setLoading(true)
-            const [profileResult, teamsResult] = await Promise.allSettled([
+            const [profileResult, teamsResult, attendanceResult, leaveResult] = await Promise.allSettled([
                 api.get<any>("/employees/profile/"),
                 api.get<any>("/teams/"),
+                api.get<any>("/attendance/?limit=100"),
+                api.get<any>("/leaves/?limit=100"),
             ])
+
+            // Compute real stats
+            const attRecords = attendanceResult.status === "fulfilled" ? (attendanceResult.value.data?.results || []) : []
+            const leaveRecords = leaveResult.status === "fulfilled" ? (leaveResult.value.data?.results || []) : []
+            const presentDays = attRecords.filter((a: any) => a.status === "PRESENT" || a.status === "present").length
+            const approvedLeaves = leaveRecords.filter((l: any) => l.status === "APPROVED" || l.status === "approved").length
 
             const dashData = {
                 ...emptyDashboardData,
+                stats: {
+                    attendanceCount: presentDays,
+                    leavesUsed: approvedLeaves,
+                    pendingTrainingCount: 0,
+                    reviewStatus: "Upcoming",
+                },
                 teamStatus: [] as Array<{ name: string; status: string; initials: string }>,
             }
 

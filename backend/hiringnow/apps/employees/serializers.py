@@ -5,6 +5,7 @@ from apps.employees.models import (
     Employee,
     EmployeeAddress,
     EmployeeBanking,
+    EmployeeEducation,
     EmployeeProfile,
     EmploymentType,
 )
@@ -62,6 +63,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'salary', 'date_of_joining', 'address', 'avatar_url',
             'start_date', 'joined_at',
             'status', 'status_display',
+            'onboarding_status', 'onboarding_completed_at',
             'exit_date', 'exit_reason',
             'is_archived',
             'profile', 'address_info', 'banking',
@@ -299,7 +301,7 @@ class EmployeeProfileFlatSerializer(serializers.Serializer):
         return []
 
     def get_assets(self, obj):
-        assets = obj.assets.filter(deleted_at__isnull=True)
+        assets = obj.assets.all()
         return [
             {
                 'id': str(a.id),

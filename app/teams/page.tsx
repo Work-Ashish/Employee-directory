@@ -125,8 +125,9 @@ export default function TeamsPage() {
                 } catch { /* empty */ }
                 finally { setSyncing(false) }
             }
-        } catch { /* empty */ }
-        finally { setLoading(false) }
+        } catch (err) {
+            console.error("[Teams] Failed to load:", err)
+        } finally { setLoading(false) }
     }, [canCreate])
 
     React.useEffect(() => { fetchTeams() }, [fetchTeams])

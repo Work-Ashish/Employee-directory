@@ -6,6 +6,7 @@ from .views import (
     RoleDetailView,
     RolePermissionsView,
     UserRolesView,
+    BulkAssignDefaultRolesView,
 )
 
 app_name = "rbac"
@@ -16,4 +17,5 @@ urlpatterns = [
     path("rbac/roles/<uuid:pk>/", RoleDetailView.as_view(), name="role-detail"),
     path("rbac/roles/<uuid:pk>/permissions/", RolePermissionsView.as_view(), name="role-permissions"),
     path("users/<uuid:user_id>/roles/", UserRolesView.as_view(), name="user-roles"),
+    path("rbac/assign-default-roles/", BulkAssignDefaultRolesView.as_view(), name="bulk-assign-roles"),
 ]

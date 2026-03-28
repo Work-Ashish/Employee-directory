@@ -4,17 +4,13 @@ import type { PaginatedResponse } from "@/lib/api-client"
 export interface UserSession {
   id: string
   user: string
-  userName?: string
-  userEmail?: string
-  email?: string
-  avatar?: string | null
+  userEmail: string
   ipAddress: string | null
   userAgent: string
-  lastActivity?: string
-  lastActive?: string
+  lastActivity: string
   isActive: boolean
-  isRevoked?: boolean
   createdAt: string
+  updatedAt: string
 }
 
 export const SessionAPI = {

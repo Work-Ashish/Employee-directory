@@ -160,6 +160,42 @@ export async function apiClient<T>(
   };
 }
 
+// File upload helper -- sends FormData without JSON Content-Type or body transforms
+async function apiUpload<T>(path: string, formData: FormData): Promise<ApiResponse<T>> {
+  const url = `${BASE_URL}/api/v1${path}`;
+  const headers: Record<string, string> = {};
+  // Do NOT set Content-Type -- browser sets multipart/form-data with boundary
+  const token = getAccessToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const slug = getTenantSlug();
+  if (slug) headers["X-Tenant-Slug"] = slug;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: formData,
+    signal: AbortSignal.timeout(30_000),
+  });
+
+  if (response.status === 204) return { data: null as T, status: 204 };
+  let json: any;
+  try { const text = await response.text(); json = text ? JSON.parse(text) : {}; }
+  catch { throw new Error(`Server returned non-JSON response (${response.status})`); }
+
+  if (!response.ok) {
+    const errObj = json.error || json;
+    const detail = errObj.detail;
+    const message = Array.isArray(detail) ? detail.join(". ") : (typeof detail === "string" ? detail : null);
+    const error = new Error(message || "Upload failed") as Error & { status: number; data: unknown };
+    error.status = response.status;
+    error.data = toCamelCase(errObj);
+    throw error;
+  }
+
+  const payload = json.data !== undefined ? json.data : json;
+  return { data: toCamelCase<T>(payload), status: response.status };
+}
+
 // Convenience methods
 export const api = {
   get: <T>(path: string) => apiClient<T>(path, { method: "GET" }),
@@ -170,4 +206,5 @@ export const api = {
   patch: <T>(path: string, data?: unknown) =>
     apiClient<T>(path, { method: "PATCH", body: data ? JSON.stringify(data) : undefined }),
   delete: <T>(path: string) => apiClient<T>(path, { method: "DELETE" }),
+  upload: <T>(path: string, formData: FormData) => apiUpload<T>(path, formData),
 };

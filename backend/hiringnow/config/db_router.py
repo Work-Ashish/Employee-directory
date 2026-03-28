@@ -44,10 +44,11 @@ class TenantDatabaseRouter:
                         settings.DATABASES[db_name] = default
                 if db_name in settings.DATABASES:
                     return db_name
-        raise RuntimeError(
-            f"Tenant context is not set or DB '{getattr(get_current_tenant(), 'db_name', None)}' "
-            "is not in DATABASES. Cannot route query without tenant context."
-        )
+            # Fallback: if tenant context exists but DB not available, use default
+            if tenant:
+                return "default"
+        # No tenant context — use default (single-DB dev mode)
+        return "default"
 
     def allow_relation(self, obj1, obj2, **hints):
         # Prevent cross-database relations
@@ -57,7 +58,10 @@ class TenantDatabaseRouter:
 
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         if db == "default":
-            return app_label == "tenants"
+            # In single-DB mode (no tenant DBs configured), allow all migrations on default
+            if len(settings.DATABASES) == 1:
+                return True
+            return app_label == "tenants" or app_label in _BUILTIN_APP_LABELS
         if app_label in ("contenttypes", "auth"):
             return True
         if app_label in self.tenant_scoped_apps:

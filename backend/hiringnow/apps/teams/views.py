@@ -34,14 +34,14 @@ class TeamListCreateView(APIView):
     def get(self, request):
         queryset = Team.objects.select_related('department', 'lead').order_by('name')
 
-        # Non-admin users see teams they lead OR belong to
+        # Non-admin and non-manager users see teams they lead OR belong to
+        # Users with teams.manage permission can see all teams
         user = request.user
-        if not getattr(user, 'is_tenant_admin', False):
+        from apps.rbac.services import user_has_permission
+        if not getattr(user, 'is_tenant_admin', False) and not user_has_permission(user, 'teams.manage'):
             from django.db.models import Q
             employee_profile = getattr(user, 'employee_profile', None)
             filters = Q(lead__user=user) | Q(members__employee__user=user)
-            # Be resilient to legacy imports where Employee.user was never linked
-            # but the logged-in user still corresponds to the same employee record.
             if employee_profile:
                 filters |= Q(lead_id=employee_profile.id) | Q(members__employee_id=employee_profile.id)
             if getattr(user, 'email', None):

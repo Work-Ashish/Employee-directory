@@ -33,8 +33,14 @@ export default function MyDocuments() {
                     url: d.url || d.fileUrl || "",
                     uploadDate: d.uploadDate || d.createdAt || new Date().toISOString(),
                 })))
-            } catch {
-                toast.error("Failed to load documents")
+            } catch (err: any) {
+                const errMsg = err?.message || err?.data?.detail || ""
+                const msg = errMsg.includes("Tenant not found") || errMsg.includes("tenant")
+                    ? "Tenant not found — please log out and log back in"
+                    : err?.status === 401 || errMsg.includes("401")
+                        ? "Session expired — please log in again"
+                        : "Failed to load documents"
+                toast.error(msg)
             } finally {
                 setLoading(false)
             }

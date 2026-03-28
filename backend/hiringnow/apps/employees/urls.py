@@ -6,6 +6,7 @@ from apps.employees.views import (
     EmployeeCredentialsView,
     EmployeeRelinkUsersView,
     EmployeeMyProfileView,
+    EmployeeOnboardingView,
     EmploymentTypeListView,
     ManagerListView,
 )
@@ -15,6 +16,7 @@ app_name = 'employees'
 urlpatterns = [
     path('employment-types/', EmploymentTypeListView.as_view(), name='employment-type-list'),
     path('employees/managers/', ManagerListView.as_view(), name='manager-list'),
+    path('employees/onboarding/', EmployeeOnboardingView.as_view(), name='employee-onboarding'),
     path('employees/profile/', EmployeeMyProfileView.as_view(), name='employee-my-profile'),
     path('employees/relink-users/', EmployeeRelinkUsersView.as_view(), name='employee-relink-users'),
     path('employees/', EmployeeListCreateView.as_view(), name='employee-list-create'),

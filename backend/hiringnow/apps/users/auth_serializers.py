@@ -158,6 +158,8 @@ class UserMeSerializer(serializers.ModelSerializer):
     tenant_id = serializers.SerializerMethodField()
     employee_id = serializers.SerializerMethodField()
 
+    onboarding_status = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -165,7 +167,7 @@ class UserMeSerializer(serializers.ModelSerializer):
             'avatar', 'accent_color', 'bio',
             'must_change_password', 'last_login_at',
             'tenant_id', 'tenant_slug', 'is_tenant_admin',
-            'employee_id',
+            'employee_id', 'onboarding_status',
         ]
         read_only_fields = fields
 
@@ -185,6 +187,12 @@ class UserMeSerializer(serializers.ModelSerializer):
         employee_profile = getattr(obj, 'employee_profile', None)
         if employee_profile:
             return str(employee_profile.id)
+        return None
+
+    def get_onboarding_status(self, obj):
+        employee_profile = getattr(obj, 'employee_profile', None)
+        if employee_profile:
+            return employee_profile.onboarding_status
         return None
 
 class UpdateMeSerializer(serializers.ModelSerializer):

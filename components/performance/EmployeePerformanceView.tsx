@@ -68,7 +68,7 @@ function normalizeReview(raw: any): PerformanceReview {
         reviewPeriod: raw.reviewPeriod || raw.period || null,
         formType: raw.formType || null,
         formData: raw.formData || null,
-        reviewType: raw.reviewType || undefined,
+        reviewType: raw.reviewType || (raw.employee === raw.reviewer || (raw.employee?.id && raw.employee?.id === raw.reviewer?.id) ? "SELF" : undefined),
         progress: Number(raw.progress ?? 0),
         comments: raw.comments || raw.strengths || null,
         status: raw.status || "",

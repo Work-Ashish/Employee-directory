@@ -12,10 +12,12 @@ export default function Dashboard() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
 
-  // Redirect employees who must change their password on first login
+  // Redirect employees who must change their password or complete onboarding
   React.useEffect(() => {
     if (user?.mustChangePassword) {
       router.replace("/change-password")
+    } else if (user?.onboardingStatus && user.onboardingStatus !== "completed" && !user.isTenantAdmin) {
+      router.replace("/onboarding")
     }
   }, [user, router])
 

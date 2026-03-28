@@ -17,7 +17,7 @@ import { ResignationAPI } from "@/features/resignations/api/client"
 
 const resignationSchema = z.object({
     reason: z.string().min(1, "Reason is required"),
-    lastDay: z.string().min(1, "Last day is required"),
+    lastWorkingDate: z.string().min(1, "Last working date is required"),
     additionalDetails: z.string().optional(),
     noticePeriodWilling: z.string().min(1, "Please select an option"),
     exitInterview: z.boolean().optional(),
@@ -29,8 +29,9 @@ type ResignationFormData = z.infer<typeof resignationSchema>
 type Resignation = {
     id: string
     reason: string
-    lastDay: string
+    lastWorkingDate: string
     status: string
+    statusDisplay: string
 }
 
 export function EmployeeResignationView({ employeeId }: { employeeId: string }) {
@@ -49,13 +50,19 @@ export function EmployeeResignationView({ employeeId }: { employeeId: string }) 
     })
 
     const watchReason = watch("reason")
-    const watchLastDay = watch("lastDay")
+    const watchLastDay = watch("lastWorkingDate")
 
     const fetchMyResignation = React.useCallback(async () => {
         try {
             const data = await ResignationAPI.list(`employeeId=${employeeId}`)
-            const first = data.results?.[0]
-            setMyResignation(first ? (first as unknown as Resignation) : null)
+            const first = data.results?.[0] as any
+            setMyResignation(first ? {
+                id: first.id,
+                reason: first.reason || "",
+                lastWorkingDate: first.lastWorkingDate || "",
+                status: first.status || "PENDING",
+                statusDisplay: first.statusDisplay || first.status || "",
+            } : null)
         } catch {
             toast.error("Failed to load records")
         } finally {
@@ -92,7 +99,7 @@ export function EmployeeResignationView({ employeeId }: { employeeId: string }) 
 
             await ResignationAPI.create({
                 reason: parts.join(" | "),
-                lastDay: pendingData.lastDay,
+                lastWorkingDate: pendingData.lastWorkingDate,
                 employeeId,
             })
             toast.success("Resignation filed successfully")
@@ -106,10 +113,11 @@ export function EmployeeResignationView({ employeeId }: { employeeId: string }) 
         }
     }
 
-    const getStatusBadgeVariant = (status: string): "info" | "warning" | "success" => {
+    const getStatusBadgeVariant = (status: string): "info" | "warning" | "success" | "danger" => {
         switch (status) {
-            case 'UNDER_REVIEW': return "info"
-            case 'NOTICE_PERIOD': return "warning"
+            case 'PENDING': return "warning"
+            case 'APPROVED': return "info"
+            case 'REJECTED': return "danger"
             default: return "success"
         }
     }
@@ -132,27 +140,28 @@ export function EmployeeResignationView({ employeeId }: { employeeId: string }) 
                     <div className="flex items-center justify-between">
                         <div className="text-[18px] font-bold">Current Status</div>
                         <Badge variant={getStatusBadgeVariant(myResignation.status)} size="lg">
-                            {myResignation.status.replace('_', ' ')}
+                            {myResignation.statusDisplay || myResignation.status}
                         </Badge>
                     </div>
 
                     <div className="grid grid-cols-2 gap-8 pt-6 border-t border-border">
                         <div>
                             <div className="text-sm font-bold text-text-3 uppercase mb-1">Reason for Resignation</div>
-                            <div className="text-[15px] font-medium">{myResignation.reason}</div>
+                            <div className="text-[15px] font-medium">{myResignation.reason.split(" | ")[0]}</div>
                         </div>
                         <div>
                             <div className="text-sm font-bold text-text-3 uppercase mb-1">Requested Last Working Day</div>
-                            <div className="text-[15px] font-mono font-bold text-accent">{format(new Date(myResignation.lastDay), "MMMM d, yyyy")}</div>
+                            <div className="text-[15px] font-mono font-bold text-accent">{myResignation.lastWorkingDate ? format(new Date(myResignation.lastWorkingDate), "MMMM d, yyyy") : "—"}</div>
                         </div>
                     </div>
 
                     <div className="bg-bg-2 p-4 rounded-lg flex items-center gap-3">
                         <span className="text-xl">ℹ️</span>
                         <p className="text-sm text-text-2 leading-relaxed">
-                            {myResignation.status === 'UNDER_REVIEW' && "Your request is currently being reviewed by HR and your manager. You can expect a response within 48 hours."}
-                            {myResignation.status === 'NOTICE_PERIOD' && "Your resignation has been accepted. You are currently serving your notice period. Please ensure all handover tasks are completed."}
-                            {myResignation.status === 'PROCESSED' && "Your exit process has been completed successfully. We wish you all the best for your future endeavors."}
+                            {myResignation.status === 'PENDING' && "Your request is currently being reviewed by HR and your manager. You can expect a response within 48 hours."}
+                            {myResignation.status === 'APPROVED' && "Your resignation has been accepted. You are currently serving your notice period. Please ensure all handover tasks are completed."}
+                            {myResignation.status === 'REJECTED' && "Your resignation request was declined. Please contact HR for more details."}
+                            {myResignation.status === 'WITHDRAWN' && "You have withdrawn your resignation request."}
                         </p>
                     </div>
                 </Card>
@@ -191,9 +200,9 @@ export function EmployeeResignationView({ employeeId }: { employeeId: string }) 
                             <Input
                                 label="Expected Last Working Day *"
                                 type="date"
-                                {...register('lastDay')}
+                                {...register('lastWorkingDate')}
                                 min={format(new Date(), "yyyy-MM-dd")}
-                                error={errors.lastDay?.message}
+                                error={errors.lastWorkingDate?.message}
                             />
                             <p className="text-xs text-text-3">Note: Please choose a date that complies with your notice period agreement.</p>
                         </div>
@@ -268,7 +277,7 @@ export function EmployeeResignationView({ employeeId }: { employeeId: string }) 
                                 </div>
                                 <div>
                                     <span className="text-text-3 font-medium">Last Working Day:</span>
-                                    <p className="font-semibold text-text font-mono">{pendingData.lastDay ? format(new Date(pendingData.lastDay + "T00:00:00"), "MMMM d, yyyy") : "-"}</p>
+                                    <p className="font-semibold text-text font-mono">{pendingData.lastWorkingDate ? format(new Date(pendingData.lastWorkingDate + "T00:00:00"), "MMMM d, yyyy") : "-"}</p>
                                 </div>
                                 <div>
                                     <span className="text-text-3 font-medium">Notice Period:</span>

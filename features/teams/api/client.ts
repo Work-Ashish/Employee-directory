@@ -7,11 +7,11 @@ export interface Team {
   description?: string | null
   department?: string | null
   departmentName?: string | null
-  leadId?: string
   lead: string | { id: string; firstName: string; lastName: string; avatarUrl?: string; designation?: string } | null
   leadName?: string | null
   members?: TeamMember[]
-  memberCount?: number
+  membersCount?: number
+  memberIds?: string[]
   _count?: { members: number }
   createdAt: string
   updatedAt: string

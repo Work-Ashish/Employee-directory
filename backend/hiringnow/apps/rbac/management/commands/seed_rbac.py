@@ -269,7 +269,7 @@ SYSTEM_ROLES = {
             "leaves.view",
             "performance.view", "performance.manage",
             "training.view",
-            "teams.view", "teams.manage",
+            "teams.view",
             "feedback.view", "feedback.manage",
             "announcements.view",
             "assets.view",
@@ -401,7 +401,8 @@ class Command(BaseCommand):
                     self.stdout.write(f"  = Exists: {obj.codename}")
 
     def _seed_tenant_roles(self, tenant: Tenant):
-        db_alias = tenant.db_name
+        from django.conf import settings
+        db_alias = tenant.db_name if tenant.db_name in settings.DATABASES else "default"
 
         for slug, cfg in SYSTEM_ROLES.items():
             role, created = Role.objects.using(db_alias).get_or_create(

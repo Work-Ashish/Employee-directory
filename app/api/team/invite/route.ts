@@ -132,16 +132,19 @@ function buildInviteEmail(params: {
         </table>
       </div>
 
-      <div style="text-align: center; margin-bottom: 24px;">
-        <a href="${loginUrl}/login"
+      <div style="text-align: center; margin-bottom: 16px;">
+        <a href="${loginUrl}/onboarding?tenant=${encodeURIComponent(params.organizationSlug)}&email=${encodeURIComponent(params.email)}"
            style="display: inline-block; background: #007aff; color: #fff; text-decoration: none;
-                  padding: 12px 32px; border-radius: 8px; font-weight: 600; font-size: 14px;">
-          Log In to Your Account
+                  padding: 14px 36px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+          Complete Your Onboarding
         </a>
       </div>
 
+      <p style="color: #999; font-size: 12px; text-align: center; margin: 0 0 8px;">
+        Or log in directly at <a href="${loginUrl}/login" style="color: #007aff;">${loginUrl}/login</a>
+      </p>
       <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">
-        Please change your password after your first login.
+        You will be asked to change your password on first login, then complete your onboarding profile.
         If you did not expect this invitation, you can safely ignore this email.
       </p>
     </div>

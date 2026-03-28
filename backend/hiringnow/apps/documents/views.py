@@ -41,6 +41,14 @@ class DocumentListCreateView(APIView):
         if category:
             queryset = queryset.filter(category=category)
 
+        scope = request.query_params.get('scope')
+        if scope == 'public':
+            queryset = queryset.filter(is_public=True)
+        elif scope == 'mine':
+            employee_profile = getattr(user, 'employee_profile', None)
+            if employee_profile:
+                queryset = queryset.filter(uploaded_by=employee_profile)
+
         # -- Pagination
         try:
             page = max(int(request.query_params.get('page', 1)), 1)
@@ -67,12 +75,10 @@ class DocumentListCreateView(APIView):
         # Resolve uploaded_by from the requesting user if not provided
         if not serializer.validated_data.get('uploaded_by_id'):
             employee_profile = getattr(request.user, 'employee_profile', None)
-            if not employee_profile:
-                return Response(
-                    {'detail': 'No employee profile linked to your account.'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            serializer.validated_data['uploaded_by_id'] = employee_profile.id
+            if employee_profile:
+                serializer.validated_data['uploaded_by_id'] = employee_profile.id
+            # If no employee profile (e.g. pure admin user), uploaded_by stays null
+            # This is fine for public/company docs
 
         document = serializer.save()
         return Response(
@@ -108,3 +114,35 @@ class DocumentDetailView(APIView):
         document = self._get_document(pk)
         document.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# -- My Documents (employee self-service) ------------------------------------
+
+class MyDocumentsView(APIView):
+    """
+    GET  /documents/my/  -- list documents uploaded by the current user
+    POST /documents/my/  -- upload a document as the current user
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        employee_profile = getattr(request.user, 'employee_profile', None)
+        if not employee_profile:
+            return Response({'results': [], 'total': 0})
+        queryset = Document.objects.filter(uploaded_by=employee_profile).order_by('-created_at')
+        return Response({
+            'results': DocumentSerializer(queryset, many=True).data,
+            'total': queryset.count(),
+        })
+
+    def post(self, request):
+        serializer = DocumentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        employee_profile = getattr(request.user, 'employee_profile', None)
+        if employee_profile:
+            serializer.validated_data['uploaded_by_id'] = employee_profile.id
+        document = serializer.save()
+        return Response(
+            DocumentSerializer(document).data,
+            status=status.HTTP_201_CREATED,
+        )

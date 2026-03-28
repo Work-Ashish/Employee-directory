@@ -68,13 +68,32 @@ export default function PerformanceAdminDashboard() {
     }, [user, authLoading, router])
 
     useEffect(() => {
-        api.get('/performance/metrics/')
+        api.get('/performance/reviews/')
             .then((resJson: any) => {
                 const data = resJson.data || resJson
-                setAlerts(data.alerts || [])
-                setScores(data.scores || [])
+                const results = data.results || (Array.isArray(data) ? data : [])
+                // Transform review data into scores format
+                const mappedScores: Score[] = results.map((r: any) => ({
+                    employeeName: r.employeeName || "—",
+                    avatarUrl: r.avatarUrl || null,
+                    baseScore: Number(r.overallScore || r.rating || 0),
+                    aiAdjustment: 0,
+                    finalScore: Number(r.overallScore || r.rating || 0),
+                    burnoutRisk: false,
+                    behavioralAnomaly: false,
+                }))
+                setScores(mappedScores)
+                // Generate alerts from low-scoring employees
+                const mappedAlerts: Alert[] = results
+                    .filter((r: any) => Number(r.overallScore || r.rating || 0) < 3)
+                    .map((r: any) => ({
+                        employeeName: r.employeeName || "—",
+                        severity: Number(r.overallScore || 0) < 2 ? "critical" as const : "medium" as const,
+                        message: `Performance score ${r.overallScore || r.rating || 0}/5 — needs improvement`,
+                    }))
+                setAlerts(mappedAlerts)
             })
-            .catch(console.error)
+            .catch(() => { })
             .finally(() => setLoading(false))
     }, [])
 

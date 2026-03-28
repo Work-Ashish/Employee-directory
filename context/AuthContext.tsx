@@ -25,6 +25,7 @@ interface User {
   tenantId?: string
   isTenantAdmin?: boolean
   mustChangePassword?: boolean
+  onboardingStatus?: string | null
   functionalCapabilities?: Record<string, string[]>
   /** Django permission codenames resolved from user's assigned roles */
   permissionCodenames?: string[]
@@ -182,6 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tenantId: authUser.tenantId,
       isTenantAdmin: authUser.isTenantAdmin,
       mustChangePassword: authUser.mustChangePassword,
+      onboardingStatus: authUser.onboardingStatus,
       functionalCapabilities: capabilities,
       permissionCodenames: codenames,
       featureFlags: flags,
@@ -222,10 +224,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (isLoading) return
     const isPublicPage = pathname === "/login" || pathname === "/signup"
+    const isGatedPage = pathname === "/change-password" || pathname === "/onboarding"
     if (!user && !isPublicPage) {
       router.push("/login")
     } else if (user && pathname === "/login") {
       router.push("/")
+    } else if (user && !isGatedPage && !isPublicPage && user.mustChangePassword) {
+      router.push("/change-password")
+    } else if (user && !isGatedPage && !isPublicPage && user.onboardingStatus && user.onboardingStatus !== "completed" && !user.isTenantAdmin) {
+      router.push("/onboarding")
     } else if (user?.featureFlags && Object.keys(user.featureFlags).length > 0) {
       // Block navigation to disabled feature pages
       const ROUTE_MODULE_MAP: Record<string, string> = {

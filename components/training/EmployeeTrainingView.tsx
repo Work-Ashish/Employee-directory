@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/Badge"
 import { Spinner } from "@/components/ui/Spinner"
 import { Card, CardContent } from "@/components/ui/Card"
 import { TrainingAPI } from "@/features/training/api/client"
-import { api } from "@/lib/api-client"
 
 type Training = {
     id: string
@@ -36,22 +35,13 @@ export function EmployeeTrainingView({ employeeId }: { employeeId: string }) {
             const rawResult = (data as any)?.results || data
             const raw = Array.isArray(rawResult) ? rawResult : []
             // Map Django Training fields to component's expected shape
-            const REVERSE_STATUS: Record<string, string> = {
-                ONGOING: "CRITICAL",
-                UPCOMING: "HIGH",
-                COMPLETED: "LOW",
-                CANCELLED: "LOW",
-                CRITICAL: "CRITICAL",
-                HIGH: "HIGH",
-                LOW: "LOW",
-            }
             const mapped: Training[] = (Array.isArray(raw) ? raw : []).map((t: any) => ({
                 id: t.id,
                 name: t.title || t.name || "",
                 type: t.type || "TECHNICAL",
                 description: t.description || "",
-                status: REVERSE_STATUS[t.status] || t.status || "HIGH",
-                progress: t.status === "COMPLETED" || t.status === "LOW" ? 100 : 0,
+                status: t.status || "UPCOMING",
+                progress: t.status === "COMPLETED" ? 100 : 0,
                 dueDate: t.startDate || t.dueDate || null,
                 videoUrl: t.videoUrl || null,
             }))
@@ -69,7 +59,7 @@ export function EmployeeTrainingView({ employeeId }: { employeeId: string }) {
 
     const markAsCompleted = async (trainingId: string) => {
         try {
-            await api.post('/training/enroll/', { trainingId, employeeId, completed: true, score: 100 })
+            await TrainingAPI.enroll(trainingId, { employeeId })
             toast.success("Course marked as completed!")
             fetchTrainings()
             setSelectedTraining(null)

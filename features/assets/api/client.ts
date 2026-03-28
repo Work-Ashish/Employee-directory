@@ -13,7 +13,7 @@ export interface Asset {
   status: string
   statusDisplay?: string
   purchaseDate: string | null
-  value: number
+  value: number | string
   notes?: string
   image?: string | null
   assignedDate?: string | null

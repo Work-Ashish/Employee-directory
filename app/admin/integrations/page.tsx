@@ -49,8 +49,9 @@ export default function IntegrationsPage() {
             setIsLoading(true)
             const { data } = await api.get<any>('/settings/webhooks/')
             setWebhooks(data.data || data || [])
-        } catch (error) {
-            toast.error("Failed to load webhooks")
+        } catch {
+            // Webhooks endpoint not yet available — show empty state
+            setWebhooks([])
         } finally {
             setIsLoading(false)
         }

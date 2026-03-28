@@ -68,6 +68,7 @@ export interface AuthUser {
   accentColor: string;
   bio: string;
   mustChangePassword: boolean;
+  onboardingStatus: string | null;
   lastLoginAt: string | null;
   tenantId: string;
   tenantSlug: string;

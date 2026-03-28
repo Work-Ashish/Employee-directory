@@ -21,29 +21,16 @@ export interface LoginStats {
     loginsLast7Days: number
 }
 
-function getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = { "Content-Type": "application/json" }
-    if (typeof window !== "undefined") {
-        const token = localStorage.getItem("access_token")
-        if (token) headers["Authorization"] = `Bearer ${token}`
-        const slug = localStorage.getItem("tenant_slug")
-        if (slug) headers["X-Tenant-Slug"] = slug
-    }
-    return headers
-}
+import { api } from "@/lib/api-client"
 
 export const DashboardAPI = {
     getStats: async (): Promise<DashboardStats> => {
-        const res = await fetch("/api/dashboard", { headers: getHeaders() })
-        if (!res.ok) throw new Error("Failed to fetch dashboard stats")
-        const json = await res.json()
-        return json.data || json
+        const { data } = await api.get<DashboardStats>("/dashboard/")
+        return data
     },
 
     getLogins: async (): Promise<LoginStats> => {
-        const res = await fetch("/api/dashboard/logins", { headers: getHeaders() })
-        if (!res.ok) throw new Error("Failed to fetch login stats")
-        const json = await res.json()
-        return json.data || json
+        const { data } = await api.get<LoginStats>("/dashboard/logins/")
+        return data
     },
 }

@@ -59,7 +59,7 @@ export default function ActivityDashboardPage() {
 
     useEffect(() => {
         const fetchData = () => {
-            api.get<DashboardData>('/time-tracker/dashboard/')
+            api.get<DashboardData>('/admin/agent/dashboard/')
                 .then(({ data }) => setData(data))
                 .catch(() => { })
                 .finally(() => setLoading(false))

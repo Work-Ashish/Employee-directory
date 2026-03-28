@@ -4,17 +4,19 @@ import type { PaginatedResponse } from "@/lib/api-client"
 export interface FunctionalRole {
   id: string
   name: string
+  slug: string
   description: string
-  isActive: boolean
-  capabilities: string[]
-  assignmentCount: number
+  isSystem: boolean
+  userCount: number
+  permissionCount: number
   createdAt: string
   updatedAt: string
 }
 
-export interface Capability {
-  resource: string
-  actions: string[]
+export interface Permission {
+  codename: string
+  name: string
+  module: string
 }
 
 export const RoleAPI = {
@@ -43,8 +45,8 @@ export const RoleAPI = {
     await api.delete(`/rbac/roles/${id}/`)
   },
 
-  capabilities: async (): Promise<string[]> => {
-    const { data } = await api.get<string[]>("/permissions/")
+  capabilities: async (): Promise<Permission[]> => {
+    const { data } = await api.get<Permission[]>("/permissions/")
     return data
   },
 }

@@ -8,8 +8,8 @@ export interface AttendanceRecord {
   date: string
   checkIn: string | null
   checkOut: string | null
-  workHours: number | null
-  overtime: number
+  workHours: number | string | null
+  overtime: number | string
   isLate: boolean
   isEarlyExit: boolean
   status: string

@@ -151,4 +151,43 @@ class UserRolesView(APIView):
             [UserRole(user=user, role=role) for role in roles]
         )
 
+        # Invalidate cached permissions so changes take effect immediately
+        from apps.rbac.services import invalidate_permission_cache
+        invalidate_permission_cache(user)
+
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class BulkAssignDefaultRolesView(APIView):
+    """
+    POST /rbac/assign-default-roles/
+    Assign default RBAC roles to all users who currently have none.
+    Managers (employees with direct reports) get team_lead, others get viewer.
+    """
+
+    def get_permissions(self):
+        return [IsAuthenticated(), HasPermission('roles.manage')]
+
+    def post(self, request):
+        from apps.rbac.services import auto_assign_default_role
+
+        users_without_roles = User.objects.exclude(
+            id__in=UserRole.objects.values_list('user_id', flat=True)
+        ).exclude(is_tenant_admin=True)
+
+        assigned = []
+        for user in users_without_roles:
+            try:
+                auto_assign_default_role(user)
+                ur = UserRole.objects.filter(user=user).first()
+                assigned.append({
+                    'email': user.email,
+                    'role': ur.role.slug if ur else None,
+                })
+            except Exception as exc:
+                assigned.append({'email': user.email, 'error': str(exc)})
+
+        return Response({
+            'users_processed': len(assigned),
+            'assignments': assigned,
+        })
