@@ -10,6 +10,9 @@ import { PageHeader } from "@/components/ui/PageHeader"
 import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
 import { Spinner } from "@/components/ui/Spinner"
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
+import { canAccessModule, Module } from "@/lib/permissions"
 
 const CATEGORY_LABELS: Record<string, string> = {
     POLICY: "Policy",
@@ -20,6 +23,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 export default function MyDocuments() {
+    const { user, isLoading } = useAuth()
+    const router = useRouter()
+    React.useEffect(() => { if (!isLoading && user && !canAccessModule(user.role, Module.DOCUMENTS)) router.push("/") }, [user, isLoading, router])
+
     const [documents, setDocuments] = React.useState<Document[]>([])
     const [loading, setLoading] = React.useState(true)
 

@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/Input"
 import { Modal } from "@/components/ui/Modal"
 import { Spinner } from "@/components/ui/Spinner"
 import { useAuth } from "@/context/AuthContext"
-import { Roles } from "@/lib/permissions"
+import { Module, Roles, canAccessModule } from "@/lib/permissions"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -36,6 +36,7 @@ import { TeamAPI } from "@/features/teams/api/client"
 import { DepartmentAPI } from "@/features/departments/api/client"
 import { EmployeeAPI } from "@/features/employees/api/client"
 import { api } from "@/lib/api-client"
+import { useRouter } from "next/navigation"
 
 /* ── Types ── */
 
@@ -194,6 +195,9 @@ const nodeTypes = { employee: EmployeeNode }
 
 export default function OrgChartPage() {
     const { user, isLoading: authLoading } = useAuth()
+    const router = useRouter()
+    React.useEffect(() => { if (!isLoading && user && !canAccessModule(user.role, Module.EMPLOYEES)) router.push("/") }, [user, isLoading, router])
+
     const [employees, setEmployees] = React.useState<OrgEmployee[]>([])
     const [departments, setDepartments] = React.useState<Department[]>([])
     const [loading, setLoading] = React.useState(true)

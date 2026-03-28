@@ -1,5 +1,7 @@
 "use client"
 
+import * as React from "react"
+
 import { useState, useEffect, useCallback } from "react"
 import { cn, extractArray } from "@/lib/utils"
 import { TicketAPI } from "@/features/tickets/api/client"
@@ -16,7 +18,8 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, Dialo
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { useAuth } from "@/context/AuthContext"
-import { Roles } from "@/lib/permissions"
+import { Module, Roles, canAccessModule } from "@/lib/permissions"
+import { useRouter } from "next/navigation"
 
 type Ticket = {
     id: string
@@ -86,12 +89,15 @@ function getPriorityVariant(priority: string) {
 }
 
 export default function HelpDesk() {
-    const { user } = useAuth()
+    const { user, isLoading } = useAuth()
+    const router = useRouter()
+    React.useEffect(() => { if (!isLoading && user && !canAccessModule(user.role, Module.TICKETS)) router.push("/") }, [user, isLoading, router])
+
     const isAdmin = user?.role === Roles.CEO || user?.role === Roles.HR
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
     const [tickets, setTickets] = useState<Ticket[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+    const [isLoadingTickets, setIsLoadingTickets] = useState(true)
     const [statusFilter, setStatusFilter] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -103,7 +109,7 @@ export default function HelpDesk() {
 
     const fetchTickets = useCallback(async () => {
         try {
-            setIsLoading(true)
+            setIsLoadingTickets(true)
             const params = new URLSearchParams()
             if (statusFilter) params.set("status", statusFilter)
             const paramStr = params.toString()
@@ -126,7 +132,7 @@ export default function HelpDesk() {
         } catch {
             toast.error("Failed to load tickets")
         } finally {
-            setIsLoading(false)
+            setIsLoadingTickets(false)
         }
     }, [statusFilter])
 
@@ -234,7 +240,7 @@ export default function HelpDesk() {
                         </span>
                     </div>
 
-                    {isLoading ? (
+                    {isLoadingTickets ? (
                         <div className="flex items-center justify-center py-16">
                             <Spinner size="lg" />
                         </div>

@@ -476,6 +476,7 @@ class EmployeeProfileFlatSerializer(serializers.Serializer):
             'visa_type', 'visa_expiry',
             'previous_company', 'previous_designation',
             'previous_experience_years', 'total_experience_years',
+            'previous_ctc',
         }
         # Map frontend keys to model fields
         profile_remap = {'spouse': 'spouse_name', 'visa_number': 'visa_type',

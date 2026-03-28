@@ -35,6 +35,27 @@ export interface ServerSession {
  * Token is read from the incoming request's Authorization header or cookies.
  * Returns null if the token is missing, expired, or invalid.
  */
+
+// -- Session cache (30s TTL, per-process) --
+const SESSION_CACHE_TTL = 30_000  // 30 seconds
+const sessionCache = new Map<string, { session: ServerSession; expiresAt: number }>()
+
+function getCachedSession(cacheKey: string): ServerSession | null {
+  const entry = sessionCache.get(cacheKey)
+  if (entry && Date.now() < entry.expiresAt) return entry.session
+  if (entry) sessionCache.delete(cacheKey)
+  return null
+}
+
+function setCachedSession(cacheKey: string, session: ServerSession): void {
+  // Limit cache size to prevent memory leaks
+  if (sessionCache.size > 500) {
+    const oldest = sessionCache.keys().next().value
+    if (oldest) sessionCache.delete(oldest)
+  }
+  sessionCache.set(cacheKey, { session, expiresAt: Date.now() + SESSION_CACHE_TTL })
+}
+
 export async function getServerSession(): Promise<ServerSession | null> {
   try {
     const headersList = await headers()
@@ -56,6 +77,11 @@ export async function getServerSession(): Promise<ServerSession | null> {
     }
 
     if (!token) return null
+
+    // 2.5. Check cache
+    const cacheKey = token.slice(-20)  // last 20 chars as key (safe, not the full token)
+    const cached = getCachedSession(cacheKey)
+    if (cached) return cached
 
     // 3. Read tenant slug from header or cookie
     let tenantSlug = headersList.get("x-tenant-slug")
@@ -94,7 +120,7 @@ export async function getServerSession(): Promise<ServerSession | null> {
     const roleSlug = isTenantAdmin ? "admin" : ((djangoUser.roleSlug as string) || "employee")
     const role: Role = DJANGO_ROLE_MAP[roleSlug] || "EMPLOYEE"
 
-    return {
+    const sessionResult: ServerSession = {
       user: {
         id: String(djangoUser.id || ""),
         email: String(djangoUser.email || ""),
@@ -108,6 +134,8 @@ export async function getServerSession(): Promise<ServerSession | null> {
         avatar: djangoUser.avatar ? String(djangoUser.avatar) : null,
       },
     }
+    setCachedSession(cacheKey, sessionResult)
+    return sessionResult
   } catch (error) {
     // Network errors, timeouts, JSON parse errors — all treated as unauthenticated
     if (process.env.NODE_ENV === "development") {

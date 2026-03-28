@@ -17,6 +17,9 @@ import { Badge } from "@/components/ui/Badge"
 import { Avatar } from "@/components/ui/Avatar"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Spinner } from "@/components/ui/Spinner"
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
+import { canAccessModule, Module } from "@/lib/permissions"
 
 // ─── Constants ──────────────────────────────────────────────
 
@@ -60,6 +63,10 @@ interface Employee {
 // ─── Component ──────────────────────────────────────────────
 
 export default function DocumentManagement() {
+    const { user, isLoading } = useAuth()
+    const router = useRouter()
+    React.useEffect(() => { if (!isLoading && user && !canAccessModule(user.role, Module.DOCUMENTS)) router.push("/") }, [user, isLoading, router])
+
     const [documents, setDocuments] = React.useState<Document[]>([])
     const [employees, setEmployees] = React.useState<Employee[]>([])
     const [loadingDocs, setLoadingDocs] = React.useState(true)

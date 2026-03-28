@@ -1,0 +1,725 @@
+[     121ms] [ERROR] Loading the stylesheet 'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@400;500;600;700;800&display=swap' violates the following Content Security Policy directive: "style-src 'self' 'unsafe-inline'". Note that 'style-src-elem' was not explicitly set, so 'style-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/login:0
+[     121ms] [ERROR] Loading the stylesheet 'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@400;500;600;700;800&display=swap' violates the following Content Security Policy directive: "style-src 'self' 'unsafe-inline'". Note that 'style-src-elem' was not explicitly set, so 'style-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/login:0
+[     273ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.json:0
+[     457ms] [ERROR] ./app/attendance/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Attendance() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/attendance/page.tsx [Client Component Browser]
+    ./app/attendance/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/attendance/page.tsx [Client Component SSR]
+    ./app/attendance/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[     457ms] [ERROR] ./app/payroll/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Payroll() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/payroll/page.tsx [Client Component Browser]
+    ./app/payroll/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/payroll/page.tsx [Client Component SSR]
+    ./app/payroll/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[     457ms] [ERROR] ./app/reimbursement/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Reimbursement() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/reimbursement/page.tsx [Client Component Browser]
+    ./app/reimbursement/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/reimbursement/page.tsx [Client Component SSR]
+    ./app/reimbursement/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    1059ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.json:0
+[    1063ms] [ERROR] ./app/attendance/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Attendance() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/attendance/page.tsx [Client Component Browser]
+    ./app/attendance/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/attendance/page.tsx [Client Component SSR]
+    ./app/attendance/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    1064ms] [ERROR] ./app/payroll/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Payroll() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/payroll/page.tsx [Client Component Browser]
+    ./app/payroll/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/payroll/page.tsx [Client Component SSR]
+    ./app/payroll/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    1064ms] [ERROR] ./app/reimbursement/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Reimbursement() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/reimbursement/page.tsx [Client Component Browser]
+    ./app/reimbursement/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/reimbursement/page.tsx [Client Component SSR]
+    ./app/reimbursement/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    6005ms] [ERROR] ./app/attendance/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Attendance() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/attendance/page.tsx [Client Component Browser]
+    ./app/attendance/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/attendance/page.tsx [Client Component SSR]
+    ./app/attendance/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    6005ms] [ERROR] ./app/payroll/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Payroll() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/payroll/page.tsx [Client Component Browser]
+    ./app/payroll/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/payroll/page.tsx [Client Component SSR]
+    ./app/payroll/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    6005ms] [ERROR] ./app/reimbursement/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Reimbursement() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/reimbursement/page.tsx [Client Component Browser]
+    ./app/reimbursement/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/reimbursement/page.tsx [Client Component SSR]
+    ./app/reimbursement/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    6251ms] [ERROR] ./app/attendance/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Attendance() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/attendance/page.tsx [Client Component Browser]
+    ./app/attendance/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/attendance/page.tsx [Client Component SSR]
+    ./app/attendance/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    6251ms] [ERROR] ./app/payroll/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Payroll() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/payroll/page.tsx [Client Component Browser]
+    ./app/payroll/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/payroll/page.tsx [Client Component SSR]
+    ./app/payroll/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    6251ms] [ERROR] ./app/reimbursement/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Reimbursement() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/reimbursement/page.tsx [Client Component Browser]
+    ./app/reimbursement/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/reimbursement/page.tsx [Client Component SSR]
+    ./app/reimbursement/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    6546ms] [ERROR] ./app/attendance/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Attendance() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/attendance/page.tsx [Client Component Browser]
+    ./app/attendance/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/attendance/page.tsx [Client Component SSR]
+    ./app/attendance/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    6546ms] [ERROR] ./app/payroll/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Payroll() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/payroll/page.tsx [Client Component Browser]
+    ./app/payroll/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/payroll/page.tsx [Client Component SSR]
+    ./app/payroll/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    6547ms] [ERROR] ./app/reimbursement/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Reimbursement() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/reimbursement/page.tsx [Client Component Browser]
+    ./app/reimbursement/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/reimbursement/page.tsx [Client Component SSR]
+    ./app/reimbursement/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    6691ms] [ERROR] ./app/attendance/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Attendance() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/attendance/page.tsx [Client Component Browser]
+    ./app/attendance/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/attendance/page.tsx [Client Component SSR]
+    ./app/attendance/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    6691ms] [ERROR] ./app/payroll/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Payroll() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/payroll/page.tsx [Client Component Browser]
+    ./app/payroll/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/payroll/page.tsx [Client Component SSR]
+    ./app/payroll/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    6692ms] [ERROR] ./app/reimbursement/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Reimbursement() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/reimbursement/page.tsx [Client Component Browser]
+    ./app/reimbursement/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/reimbursement/page.tsx [Client Component SSR]
+    ./app/reimbursement/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   13812ms] [ERROR] ./app/attendance/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Attendance() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/attendance/page.tsx [Client Component Browser]
+    ./app/attendance/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/attendance/page.tsx [Client Component SSR]
+    ./app/attendance/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   13812ms] [ERROR] ./app/payroll/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Payroll() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/payroll/page.tsx [Client Component Browser]
+    ./app/payroll/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/payroll/page.tsx [Client Component SSR]
+    ./app/payroll/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   13812ms] [ERROR] ./app/reimbursement/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Reimbursement() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/reimbursement/page.tsx [Client Component Browser]
+    ./app/reimbursement/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/reimbursement/page.tsx [Client Component SSR]
+    ./app/reimbursement/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   14089ms] [ERROR] ./app/attendance/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Attendance() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/attendance/page.tsx [Client Component Browser]
+    ./app/attendance/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/attendance/page.tsx [Client Component SSR]
+    ./app/attendance/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   14089ms] [ERROR] ./app/payroll/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Payroll() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/payroll/page.tsx [Client Component Browser]
+    ./app/payroll/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/payroll/page.tsx [Client Component SSR]
+    ./app/payroll/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   14089ms] [ERROR] ./app/reimbursement/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Reimbursement() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/reimbursement/page.tsx [Client Component Browser]
+    ./app/reimbursement/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/reimbursement/page.tsx [Client Component SSR]
+    ./app/reimbursement/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   14349ms] [ERROR] ./app/attendance/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Attendance() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/attendance/page.tsx [Client Component Browser]
+    ./app/attendance/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/attendance/page.tsx [Client Component SSR]
+    ./app/attendance/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   14350ms] [ERROR] ./app/payroll/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Payroll() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/payroll/page.tsx [Client Component Browser]
+    ./app/payroll/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/payroll/page.tsx [Client Component SSR]
+    ./app/payroll/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   14350ms] [ERROR] ./app/reimbursement/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Reimbursement() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/reimbursement/page.tsx [Client Component Browser]
+    ./app/reimbursement/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/reimbursement/page.tsx [Client Component SSR]
+    ./app/reimbursement/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   14522ms] [ERROR] ./app/attendance/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Attendance() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/attendance/page.tsx [Client Component Browser]
+    ./app/attendance/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/attendance/page.tsx [Client Component SSR]
+    ./app/attendance/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   14523ms] [ERROR] ./app/payroll/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Payroll() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/payroll/page.tsx [Client Component Browser]
+    ./app/payroll/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/payroll/page.tsx [Client Component SSR]
+    ./app/payroll/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   14523ms] [ERROR] ./app/reimbursement/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Reimbursement() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/reimbursement/page.tsx [Client Component Browser]
+    ./app/reimbursement/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/reimbursement/page.tsx [Client Component SSR]
+    ./app/reimbursement/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   21840ms] [ERROR] ./app/attendance/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Attendance() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/attendance/page.tsx [Client Component Browser]
+    ./app/attendance/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/attendance/page.tsx [Client Component SSR]
+    ./app/attendance/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   21841ms] [ERROR] ./app/payroll/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Payroll() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/payroll/page.tsx [Client Component Browser]
+    ./app/payroll/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/payroll/page.tsx [Client Component SSR]
+    ./app/payroll/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   21841ms] [ERROR] ./app/reimbursement/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Reimbursement() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/reimbursement/page.tsx [Client Component Browser]
+    ./app/reimbursement/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/reimbursement/page.tsx [Client Component SSR]
+    ./app/reimbursement/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   22592ms] [ERROR] ./app/attendance/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Attendance() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/attendance/page.tsx [Client Component Browser]
+    ./app/attendance/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/attendance/page.tsx [Client Component SSR]
+    ./app/attendance/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   22593ms] [ERROR] ./app/payroll/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Payroll() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/payroll/page.tsx [Client Component Browser]
+    ./app/payroll/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/payroll/page.tsx [Client Component SSR]
+    ./app/payroll/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   22593ms] [ERROR] ./app/reimbursement/page.tsx:8:27
+Ecmascript file had an error
+   6 | import { hasAdminScope, Module } from "@/lib/permissions"
+   7 | import { useRouter } from "next/navigation"
+>  8 | import { canAccessModule, Module } from "@/lib/permissions"
+     |                           ^^^^^^
+   9 |
+  10 | export default function Reimbursement() {
+  11 |     const { user } = useAuth()
+
+the name `Module` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./app/reimbursement/page.tsx [Client Component Browser]
+    ./app/reimbursement/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/reimbursement/page.tsx [Client Component SSR]
+    ./app/reimbursement/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   64623ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.json:0

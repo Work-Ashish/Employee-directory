@@ -15,6 +15,9 @@ import { ConfigPanel } from '@/components/ui/ConfigPanel'
 import { Spinner } from '@/components/ui/Spinner'
 import { Textarea } from '@/components/ui/Textarea'
 import { Dialog, DialogHeader, DialogTitle, DialogBody, DialogFooter } from '@/components/ui/Dialog'
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
+import { canAccessModule, Module } from "@/lib/permissions"
 
 interface WorkflowTemplate {
     id: string
@@ -77,6 +80,10 @@ const INSTANCE_STATUS_VARIANT: Record<string, 'warning' | 'info' | 'success' | '
 }
 
 export default function WorkflowsAdmin() {
+    const { user, isLoading } = useAuth()
+    const router = useRouter()
+    React.useEffect(() => { if (!isLoading && user && !canAccessModule(user.role, Module.WORKFLOWS)) router.push("/") }, [user, isLoading, router])
+
     const [templates, setTemplates] = useState<WorkflowTemplate[]>([])
     const [loading, setLoading] = useState(true)
     const [configScreen, setConfigScreen] = useState<string | null>(null)

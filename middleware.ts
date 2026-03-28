@@ -107,7 +107,7 @@ export default async function middleware(req: NextRequest) {
         // Server-side route protection: check for JWT in Authorization header or cookie
         const authHeader = req.headers.get("authorization")
         const hasHeaderToken = authHeader?.startsWith("Bearer ")
-        const hasCookieToken = req.cookies.has("access_token")
+        const hasCookieToken = req.cookies.has("access_token") || req.cookies.has("ems_authenticated")
 
         if (!hasHeaderToken && !hasCookieToken) {
             // Embedded mode: redirect to parent platform's login

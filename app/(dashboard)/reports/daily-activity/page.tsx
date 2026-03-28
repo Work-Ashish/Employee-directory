@@ -11,6 +11,9 @@ import { BarChartIcon, ClockIcon, LaptopIcon } from "@radix-ui/react-icons"
 import { useSearchParams } from "next/navigation"
 import { api } from "@/lib/api-client"
 import { Spinner } from "@/components/ui/Spinner"
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
+import { canAccessModule, Module } from "@/lib/permissions"
 
 interface Report {
     id: string
@@ -221,6 +224,10 @@ function DailyActivityReportContent() {
 }
 
 export default function DailyActivityReportPage() {
+    const { user, isLoading } = useAuth()
+    const router = useRouter()
+    React.useEffect(() => { if (!isLoading && user && !canAccessModule(user.role, Module.REPORTS)) router.push("/") }, [user, isLoading, router])
+
     return (
         <Suspense fallback={<div className="flex items-center justify-center py-20 gap-2 text-text-3"><Spinner size="lg" /> Loading...</div>}>
             <DailyActivityReportContent />

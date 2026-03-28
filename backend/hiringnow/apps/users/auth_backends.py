@@ -9,12 +9,16 @@ from config.tenant_context import set_current_tenant
 # JWT auth backend that also sets tenant context from token claims
 class TenantJWTAuthentication(JWTAuthentication):
     def authenticate(self, request):
-        # This part mirrors JWTAuthentication.authenticate, but we add tenant handling.
+        # Try Authorization header first (standard JWT flow)
         header = self.get_header(request)
-        if header is None:
-            return None
+        raw_token = self.get_raw_token(header) if header else None
 
-        raw_token = self.get_raw_token(header)
+        # Fallback: read access_token from httpOnly cookie
+        if raw_token is None:
+            cookie_token = request.COOKIES.get("access_token")
+            if cookie_token:
+                raw_token = cookie_token.encode("utf-8") if isinstance(cookie_token, str) else cookie_token
+
         if raw_token is None:
             return None
 

@@ -12,6 +12,9 @@ import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { Spinner } from "@/components/ui/Spinner"
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
+import { canAccessModule, Module } from "@/lib/permissions"
 
 const STATUS_LABELS: Record<string, string> = {
     AVAILABLE: "Available",
@@ -21,6 +24,10 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 export default function MyAssets() {
+    const { user, isLoading } = useAuth()
+    const router = useRouter()
+    React.useEffect(() => { if (!isLoading && user && !canAccessModule(user.role, Module.ASSETS)) router.push("/") }, [user, isLoading, router])
+
     const [assets, setAssets] = React.useState<Asset[]>([])
     const [loading, setLoading] = React.useState(true)
 

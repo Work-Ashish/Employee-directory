@@ -56,7 +56,20 @@ export default function OnboardingPage() {
     const addEdu=()=>setData(p=>({...p,educations:[...(p.educations as Education[]),{...EMPTY_EDU}]}))
     const rmEdu=(i:number)=>setData(p=>({...p,educations:(p.educations as Education[]).filter((_,j)=>j!==i)}))
 
-    const handleDocUpload=async(e:React.ChangeEvent<HTMLInputElement>)=>{const file=e.target.files?.[0];if(!file)return;const fd=new FormData();fd.append("file",file);fd.append("title",file.name);fd.append("category",docCat);try{await api.upload("/documents/my/",fd);setUploadedDocs(p=>[...p,{name:file.name,category:docCat}])}catch{setError("Doc upload failed. Upload later from profile.")}if(fileRef.current)fileRef.current.value=""}
+    const handleDocUpload=async(e:React.ChangeEvent<HTMLInputElement>)=>{
+        const file=e.target.files?.[0];if(!file)return
+        setError("")
+        try{
+            // Step 1: Upload file to Supabase storage via /api/upload/
+            const fd=new FormData();fd.append("file",file);fd.append("bucket","documents")
+            const uploadRes=await api.upload<{url:string;path:string;name:string;size:number;type:string}>("/upload/",fd)
+            if(!uploadRes.data?.url)throw new Error("Upload returned no URL")
+            // Step 2: Save document record to Django with the Supabase URL
+            await api.post("/documents/my/",{title:file.name,fileUrl:uploadRes.data.url,fileType:file.type||"",size:file.size||0,category:docCat})
+            setUploadedDocs(p=>[...p,{name:file.name,category:docCat}])
+        }catch(err:unknown){setError(String((err as Record<string,unknown>)?.message||"Doc upload failed. Upload later from profile."))}
+        if(fileRef.current)fileRef.current.value=""
+    }
     const handleSubmit=async()=>{setError("");setSubmitting(true);try{await api.post("/employees/onboarding/",data);setDone(true);setTimeout(()=>{window.location.href="/"},2500)}catch(err:unknown){setError(String((err as Record<string,unknown>)?.message||"Failed to submit."))}finally{setSubmitting(false)}}
 
     if(isLoading||loading)return(<div className="min-h-screen flex items-center justify-center bg-bg"><div className="animate-spin w-8 h-8 border-2 border-accent border-t-transparent rounded-full"/></div>)

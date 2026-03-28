@@ -74,6 +74,7 @@ export async function apiClient<T>(
       ...options,
       headers,
       body,
+      credentials: "include",
       signal: AbortSignal.timeout(10_000),
     });
   } catch (err) {
@@ -95,6 +96,7 @@ export async function apiClient<T>(
         ...options,
         headers,
         body,
+        credentials: "include",
         signal: AbortSignal.timeout(10_000),
       });
 
@@ -174,6 +176,7 @@ async function apiUpload<T>(path: string, formData: FormData): Promise<ApiRespon
     method: "POST",
     headers,
     body: formData,
+    credentials: "include",
     signal: AbortSignal.timeout(30_000),
   });
 

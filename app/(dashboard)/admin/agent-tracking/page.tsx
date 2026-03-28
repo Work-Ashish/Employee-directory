@@ -12,6 +12,8 @@ import { Select } from "@/components/ui/Select"
 import { LaptopIcon, BarChartIcon, ClockIcon } from "@radix-ui/react-icons"
 import { api } from "@/lib/api-client"
 import { confirmDanger, confirmAction, showSuccess } from "@/lib/swal"
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
 
 interface DashboardData {
     devices: { active: number; pending: number; suspended: number; uninstalled: number; total: number }
@@ -46,6 +48,10 @@ const statusColors: Record<string, "success" | "warning" | "danger" | "neutral">
 }
 
 export default function AgentTrackingPage() {
+    const { user, isLoading } = useAuth()
+    const router = useRouter()
+    React.useEffect(() => { if (!isLoading && user && user.role !== "CEO" && user.role !== "HR") router.push("/") }, [user, isLoading, router])
+
     const [tab, setTab] = React.useState("dashboard")
     const [dashboard, setDashboard] = React.useState<DashboardData | null>(null)
     const [devices, setDevices] = React.useState<Device[]>([])

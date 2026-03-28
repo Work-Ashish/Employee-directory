@@ -21,6 +21,9 @@ import { Select } from "@/components/ui/Select"
 import { Badge } from "@/components/ui/Badge"
 import { StatCard } from "@/components/ui/StatCard"
 import { Spinner } from "@/components/ui/Spinner"
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
+import { canAccessModule, Module } from "@/lib/permissions"
 
 const STATUS_LABELS: Record<AssetStatus, string> = {
     AVAILABLE: "Available",
@@ -65,6 +68,16 @@ const EMPTY_FORM = {
 }
 
 export default function AssetManagement() {
+    const { user, isLoading } = useAuth()
+    const router = useRouter()
+
+    // RBAC: module access check
+    React.useEffect(() => {
+        if (!isLoading && user && !canAccessModule(user.role, Module.ASSETS)) {
+            router.push("/")
+        }
+    }, [user, isLoading, router])
+
     const [assets, setAssets] = React.useState<Asset[]>([])
     const [loading, setLoading] = React.useState(true)
     const [isModalOpen, setIsModalOpen] = React.useState(false)
